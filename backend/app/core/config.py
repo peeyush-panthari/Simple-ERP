@@ -1,13 +1,4 @@
-"""Ported ~verbatim from backend_py/app/config.py - it was already pure
-`pydantic_settings`, not Flask-coupled. Two changes from the original:
-
-- The BigQuery migration scaffolding (db_backend/gcp_project_id/bigquery_*) is
-  carried over as-is - inert, like the original: `db_backend` stays "postgres"
-  and nothing here has ever run against a real BigQuery dataset. See
-  BIGQUERY_MIGRATION.md.
-- Added redis_url / rabbitmq_url for the new Cache and Async-messaging layers
-  the original app didn't have.
-"""
+"""Configuration settings powered by pydantic_settings."""
 
 from __future__ import annotations
 
@@ -43,15 +34,6 @@ class Settings(BaseSettings):
     database_url: str = (
         "postgresql+psycopg://axon_py:axon_py@127.0.0.1:5433/axon_erp_py"
     )
-
-    # BigQuery migration scaffolding (see BIGQUERY_MIGRATION.md). db_backend stays "postgres"
-    # until the module-by-module cutover is complete - flipping this alone does not make the
-    # app work against BigQuery (the model column/constraint definitions and the row locks are
-    # still Postgres-only).
-    db_backend: str = "postgres"  # "postgres" | "bigquery"
-    gcp_project_id: str = "REPLACE_WITH_GCP_PROJECT_ID"
-    bigquery_dataset: str = "simple_erp_dev"
-    bigquery_location: str = "asia-south1"
 
     # Connection pool - see app/core/db.py.
     db_pool_size: int = 5
@@ -224,10 +206,6 @@ class Settings(BaseSettings):
                 "codes are printed and scanned from other devices, so this must be the "
                 "web app's public URL."
             )
-        if self.db_backend == "bigquery" and self.gcp_project_id == "REPLACE_WITH_GCP_PROJECT_ID":
-            errors.append("DB_BACKEND=bigquery but GCP_PROJECT_ID is still the placeholder.")
-        if self.db_backend not in ("postgres", "bigquery"):
-            errors.append(f"DB_BACKEND must be 'postgres' or 'bigquery', not {self.db_backend!r}.")
         return errors
 
     @property
@@ -270,16 +248,8 @@ class Settings(BaseSettings):
         return warnings
 
     @property
-    def bigquery_dataset_id(self) -> str:
-        """Fully-qualified `project.dataset` for use in backtick-quoted table references
-        (see app/services/bq_writer.py, bq_schema.py)."""
-        return f"{self.gcp_project_id}.{self.bigquery_dataset}"
-
-    @property
     def sqlalchemy_database_uri(self) -> str:
-        """The engine URI for the selected backend. The bigquery branch is scaffolding only."""
-        if self.db_backend == "bigquery":
-            return f"bigquery://{self.gcp_project_id}/{self.bigquery_dataset}?location={self.bigquery_location}"
+        """The engine URI for PostgreSQL."""
         return self.database_url
 
 

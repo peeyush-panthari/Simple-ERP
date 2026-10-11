@@ -1,8 +1,8 @@
 """Product categories and business entities. Ported 1:1 (behavior) from
-backend_py/app/routes/{product_categories,business_entities}.py. BigQuery
-branches dropped (scope decision #2); the in-process category cache the
-original invalidates on writes doesn't exist in this port (load_categories
-always reads the DB), so those calls are simply gone."""
+backend_py/app/routes/{product_categories,business_entities}.py. The
+in-process category cache the original invalidates on writes doesn't exist
+in this port (load_categories always reads the DB), so those calls are
+simply gone."""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ from fastapi import APIRouter, Depends, Response
 from pydantic import ValidationError
 from sqlalchemy import func, or_
 
-from app.core.audit import audit, audit_insert_op
+from app.core.audit import audit
 from app.core.auth import Actor, require_any_permission, require_permission
 from app.core.config import settings
 from app.core.db import session
@@ -32,7 +32,6 @@ from app.models.business_entity import BusinessEntity
 from app.models.product import Product
 from app.models.product_category import ProductCategory
 from app.services import product_repo
-from app.services.bq_writer import DeleteOp, InsertOp, Not, UpdateOp, run_write_transaction
 from app.services.org_repo import to_business_entity_api
 from app.services.party_tax_id import assert_valid_tax_id
 from app.services.product_category import resolve_ancestry
@@ -146,77 +145,7 @@ def _create_category_postgres(tenant_id, actor: dict, body: CategoryBody) -> dic
     return product_repo.to_category_api(row)
 
 
-def _create_category_bigquery(tenant_id, actor: dict, body: CategoryBody) -> dict:
-    """BigQuery counterpart to _create_category_postgres.
-
-    product_categories_tenant_code_uniq is dropped on BigQuery, so
-    _assert_code_free is now the only guard against two concurrent requests
-    claiming one code - it sits inside build_ops() so a retry re-checks
-    against the latest committed state.
-
-    The depth check re-reads the category tree per attempt for the same
-    reason: a concurrent insert can deepen the branch between attempts, and
-    validating against a stale tree would let a too-deep row through."""
-    response: dict = {}
-
-    def build_ops() -> list[InsertOp | UpdateOp | DeleteOp]:
-        if body.parentId:
-            _assert_parent_depth_ok(tenant_id, body.parentId)
-
-        code = body.code or next_category_code(tenant_id)
-        _assert_code_free(tenant_id, code)
-
-        new_id = uuid_mod.uuid4()
-        now = datetime.now(timezone.utc)
-        values = {
-            "id": new_id,
-            "tenant_id": tenant_id,
-            "code": code,
-            "product_category": body.productCategory,
-            "parent_id": body.parentId,
-            "product_types": body.productTypes or [],
-            "requires_batch": body.requiresBatch,
-            "requires_expiry": body.requiresExpiry,
-            "default_tax_code": body.defaultTaxCode,
-            "status": body.status,
-            "created_at": now,
-            "updated_at": now,
-        }
-
-        response.clear()
-        response.update(
-            {
-                "id": str(new_id),
-                "code": code,
-                "productCategory": body.productCategory,
-                "parentId": str(body.parentId) if body.parentId else None,
-                "productTypes": body.productTypes or [],
-                "requiresBatch": body.requiresBatch,
-                "requiresExpiry": body.requiresExpiry,
-                "defaultTaxCode": body.defaultTaxCode,
-                "status": body.status,
-            }
-        )
-        return [
-            InsertOp(table="product_categories", values=values),
-            audit_insert_op(
-                tenant_id=tenant_id,
-                actor_id=actor["user_id"],
-                actor_email=actor["email"],
-                action="product-category.created",
-                entity_type="product-category",
-                entity_id=str(new_id),
-            ),
-        ]
-
-    run_write_transaction(settings.bigquery_dataset_id, build_ops)
-    product_repo.invalidate_category_cache()
-    return response
-
-
 def _create_category(tenant_id, actor: dict, body: CategoryBody) -> dict:
-    if settings.db_backend == "bigquery":
-        return _create_category_bigquery(tenant_id, actor, body)
     return _create_category_postgres(tenant_id, actor, body)
 
 
@@ -283,76 +212,7 @@ def _patch_category_postgres(tenant_id, actor: dict, id: uuid_mod.UUID, body: Pa
     return product_repo.to_category_api(row)
 
 
-def _patch_category_bigquery(tenant_id, actor: dict, id: uuid_mod.UUID, body: PatchCategoryBody) -> dict:
-    """BigQuery counterpart to _patch_category_postgres.
-
-    Unlike the Postgres path there is no ORM row to mutate and re-serialise,
-    so the response is built from the row that was read plus the patch. The
-    audit row is written even when nothing else changes, matching the
-    Postgres path, which audits before checking whether any field moved.
-
-    updated_at is set by hand: the model's onupdate=func.now() is a Postgres
-    server-side trigger that a BigQuery UPDATE script never fires."""
-    response: dict = {}
-
-    def build_ops() -> list[InsertOp | UpdateOp | DeleteOp]:
-        row = ProductCategory.query.filter_by(tenant_id=tenant_id, id=id).first()
-        if not row:
-            raise not_found("Product category")
-
-        if "parentId" in body.model_fields_set and body.parentId != row.parent_id:
-            _assert_reparent_ok(tenant_id, id, row, body.parentId)
-
-        set_values = _patch_set_values(body)
-        current = product_repo.to_category_api(row)
-        response.clear()
-        response.update(current)
-        if "code" in set_values:
-            response["code"] = set_values["code"]
-        if "product_category" in set_values:
-            response["productCategory"] = set_values["product_category"]
-        if "parent_id" in set_values:
-            response["parentId"] = str(set_values["parent_id"]) if set_values["parent_id"] else None
-        if "product_types" in set_values:
-            response["productTypes"] = set_values["product_types"]
-        if "requires_batch" in set_values:
-            response["requiresBatch"] = set_values["requires_batch"]
-        if "requires_expiry" in set_values:
-            response["requiresExpiry"] = set_values["requires_expiry"]
-        if "default_tax_code" in set_values:
-            response["defaultTaxCode"] = set_values["default_tax_code"]
-        if "status" in set_values:
-            response["status"] = set_values["status"]
-
-        ops: list[InsertOp | UpdateOp | DeleteOp] = []
-        if set_values:
-            ops.append(
-                UpdateOp(
-                    table="product_categories",
-                    set_values={**set_values, "updated_at": datetime.now(timezone.utc)},
-                    where={"tenant_id": tenant_id, "id": id},
-                )
-            )
-        ops.append(
-            audit_insert_op(
-                tenant_id=tenant_id,
-                actor_id=actor["user_id"],
-                actor_email=actor["email"],
-                action="product-category.updated",
-                entity_type="product-category",
-                entity_id=str(id),
-            )
-        )
-        return ops
-
-    run_write_transaction(settings.bigquery_dataset_id, build_ops)
-    product_repo.invalidate_category_cache()
-    return response
-
-
 def _patch_category(tenant_id, actor: dict, id: uuid_mod.UUID, body: PatchCategoryBody) -> dict:
-    if settings.db_backend == "bigquery":
-        return _patch_category_bigquery(tenant_id, actor, id, body)
     return _patch_category_postgres(tenant_id, actor, id, body)
 
 
@@ -384,41 +244,8 @@ def _delete_category_postgres(tenant_id, actor: dict, id: uuid_mod.UUID) -> None
     session.commit()
 
 
-def _delete_category_bigquery(tenant_id, actor: dict, id: uuid_mod.UUID) -> None:
-    """BigQuery counterpart to _delete_category_postgres.
-
-    On Postgres the FK to product_categories.parent_id is ON DELETE RESTRICT,
-    so the in-use check had the database behind it as a backstop. BigQuery
-    enforces no foreign keys at all, which makes _assert_category_unused the
-    only thing preventing a delete that orphans children or products - so it
-    is re-run inside build_ops() on every attempt, not hoisted above."""
-
-    def build_ops() -> list[InsertOp | UpdateOp | DeleteOp]:
-        _assert_category_unused(id)
-        if not ProductCategory.query.filter_by(tenant_id=tenant_id, id=id).first():
-            raise not_found("Product category")
-
-        return [
-            audit_insert_op(
-                tenant_id=tenant_id,
-                actor_id=actor["user_id"],
-                actor_email=actor["email"],
-                action="product-category.deleted",
-                entity_type="product-category",
-                entity_id=str(id),
-            ),
-            DeleteOp(table="product_categories", where={"tenant_id": tenant_id, "id": id}),
-        ]
-
-    run_write_transaction(settings.bigquery_dataset_id, build_ops)
-    product_repo.invalidate_category_cache()
-
-
 def _delete_category(tenant_id, actor: dict, id: uuid_mod.UUID) -> None:
-    if settings.db_backend == "bigquery":
-        _delete_category_bigquery(tenant_id, actor, id)
-    else:
-        _delete_category_postgres(tenant_id, actor, id)
+    _delete_category_postgres(tenant_id, actor, id)
 
 
 @router.delete("/product-categories/{id}", status_code=204)
@@ -503,113 +330,10 @@ def _create_business_entity_postgres(tenant_id, actor: dict, body: BusinessEntit
     return to_business_entity_api(row)
 
 
-def _create_business_entity_bigquery(tenant_id, actor: dict, body: BusinessEntityBody) -> dict:
-    """BigQuery counterpart to _create_business_entity_postgres. Reads (code
-    collision, is-first check) go through the normal ORM query API - a plain
-    SELECT needs no special transaction handling via the sqlalchemy-bigquery
-    dialect; only the write (insert + unset-other-defaults + audit row) is a
-    script run through bq_writer.run_write_transaction. See
-    /Users/Peeyush/.claude/plans/mossy-stirring-gosling.md (Phase 4) - the
-    first module ported under that plan.
-
-    build_ops() re-reads the code-collision/is-first checks itself (rather
-    than the caller hoisting them above it) specifically so a retry after a
-    BigQuery transaction conflict re-validates against the latest committed
-    state instead of a stale snapshot from the first attempt."""
-    tax = assert_valid_tax_id(body.taxId, body.taxIdCountry or body.country, validate=False) if body.taxId else None
-    response: dict = {}
-
-    def build_ops() -> list[InsertOp | UpdateOp]:
-        code = body.code or next_business_entity_code(tenant_id)
-        if BusinessEntity.query.filter(BusinessEntity.tenant_id == tenant_id, func.upper(BusinessEntity.code) == code.upper()).first():
-            raise conflict(f"Code {code} is already in use", code="BUSINESS_ENTITY_CODE_TAKEN")
-
-        is_first = BusinessEntity.query.filter_by(tenant_id=tenant_id).count() == 0
-        make_default = body.isDefault or is_first
-
-        new_id = uuid_mod.uuid4()
-        now = datetime.now(timezone.utc)
-        row_values = {
-            "id": new_id,
-            "tenant_id": tenant_id,
-            "code": code,
-            "name": body.name,
-            "address_line1": body.addressLine1,
-            "address_line2": body.addressLine2,
-            "city": body.city,
-            "state_code": body.stateCode,
-            "postal_code": body.postalCode,
-            "country": body.country,
-            "tax_id": tax.tax_id if tax else None,
-            "tax_id_country": tax.country if tax else None,
-            "pan": body.pan,
-            "contact_email": body.contactEmail,
-            "contact_phone": body.contactPhone,
-            "bank_name": body.bankName,
-            "bank_branch": body.bankBranch,
-            "bank_account_number": body.bankAccountNumber,
-            "bank_ifsc": body.bankIfsc,
-            "is_default": make_default,
-            "status": body.status,
-        }
-        ops: list[InsertOp | UpdateOp] = [InsertOp(table="business_entities", values=row_values)]
-        if make_default:
-            ops.append(UpdateOp(table="business_entities", set_values={"is_default": False}, where={"tenant_id": tenant_id, "id": Not(new_id)}))
-        ops.append(
-            InsertOp(
-                table="audit_log",
-                values={
-                    "id": uuid_mod.uuid4(),
-                    "tenant_id": tenant_id,
-                    "actor_id": actor["user_id"],
-                    "actor_email": actor["email"],
-                    "action": "business-entity.created",
-                    "entity_type": "business-entity",
-                    "entity_id": str(new_id),
-                    "created_at": now,
-                    "meta": {},
-                },
-            )
-        )
-
-        response.clear()
-        response.update(
-            {
-                "id": str(new_id),
-                "code": code,
-                "name": body.name,
-                "status": body.status,
-                "isDefault": make_default,
-                "addressLine1": body.addressLine1,
-                "addressLine2": body.addressLine2,
-                "city": body.city,
-                "stateCode": body.stateCode,
-                "postalCode": body.postalCode,
-                "country": body.country,
-                "taxId": tax.tax_id if tax else None,
-                "taxIdCountry": tax.country if tax else None,
-                "pan": body.pan,
-                "contactEmail": body.contactEmail,
-                "contactPhone": body.contactPhone,
-                "bankName": body.bankName,
-                "bankBranch": body.bankBranch,
-                "bankAccountNumber": body.bankAccountNumber,
-                "bankIfsc": body.bankIfsc,
-            }
-        )
-        return ops
-
-    run_write_transaction(settings.bigquery_dataset_id, build_ops)
-    return response
-
-
 def _create_business_entity(tenant_id, actor: dict, body: BusinessEntityBody) -> dict:
     """Shared by the single create route and the bulk-upload route, so an
     entity created either way goes through the exact same code numbering,
-    default-flag handling and audit trail. Returns the entity in
-    to_business_entity_api's dict shape regardless of backend."""
-    if settings.db_backend == "bigquery":
-        return _create_business_entity_bigquery(tenant_id, actor, body)
+    default-flag handling and audit trail."""
     return _create_business_entity_postgres(tenant_id, actor, body)
 
 

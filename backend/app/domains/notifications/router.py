@@ -162,7 +162,9 @@ def list_delivery_logs(actor: Actor = Depends(require_permission("notification:r
 
 @router.post("/notifications/{id}/retry")
 def retry_notification_route(id: uuid_mod.UUID, actor: Actor = Depends(require_permission("notification:send"))):
-    return notification_repo.retry_notification(actor["tenant_id"], id)
+    result = notification_repo.retry_notification(actor["tenant_id"], id)
+    session.commit()
+    return result
 
 
 @router.get("/templates")

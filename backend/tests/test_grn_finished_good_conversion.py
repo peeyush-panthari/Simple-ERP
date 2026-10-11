@@ -178,10 +178,12 @@ def test_lot_fg_line_partial_accept_only_converts_accepted_portion(app, client, 
         assert fg_items[0].kind == "lot"
         assert fg_items[0].quantity == Decimal("15")
 
-        source = InventoryItem.query.filter_by(grn_line_id=uuid.UUID(fg_line["id"])).one()
+        source = InventoryItem.query.filter_by(grn_line_id=uuid.UUID(fg_line["id"]), status="accepted").one()
         assert source.accepted_qty == Decimal("15")
-        assert source.rejected_qty == Decimal("5")
         assert source.consumed_qty == Decimal("15")  # only the accepted portion drained
+        rejected = InventoryItem.query.filter_by(grn_line_id=uuid.UUID(fg_line["id"]), status="rejected").one()
+        assert rejected.quantity == Decimal("5")
+        assert rejected.rejected_qty == Decimal("5")
 
 
 def test_raw_material_qc_pass_is_unaffected(app, client, admin_access, issued_po):

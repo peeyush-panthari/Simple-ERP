@@ -218,7 +218,7 @@ Create it once with `createdb axon_erp_migration_test` (owner = the app role); t
 created by the suite itself. 604 of the tests are the
 original Flask app's own suite, ported and run unchanged through `tests/flaskcompat.py`
 (regenerate with `scripts/port_original_tests.py`); the rest cover the new pieces (RabbitMQ
-publish/sweep, async PDF, Redis, proxy handling, BigQuery scaffolding). The infra tests use a
+publish/sweep, async PDF, Redis, proxy handling). The infra tests use a
 throwaway `redis-server` on a private port (skipped if the binary is missing) and a recording
 fake behind the `Broker` interface for RabbitMQ.
 

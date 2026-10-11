@@ -62,19 +62,12 @@ def test_a_fully_configured_production_env_is_clean():
         ({"frontend_base_url": "http://127.0.0.1:3001"}, "FRONTEND_BASE_URL"),
         # No scheme: urlsplit reads "localhost" as the scheme unless helped.
         ({"frontend_base_url": "localhost:3001"}, "FRONTEND_BASE_URL"),
-        ({"db_backend": "sqlite"}, "DB_BACKEND"),
     ],
 )
 def test_each_unsafe_default_is_fatal(override, expected):
     errors = _prod(**override).production_config_errors
     assert len(errors) == 1, errors
     assert expected in errors[0]
-
-
-def test_bigquery_placeholder_project_is_fatal_only_when_bigquery_is_selected():
-    assert _prod().production_config_errors == []  # db_backend=postgres, placeholder unused
-    errors = _prod(db_backend="bigquery").production_config_errors
-    assert len(errors) == 1 and "GCP_PROJECT_ID" in errors[0]
 
 
 @pytest.mark.parametrize(

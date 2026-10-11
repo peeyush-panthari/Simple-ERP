@@ -1,16 +1,5 @@
 """Purchase orders: list/get/create/patch, submit/approve/reject/cancel/
-short-close/amend, match-status, audit. Ported 1:1 (behavior) from
-backend_py/app/routes/purchase_orders.py, minus the BigQuery write path
-(out of scope - see the migration plan's scope decision #2, only the
-Postgres `_create_po_postgres` branch is ported, as plain `_create_po`).
-
-`issue`, `send-email` and `pdf` render the PO through document_repo/
-document_pdf and email the vendor through notification_repo (in-process,
-inline, like the original); a failed render/send never un-issues the PO -
-it's recorded as email_state. Note `_create_po` already sets a new PO's
-status straight to "issued" at creation (no draft stage, same "approval flow
-removed" shape orders.py uses) - `submit`/`approve`/`reject` stay ported for
-API-surface completeness.
+short-close/amend, match-status, audit.
 """
 
 from __future__ import annotations
@@ -55,7 +44,6 @@ from app.services import po_vendor_repo, document_pdf, document_repo, document_t
 from app.services.po_approval import assert_not_self_approval, describe_tier, resolve_tier
 from app.services.po_state import assert_editable, assert_transition
 from app.services.po_tolerance import LineReceipt, open_quantity
-from app.services.bq_writer import InsertOp, run_write_transaction
 from app.services.sequences import next_document_number
 from app.services.tax_codes import TaxableLine, compute_totals, is_known_tax_code, split_gst
 
@@ -257,19 +245,6 @@ def get_po(id: uuid_mod.UUID, actor: Actor = Depends(require_any_permission(*_PO
     return result
 
 
-class _CreatedPoRef:
-    """Enough of PurchaseOrder's interface (id, number) for callers to
-    re-fetch the full row via procurement_repo.require_po/lines_of after
-    creation - both backends return this shape from _create_po, so the
-    read-side callers (create_po route, bulk upload) don't need to care
-    which one ran. Reads work the same via the ORM regardless of backend;
-    only the write itself differs (see _create_po_bigquery)."""
-
-    def __init__(self, id: uuid_mod.UUID, number: str):
-        self.id = id
-        self.number = number
-
-
 def _create_po_postgres(tenant_id, actor: dict, body: PoBody, before_commit=None) -> PurchaseOrder:
     """`before_commit(po)` lets a caller (sourcing) record its own link to the new PO in the same transaction."""
     validated = _validate_po(tenant_id, body, actor)
@@ -331,141 +306,10 @@ def _create_po_postgres(tenant_id, actor: dict, body: PoBody, before_commit=None
     return po
 
 
-def _create_po_bigquery(tenant_id, actor: dict, body: PoBody) -> _CreatedPoRef:
-    """BigQuery counterpart to _create_po_postgres. _validate_po and
-    _compute_gst_split are pure reads/computation, unchanged for either
-    backend; only the write (PO header + lines + audit row) is a script run
-    through bq_writer.run_write_transaction. See
-    /Users/Peeyush/.claude/plans/mossy-stirring-gosling.md (Phase 4) - the
-    representative "multi-table insert with a sequence number" module,
-    covering the shape most of this codebase's ~123 write sites follow.
-
-    The post-commit mark_transacted() SKU-freeze loop is deliberately not
-    ported here yet: it's a separate, best-effort side effect (failures are
-    swallowed even in the Postgres path) on the products table, following
-    the same InsertOp/UpdateOp pattern already established - defer it to
-    when the Products module itself is cut over, rather than duplicate that
-    table's write logic here first.
-
-    build_ops() redoes numbering/validation itself so a retry after a
-    conflict sees the latest committed state, not a stale snapshot."""
-    created_ref: dict = {}
-
-    def build_ops() -> list[InsertOp]:
-        validated = _validate_po(tenant_id, body, actor)
-        number = next_document_number(tenant_id, settings.po_number_prefix, pad=4, start=3000)
-        now = datetime.now(timezone.utc)
-        gst_split = _compute_gst_split(tenant_id, validated["vendor"], body.businessEntityId, validated["totals"].tax_total)
-        po_date = body.poDate or date.today()
-        new_id = uuid_mod.uuid4()
-
-        po_values = {
-            "id": new_id,
-            "tenant_id": tenant_id,
-            "number": number,
-            "revision": 0,
-            "vendor_id": body.vendorId,
-            "vendor_name": validated["vendor"]["displayName"],
-            "warehouse_id": body.warehouseId,
-            "warehouse_code": validated["warehouse"]["code"],
-            "business_entity_id": body.businessEntityId,
-            "status": "issued",
-            "po_date": po_date,
-            "expected_date": body.expectedDate,
-            "currency": validated["currency"],
-            "exchange_rate": body.exchangeRate,
-            "subtotal": validated["totals"].subtotal,
-            "tax_total": validated["totals"].tax_total,
-            "cgst": gst_split["cgst"],
-            "sgst": gst_split["sgst"],
-            "igst": gst_split["igst"],
-            "charges": body.charges,
-            "total": validated["totals"].total,
-            "payment_terms": body.paymentTerms or validated["vendor"].get("paymentTerms"),
-            "payment_mode": body.paymentMode,
-            "incoterms": body.incoterms,
-            "notes": body.notes,
-            "approval_tier": resolve_tier(validated["totals"].total, _THRESHOLDS),
-            "created_by": str(actor["user_id"]),
-            "approved_by": str(actor["user_id"]),
-            "approved_at": now,
-            "issued_at": now,
-            "email_state": "not_sent",
-            "receipt_status": "none",
-            "created_at": now,
-            "updated_at": now,
-        }
-        ops: list[InsertOp] = [InsertOp(table="purchase_orders", values=po_values)]
-
-        for i, line in enumerate(body.lines):
-            computed = validated["totals"].lines[i]
-            resolved = validated["resolvedLines"][i]
-            sku = resolved["product"]["sku"] if resolved["product"] else ""
-            ops.append(
-                InsertOp(
-                    table="po_lines",
-                    values={
-                        "id": uuid_mod.uuid4(),
-                        "tenant_id": tenant_id,
-                        "po_id": new_id,
-                        "line_no": i + 1,
-                        "product_id": line.productId,
-                        "sku": sku,
-                        "description": line.description or (resolved["product"]["name"] if resolved["product"] else None),
-                        "quantity": line.quantity,
-                        "uom": line.uom,
-                        "unit_price": line.unitPrice,
-                        "discount": line.discount,
-                        "tax_code": resolved["taxCode"],
-                        "tax_rate": computed.tax_rate,
-                        "net_amount": computed.net_amount,
-                        "tax_amount": computed.tax_amount,
-                        "gross_amount": computed.gross_amount,
-                        "expected_date": line.expectedDate,
-                        "received_qty": "0",
-                        "rejected_qty": "0",
-                        "status": "open",
-                    },
-                )
-            )
-
-        ops.append(
-            InsertOp(
-                table="audit_log",
-                values={
-                    "id": uuid_mod.uuid4(),
-                    "tenant_id": tenant_id,
-                    "actor_id": actor["user_id"],
-                    "actor_email": actor["email"],
-                    "action": "po.created",
-                    "entity_type": "purchase-order",
-                    "entity_id": str(new_id),
-                    "created_at": now,
-                    "meta": {
-                        "number": number,
-                        "vendor": validated["vendor"]["displayName"],
-                        "total": str(validated["totals"].total),
-                        "lines": len(body.lines),
-                    },
-                },
-            )
-        )
-
-        created_ref.clear()
-        created_ref.update({"id": new_id, "number": number})
-        return ops
-
-    run_write_transaction(settings.bigquery_dataset_id, build_ops)
-    return _CreatedPoRef(id=created_ref["id"], number=created_ref["number"])
-
-
-def _create_po(tenant_id, actor: dict, body: PoBody):
+def _create_po(tenant_id, actor: dict, body: PoBody) -> PurchaseOrder:
     """Shared by the single-PO create route and the bulk-upload route, so a
     PO created either way goes through the exact same validation, numbering,
-    GST-split and audit trail. Returns an object with at least .id/.number -
-    callers re-fetch via procurement_repo for the full row either way."""
-    if settings.db_backend == "bigquery":
-        return _create_po_bigquery(tenant_id, actor, body)
+    GST-split and audit trail."""
     return _create_po_postgres(tenant_id, actor, body)
 
 

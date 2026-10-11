@@ -1,7 +1,6 @@
 """Foundation / master data: factories, tenant + auth policy + system roles,
-party types, sticker sizes. Ported 1:1 (behavior) from backend_py/app/routes/
-{factories,tenants,party_types,sticker_sizes}.py. The BigQuery branches of
-party_types (with their BigQuery counterparts) are carried over."""
+party types, sticker sizes.
+"""
 
 from __future__ import annotations
 
@@ -40,7 +39,6 @@ from app.models.party_type import PartyType
 from app.models.sticker_size import StickerSize
 from app.models.tenant import Tenant
 from app.models.warehouse import Warehouse
-from app.services.bq_writer import InsertOp, UpdateOp, run_write_transaction
 from app.services.sequences import next_factory_code
 
 router = APIRouter(prefix="/api/v1", tags=["foundation"])
@@ -371,55 +369,7 @@ def _create_party_type_postgres(tenant_id, body: CreatePartyTypeBody) -> dict:
     return _party_type_api(row)
 
 
-def _create_party_type_bigquery(tenant_id, body: CreatePartyTypeBody) -> dict:
-    """BigQuery counterpart to _create_party_type_postgres.
-
-    (tenant_id, code) is this table's composite primary key, which BigQuery
-    does not enforce - so the duplicate-code SELECT below is no longer a
-    second guard behind a unique index, it is the only thing standing between
-    two concurrent requests and two rows with the same code. It lives inside
-    build_ops() so a retry after a transaction conflict re-checks against the
-    latest committed state rather than a stale snapshot from attempt one.
-
-    status and created_at are set explicitly: the model gets them from a
-    Python-side default and a server_default respectively, and neither
-    survives into a hand-built INSERT script."""
-    response: dict = {}
-
-    def build_ops() -> list[InsertOp | UpdateOp]:
-        code = _validated_code(body)
-        if PartyType.query.filter_by(tenant_id=tenant_id, code=code).first():
-            raise conflict(f"Party type {code} already exists", code="PARTY_TYPE_TAKEN")
-
-        now = datetime.now(timezone.utc)
-        values = {
-            "tenant_id": tenant_id,
-            "code": code,
-            "label": body.label,
-            "base_type": body.baseType,
-            "status": "active",
-            "created_at": now,
-        }
-
-        response.clear()
-        response.update(
-            {
-                "code": code,
-                "label": body.label,
-                "baseType": body.baseType,
-                "status": "active",
-                "createdAt": now.isoformat(),
-            }
-        )
-        return [InsertOp(table="party_types", values=values)]
-
-    run_write_transaction(settings.bigquery_dataset_id, build_ops)
-    return response
-
-
 def _create_party_type(tenant_id, body: CreatePartyTypeBody) -> dict:
-    if settings.db_backend == "bigquery":
-        return _create_party_type_bigquery(tenant_id, body)
     return _create_party_type_postgres(tenant_id, body)
 
 
@@ -441,53 +391,7 @@ def _patch_party_type_postgres(tenant_id, code: str, body: PatchPartyTypeBody) -
     return _party_type_api(row)
 
 
-def _patch_party_type_bigquery(tenant_id, code: str, body: PatchPartyTypeBody) -> dict:
-    """BigQuery counterpart to _patch_party_type_postgres.
-
-    A patch with no fields set writes nothing: build_write_script rejects an
-    empty op list, and an UpdateOp with an empty set_values would render
-    `SET  WHERE ...`. The Postgres path commits a no-op in that case and
-    returns the row unchanged, so this returns the row unchanged too rather
-    than erroring - same observable behavior, no pointless BigQuery job."""
-    response: dict = {}
-
-    def build_ops() -> list[InsertOp | UpdateOp]:
-        row = PartyType.query.filter_by(tenant_id=tenant_id, code=code).first()
-        if not row:
-            raise not_found("Party type")
-
-        set_values: dict = {}
-        if body.label is not None:
-            set_values["label"] = body.label
-        if body.status is not None:
-            set_values["status"] = body.status
-
-        response.clear()
-        response.update(
-            {
-                "code": row.code,
-                "label": set_values.get("label", row.label),
-                "baseType": row.base_type,
-                "status": set_values.get("status", row.status),
-                "createdAt": row.created_at.isoformat() if row.created_at else None,
-            }
-        )
-        if not set_values:
-            return []
-        return [UpdateOp(table="party_types", set_values=set_values, where={"tenant_id": tenant_id, "code": code})]
-
-    # build_ops() is called once here to settle the not-found check and the
-    # response before deciding whether there is anything to write;
-    # run_write_transaction calls it again per attempt, which is what makes a
-    # retry re-read the row.
-    if build_ops():
-        run_write_transaction(settings.bigquery_dataset_id, build_ops)
-    return response
-
-
 def _patch_party_type(tenant_id, code: str, body: PatchPartyTypeBody) -> dict:
-    if settings.db_backend == "bigquery":
-        return _patch_party_type_bigquery(tenant_id, code, body)
     return _patch_party_type_postgres(tenant_id, code, body)
 
 

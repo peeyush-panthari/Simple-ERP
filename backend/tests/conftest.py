@@ -6,9 +6,6 @@ tests write real committed rows and clean up after themselves (see
 `fresh_admin`). `fresh_tenant_id` is still preferred over `default_tenant_id`
 for any test that writes data, for the same "keep tests independent" reason.
 
-The BigQuery-test-dataset branch from the original is dropped entirely - out
-of scope (see the migration plan's scope decision #2).
-
 `client` is a `fastapi.testclient.TestClient` in place of Flask's
 `app.test_client()` - same synchronous request/response ergonomics.
 """

@@ -16,8 +16,6 @@ dependencies = [
     "pydantic[email]",
     "pydantic-settings>=2.4",
     "python-dotenv>=1.0",
-    "google-cloud-bigquery>=3.25",  # BigQuery migration scaffolding (inert; see BIGQUERY_MIGRATION.md)
-    "sqlalchemy-bigquery>=1.11",
     "cryptography>=43.0",
     "weasyprint>=62.0",
     "boto3>=1.35",

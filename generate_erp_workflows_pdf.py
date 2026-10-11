@@ -584,7 +584,7 @@ def generate_global_architecture_svg():
       
       <rect x="25" y="36" width="125" height="32" rx="4" fill="#0f172a" />
       <text x="87" y="52" font-size="7.5" font-weight="700" fill="#ffffff" text-anchor="middle">M1: Identity &amp; RBAC</text>
-      <text x="87" y="62" font-size="6.5" fill="#94a3b8" text-anchor="middle">Zitadel SSO / Site Scope</text>
+      <text x="87" y="62" font-size="6.5" fill="#94a3b8" text-anchor="middle">Native Auth / Site Scope</text>
 
       <rect x="160" y="36" width="125" height="32" rx="4" fill="#1e293b" />
       <text x="222" y="52" font-size="7.5" font-weight="700" fill="#ffffff" text-anchor="middle">M2: Parties &amp; AVL</text>
@@ -707,7 +707,7 @@ def generate_global_architecture_svg():
       <text x="442" y="359" font-size="6.8" font-weight="700" fill="#ffffff" text-anchor="middle">Audit Trail (Immutable Ledger)</text>
 
       <rect x="535" y="348" width="160" height="16" rx="2" fill="#0f172a" />
-      <text x="615" y="359" font-size="6.8" font-weight="700" fill="#ffffff" text-anchor="middle">SC Control Tower &amp; BigQuery</text>
+      <text x="615" y="359" font-size="6.8" font-weight="700" fill="#ffffff" text-anchor="middle">SC Control Tower &amp; Analytics</text>
     ''')
 
     svg.append('</svg>')
@@ -722,10 +722,10 @@ MODULES_CATALOG = [
         "route": "/login, /profile, /users",
         "entities": "users, roles, user_roles, user_role_warehouses, user_role_factories, sessions",
         "roles": "System Admin, All Operational Users",
-        "overview": "Governs enterprise authentication, multi-factor token issuance, Zitadel SSO exchange, session lifecycle, and strict site-level data scoping across multiple factories and warehouses.",
+        "overview": "Governs enterprise authentication, multi-factor token issuance, native Argon2id credentials, session lifecycle, and strict site-level data scoping across multiple factories and warehouses.",
         "up_nodes": [
-            ("Zitadel / SSO", "OIDC ID Token"),
-            ("Direct Login", "Argon2 Hash / MFA")
+            ("Native Auth", "Argon2id Hash / MFA"),
+            ("Direct Login", "Enterprise Session Token")
         ],
         "core_steps": [
             ("Auth & Token Verify", "Evaluate credentials"),
@@ -739,13 +739,13 @@ MODULES_CATALOG = [
         ],
         "exception_label": "Lock account after 5 failed attempts",
         "workflow_steps": [
-            ("Authentication Handshake", "User provides username/password or initiates OIDC Single Sign-On via Zitadel. The backend verifies the password hash using Argon2id or validates the JWT bearer token signature and audience claims."),
+            ("Authentication Handshake", "User provides email/password and optional MFA code. The backend verifies the password hash using Argon2id and validates credentials against active account policies."),
             ("MFA & Session Issuance", "If TOTP is active, pyotp validates the 6-digit passcode. A cryptographic session is minted in the `sessions` table with an expiration timestamp and stored in an HTTP-only secure cookie."),
             ("Site & Warehouse Scoping", "The user's assigned roles are loaded along with explicit warehouse (`user_role_warehouses`) and factory (`user_role_factories`) access bindings. If an operator is restricted to Warehouse WH-01, queries across inventory, GRN, and orders automatically inject tenancy filters."),
             ("Casbin Enforcement & Routing", "Casbin RBAC policy evaluates `(sub, obj, act)` on each API endpoint. If permitted, the request executes; otherwise, a 403 Forbidden response is returned and logged in `audit_log`.")
         ],
         "upstream_conn": [
-            ("Identity Provider (Zitadel)", "External OIDC identity token containing email, subject GUID, and verified claims."),
+            ("Native Identity Engine", "Argon2id credential store, multi-factor TOTP verification, and session manager."),
             ("Organization Admin", "Assigns user records to specific business units, factories, and operational roles.")
         ],
         "downstream_conn": [
@@ -1449,21 +1449,21 @@ MODULES_CATALOG = [
         "down_nodes": [
             ("Cloud Object Storage", "Immutable PDF Archive"),
             ("User Inbox / Phone", "Real-Time Notification"),
-            ("BigQuery Lakehouse", "OLAP Warehouse Mirroring")
+            ("PostgreSQL Analytics", "Operational Analytics Replica")
         ],
         "exception_label": "Notification delivery suppression queue",
         "workflow_steps": [
             ("Asynchronous Document Generation", "Transactions (PO approval, GRN receipt, Tax Invoice, e-Way Bill) emit document render events. Background worker executes WeasyPrint to compile pixel-perfect PDFs, uploads to S3/Cloud Storage, and returns secure pre-signed URLs."),
             ("Multi-Channel Notification Dispatch", "Event triggers match configured templates, substituting runtime variables. Messages are dispatched via SMTP email, SMS gateway, or webhook with automatic retry backoff."),
             ("Immutable Audit Logging", "Every mutating REST API request captures `user_id`, `ip_address`, `endpoint`, timestamp, entity name, entity ID, and a JSON diff of pre-change and post-change state. Audit records are tamper-proof."),
-            ("Supply Chain Control Tower", "Aggregates cross-module metrics in real-time: Supplier OTIF, Inventory Turn Ratio, WIP Shop Floor Aging, Open Order Fill Rate, and Cash Conversion Cycle, streaming records to Google BigQuery for business intelligence.")
+            ("Supply Chain Control Tower", "Aggregates cross-module metrics in real-time: Supplier OTIF, Inventory Turn Ratio, WIP Shop Floor Aging, Open Order Fill Rate, and Cash Conversion Cycle, leveraging high-performance PostgreSQL queries for business intelligence.")
         ],
         "upstream_conn": [
             ("All Functional Domains", "Receives transactional triggers, documents to print, and audit state deltas.")
         ],
         "downstream_conn": [
             ("External Stakeholders", "Delivers official signed documents and email alerts to suppliers and customers."),
-            ("BigQuery Data Lakehouse", "Synchronizes operational transactional records into BigQuery analytical tables for enterprise reporting.")
+            ("PostgreSQL Operational Store", "Maintains operational transactional records and aggregated materialized metrics for enterprise reporting.")
         ],
         "state_machine": "DOCUMENT: QUEUED -> RENDERING -> STORED | NOTIFICATION: QUEUED -> SENT -> FAILED"
     }
@@ -1506,7 +1506,7 @@ def generate_html():
                 </div>
                 <div>
                     <div class="meta-item-label">Core Architecture</div>
-                    <div class="meta-item-val">FastAPI &bull; PostgreSQL &bull; React &bull; BigQuery</div>
+                    <div class="meta-item-val">FastAPI &bull; PostgreSQL &bull; React &bull; Redis</div>
                 </div>
                 <div>
                     <div class="meta-item-label">Publication Date</div>
@@ -1674,7 +1674,7 @@ def generate_html():
             <tbody>
                 <tr>
                     <td><strong>M01: Identity</strong><br>Login / Session</td>
-                    <td>User authenticates via Zitadel SSO or local form</td>
+                    <td>User authenticates via native credentials or MFA</td>
                     <td><strong>All Application Domains</strong></td>
                     <td><code>sessions.is_active = True</code><br>Injects <code>allowed_warehouses</code></td>
                     <td>Enforces row-level site scoping; operators cannot view or manipulate inventory outside authorized facilities.</td>
@@ -1849,11 +1849,11 @@ def generate_html():
         </div>
 
         <div class="card card-blue">
-            <div class="card-title">System Reliability, ACID Transactions &amp; BigQuery Lakehouse Sync</div>
+            <div class="card-title">System Reliability, ACID Transactions &amp; PostgreSQL Analytics</div>
             <p style="font-size: 7.7pt; line-height: 1.4; margin: 0;">
                 &bull; <strong>ACID Transaction Isolation:</strong> Multi-table operations (e.g., GRN posting creating stock ledger entries, inventory items, and updating PO line balances) execute inside atomic database transactions (`session.begin()`). Any mid-flight failure rolls back all mutations completely.<br>
                 &bull; <strong>Idempotency Enforcement:</strong> All mutation endpoints support `Idempotency-Key` headers stored in Redis/PostgreSQL, preventing double-posting of receipts, invoices, or payments during network timeouts.<br>
-                &bull; <strong>Analytical Streaming to BigQuery:</strong> Operational transactional tables sync asynchronously to Google BigQuery via change-data-capture event streams, empowering executive Control Tower BI dashboards without impacting OLTP database performance.
+                &bull; <strong>High-Performance PostgreSQL Analytics:</strong> Operational transactional tables leverage optimized composite indexing, PostgreSQL window functions, and real-time aggregation views, empowering executive Control Tower BI dashboards without impacting OLTP database performance.
             </p>
         </div>
     </div>

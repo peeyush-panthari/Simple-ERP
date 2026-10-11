@@ -5,7 +5,7 @@
 Assertions are copied untouched apart from the few PATCHES below, each of which fixes a test that only
 passed in the original by accident (see the comment on each). Only module paths change otherwise
 (app.errors -> app.core.errors, app.extensions -> tests.flaskcompat, ...). Tests written fresh for this
-stack (OWN) and the BigQuery-specific ones are not overwritten. Re-runnable: it regenerates the copies.
+stack (OWN) are not overwritten. Re-runnable: it regenerates the copies.
 """
 from __future__ import annotations
 

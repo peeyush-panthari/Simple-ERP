@@ -180,11 +180,7 @@ hosting the API elsewhere.
 * **Access and refresh tokens live in `localStorage`** (`frontend/src/lib/auth.tsx`), so any XSS
   on the web app can read them. Keep the token TTLs short and treat a Content-Security-Policy on
   the proxy as load-bearing.
-* **The BigQuery backend is unfinished.** `DB_BACKEND` stays `postgres`; flipping it does not
-  produce a working app. See [backend/BIGQUERY_MIGRATION.md](backend/BIGQUERY_MIGRATION.md).
 * **Uploaded documents are never virus-scanned.** `MALWARE_SCANNER_URL` only decides whether a
   row starts at `scan_status='pending'`, and nothing ever advances it.
-* **Identity is hand-rolled** (password + TOTP, no SSO, no self-service password reset, no
-  passwordless). Scoped but not started: replacing the login front door with
-  [Zitadel](https://zitadel.com) while keeping the local role/permission model as-is. See
-  [ZITADEL_MIGRATION.md](ZITADEL_MIGRATION.md).
+* **Identity is hand-rolled** (password + TOTP, role/permission model, audit logging, session tracking).
+

@@ -542,27 +542,27 @@ USERFLOW_MODULES = [
     {
         "id": "uf1_auth",
         "num": "01",
-        "name": "Login, SSO & User Profile",
+        "name": "Authentication, MFA & User Profile",
         "route": "/login, /profile",
         "persona": "All Employees, System Administrator, Field Staff",
         "permission": "Public / Authenticated User",
-        "overview": "The user entry gateway: manages dual authentication paths (Zitadel corporate SSO vs local password with Argon2id), 6-digit TOTP MFA verification, active facility/warehouse workspace switching, and password reset.",
+        "overview": "The user entry gateway: manages enterprise authentication with secure Argon2id password hashing, 6-digit TOTP MFA verification, active facility/warehouse workspace switching, and password reset.",
         "screen_controls": [
             ("Top Site Switcher", "Pill selector switching the user's active operating factory and warehouse scope."),
-            ("SSO Login Button", "One-click 'Sign in with Zitadel' initiating enterprise OIDC authorization code flow."),
             ("MFA Input Field", "6-box numeric OTP entry for Google Authenticator / 2FA TOTP code validation."),
+            ("Session Toggles", "Remember Me retention checkbox and secure session token management."),
             ("User Profile Drawer", "Displays active session tokens, security key history, and emergency session signout.")
         ],
         "step1": ("1. Navigate to /login", "Landing on login portal"),
-        "step2": ("2. Submit Credentials", "Enter email or click SSO"),
+        "step2": ("2. Submit Credentials", "Enter email and password"),
         "decision": ("MFA Enabled?", "Require 2FA", "Direct Entry"),
         "step3": ("4. Active Session", "Redirect to Dashboard"),
         "handoff": ("5. Module Access", "Unlock authorized routes"),
         "err_text": "Invalid email/password (Throttled after 5 tries)",
         "secondary": ("Switch Facility Workspace", "Operator selects assigned factory from header pill"),
         "walkthrough": [
-            ("Portal Landing", "User arrives at `/login`. The system presents the company branded login card with options for Zitadel OIDC Single Sign-On or local corporate credentials."),
-            ("Credential Verification", "User submits email and password. Backend verifies password against Argon2id hash. If the user chooses SSO, the browser redirects to Zitadel's login realm and exchanges authorization code for tokens."),
+            ("Portal Landing", "User arrives at `/login`. The system presents the company branded login card for corporate credentials."),
+            ("Credential Verification", "User submits email and password. Backend verifies password against Argon2id hash with brute-force rate limiting."),
             ("Two-Factor Authentication (TOTP)", "If MFA is enforced, a 6-digit TOTP input appears. The user inputs their authenticator passcode; `pyotp` verifies token freshness within a 30-second window."),
             ("Workspace Facility Scoping", "Upon successful authentication, the user lands on their home dashboard. The top navigation bar displays their active site (e.g. `Factory: Alpha Plant | Warehouse: WH-01`). Users assigned to multiple facilities can switch operational context instantly.")
         ],
@@ -605,7 +605,7 @@ USERFLOW_MODULES = [
             ("Filter Range Modal", "Presets: Today, Week-to-Date, Month-to-Date, Custom Datepicker."),
             ("Expedite Notice Modal", "Recipients (Supplier / Expediter), Email Subject, Expedite Reason, Priority Tag.")
         ],
-        "error_states": "Stale data indicator when BigQuery sync latency exceeds 5 minutes; red toast if real-time websocket disconnects.",
+        "error_states": "Stale data indicator when telemetry cache exceeds 5 minutes; red toast if real-time connection disconnects.",
         "handoff_summary": "Escalates flagged operational delays to Procurement Buyers or Production Supervisors via in-app notification."
     },
     {

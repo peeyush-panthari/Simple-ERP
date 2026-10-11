@@ -89,7 +89,7 @@ def test_mfa_recovery_codes_flow(client, default_tenant_id, fresh_admin):
         "/api/v1/auth/login",
         json={"email": admin["email"], "password": admin["password"], "mfaRecoveryCode": second_code},
     )
-    assert r.status_code == 200
+    assert r.status_code == 200, r.json()
 
 
 def test_session_explorer_and_revocation(client, default_tenant_id, fresh_admin):
