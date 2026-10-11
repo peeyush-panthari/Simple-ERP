@@ -1,0 +1,1 @@
+# Supplier Scorecard domain package

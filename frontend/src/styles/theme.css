@@ -1,0 +1,978 @@
+/* Simple ERP design tokens + component recipes.
+   Carried over verbatim from the Reflex app's assets/theme.css (which itself
+   ported them from the original React app), so every colour, radius, shadow
+   and component recipe renders identically. The Radix-Themes override block
+   at the end of the original (.rt-*) is replaced by the dialog/table/select
+   recipes below - those classes don't exist outside Reflex. */
+
+:root {
+  --radius: 0.5rem;
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --background: oklch(0.94 0.006 240);
+  --foreground: oklch(0.24 0.03 248);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.24 0.03 248);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.24 0.03 248);
+  --primary: oklch(0.46 0.11 224);
+  --primary-foreground: oklch(0.985 0.005 240);
+  --secondary: oklch(0.945 0.008 240);
+  --secondary-foreground: oklch(0.32 0.03 248);
+  --muted: oklch(0.955 0.006 240);
+  --muted-foreground: oklch(0.53 0.02 248);
+  --accent: oklch(0.78 0.15 72);
+  --accent-foreground: oklch(0.25 0.05 60);
+  --destructive: oklch(0.55 0.19 25);
+  --destructive-foreground: oklch(0.985 0.005 240);
+  --success: oklch(0.58 0.12 158);
+  --success-foreground: oklch(0.985 0.005 240);
+  --warning: oklch(0.78 0.15 72);
+  --warning-foreground: oklch(0.25 0.05 60);
+  --info: oklch(0.6 0.11 245);
+  --info-foreground: oklch(0.985 0.005 240);
+  --border: oklch(0.9 0.008 240);
+  --input: oklch(0.9 0.008 240);
+  --ring: oklch(0.46 0.11 224);
+  --chart-1: oklch(0.46 0.11 224);
+  --chart-2: oklch(0.66 0.13 190);
+  --chart-3: oklch(0.78 0.15 72);
+  --chart-4: oklch(0.58 0.12 158);
+  --chart-5: oklch(0.55 0.14 300);
+  --sidebar: oklch(0.24 0.035 248);
+  --sidebar-foreground: oklch(0.85 0.015 240);
+  --sidebar-primary: oklch(0.78 0.15 72);
+  --sidebar-primary-foreground: oklch(0.22 0.04 60);
+  --sidebar-accent: oklch(0.3 0.04 248);
+  --sidebar-accent-foreground: oklch(0.97 0.005 240);
+  --sidebar-border: oklch(0.32 0.035 248);
+  --sidebar-ring: oklch(0.78 0.15 72);
+
+  --shadow-panel: 0 1px 2px oklch(0.22 0.04 240 / 0.06), 0 8px 24px -12px oklch(0.22 0.04 240 / 0.18);
+  --shadow-raised: 0 2px 4px oklch(0.22 0.04 240 / 0.08), 0 16px 40px -20px oklch(0.22 0.04 240 / 0.35);
+
+  /* Measured in the running Reflex app: everything under the Radix Themes root (tables,
+     inputs, buttons, tabs, nav, pills, labels) renders in Radix's system stack; only the
+     page/logo titles (display) and figures (mono) use the brand faces. */
+  --font-sans: -apple-system, "system-ui", "Segoe UI (Custom)", Roboto, "Helvetica Neue", "Open Sans (Custom)", system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+  --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+
+/* ---- base ------------------------------------------------------------- */
+
+html, body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--font-display);
+  letter-spacing: -0.015em;
+}
+
+.numeric {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.panel {
+  background-color: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-panel);
+}
+
+.panel-overflow-hidden { overflow: hidden; }
+
+.grid-bg {
+  background-image:
+    linear-gradient(to right, color-mix(in oklab, var(--border) 70%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in oklab, var(--border) 70%, transparent) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+/* ---- page header -------------------------------------------------------- */
+
+.page-header {
+  margin-bottom: 1.5rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 1.25rem;
+}
+.page-header-eyebrow {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--muted-foreground);
+}
+.page-header-title {
+  margin-top: 0.5rem;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--foreground);
+}
+.page-header-description {
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--muted-foreground);
+  max-width: 48rem;
+}
+
+/* ---- action buttons ------------------------------------------------------ */
+
+.action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-sizing: border-box;
+  height: 32px;
+  border-radius: 4px;
+  padding: 0 12px;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: background-color 120ms, color 120ms, transform 90ms ease-out, box-shadow 90ms ease-out;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.action-btn:disabled { cursor: not-allowed; opacity: 0.5; }
+/* One colour for every button. (Cancel, destructive and secondary actions are told apart by their label, not their fill.) */
+.action-btn-primary { background-color: var(--primary); color: var(--primary-foreground); border: 1px solid transparent; }
+.action-btn-primary:not(:disabled):hover { background-color: color-mix(in oklab, var(--primary) 88%, white); }
+.action-btn:focus-visible { outline: 2px solid var(--ring, var(--primary)); outline-offset: 2px; }
+
+/* Pressed: the button sinks, darkens and shows an inset shadow while the mouse / finger / Enter key is down. */
+.action-btn:not(:disabled):active {
+  transform: translateY(1px) scale(0.96);
+  background-color: color-mix(in oklab, var(--primary) 78%, black);
+  box-shadow: inset 0 2px 5px rgb(0 0 0 / 0.35);
+}
+/* Working: spinner in front of the label, no further clicks, pointer shows progress. */
+.action-btn-loading { cursor: progress; opacity: 0.9; }
+.action-btn-loading:active { transform: none; box-shadow: none; }
+
+/* Other pressable controls get the same little "click" */
+.header-pill, .profile-pill, .segmented button, .tabs-trigger, .calendar-nav-btn, .nav-item, .chip-remove, .profile-menu-item {
+  transition-property: background-color, color, transform, box-shadow;
+  transition-duration: 120ms, 120ms, 90ms, 90ms;
+}
+.header-pill:active, .profile-pill:active, .calendar-nav-btn:active, .chip-remove:active { transform: scale(0.93); }
+.segmented button:active, .tabs-trigger:active, .nav-item:active { transform: scale(0.97); }
+
+@media (prefers-reduced-motion: reduce) {
+  .action-btn, .header-pill, .profile-pill, .segmented button, .tabs-trigger, .calendar-nav-btn, .nav-item, .chip-remove, .profile-menu-item { transition: none; }
+  .action-btn:not(:disabled):active, .header-pill:active, .profile-pill:active, .segmented button:active, .tabs-trigger:active { transform: none; }
+  .spinner { animation-duration: 1.6s; }
+  .top-progress-bar { animation-duration: 3s; }
+}
+
+/* ---- loading indicators ---------------------------------------------------- */
+
+.spinner {
+  display: inline-block;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 999px;
+  animation: spin 700ms linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.spinner-lg { border-width: 4px; color: var(--primary); }
+/* Route pages loading: the spinner sits in the middle of the window, not at the top of the page. */
+.page-spinner { position: fixed; inset: 0; z-index: 90; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; color: var(--muted-foreground); font-size: 15px; background: var(--background); }
+/* Data loading over a page that is already up: centred, dimmed backdrop, never blocks the mouse. */
+.loading-overlay { position: fixed; inset: 0; z-index: 80; display: flex; align-items: center; justify-content: center; pointer-events: none; background: color-mix(in oklab, var(--background) 45%, transparent); animation: overlay-in 150ms ease-out; }
+@keyframes overlay-in { from { opacity: 0; } to { opacity: 1; } }
+
+.top-progress { position: fixed; z-index: 100; top: 0; left: 0; right: 0; height: 3px; overflow: hidden; pointer-events: none; background: color-mix(in oklab, var(--primary) 15%, transparent); }
+.top-progress-bar { height: 100%; width: 40%; background: var(--primary); border-radius: 999px; animation: top-progress 1.1s ease-in-out infinite; }
+@keyframes top-progress { 0% { transform: translateX(-100%); } 100% { transform: translateX(350%); } }
+
+/* ---- panel / stat card --------------------------------------------------- */
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border-bottom: 1px solid var(--border);
+  padding: 0.75rem 1rem;
+}
+.panel-header-title { font-size: 0.875rem; font-weight: 600; color: var(--foreground); }
+.panel-header-subtitle { margin-top: 0.125rem; font-size: 0.75rem; color: var(--muted-foreground); }
+
+.stat-card { padding: 0.5rem 0.875rem; }
+
+/* ---- detail row: "Label    Value" on one line, label bold ---------------- */
+.detail-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem 1.5rem;
+  padding: 0.625rem 0;
+  border-bottom: 1px solid var(--border);
+}
+.detail-row:last-child { border-bottom: none; }
+.detail-row-label { font-weight: 600; color: var(--foreground); flex-shrink: 0; }
+.detail-row-value { color: var(--foreground); text-align: right; overflow-wrap: anywhere; min-width: 0; }
+
+/* Two-per-row grid (desktop/tablet only - it's a single column below md,
+   see grid-cols-1 md:grid-cols-2 on the element): :last-child only strips
+   the border off the bottom-right cell, so strip it off the whole last row
+   (both cells). Below md the grid is back to one column, so the plain
+   :last-child rule above already does the right thing on its own - this
+   would incorrectly also strip the second-to-last row's border there. */
+@media (min-width: 768px) {
+  .inventory-item-details-grid .detail-row:nth-last-child(-n+2) { border-bottom: none; }
+}
+
+/* ---- party detail: compact layout so more fits above the fold ------------ */
+.party-detail-page .page-header { margin-bottom: 0.5rem; padding-bottom: 0.75rem; }
+.warehouse-page .page-header { margin-bottom: 0.75rem; padding-bottom: 0.625rem; }
+/* Orders: header-to-tabs gap cut ~60% (margin/padding to 40% of default). */
+.orders-page-header .page-header { margin-bottom: 0.6rem; padding-bottom: 0.5rem; }
+.production-page-header .page-header { margin-bottom: 0.6rem; padding-bottom: 0.5rem; }
+.inventory-page-header .page-header { margin-bottom: 0.6rem; padding-bottom: 0.5rem; }
+.party-detail-page .panel-header { padding: 0.5rem 0.75rem; }
+.stat-card-label {
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted-foreground);
+}
+.stat-card-value {
+  margin-top: 0.125rem;
+  font-size: 1.125rem;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--foreground);
+}
+.stat-card-hint { font-size: 11px; color: var(--muted-foreground); }
+
+/* ---- status pills --------------------------------------------------------- */
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  padding: 0.125rem 0.5rem;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.pill-success { font-weight: 600; background-color: color-mix(in oklab, var(--success) 18%, transparent); color: color-mix(in oklab, var(--success) 80%, black); border-color: color-mix(in oklab, var(--success) 30%, transparent); }
+.pill-warning { background-color: color-mix(in oklab, var(--warning) 15%, transparent); color: var(--warning-foreground); border-color: color-mix(in oklab, var(--warning) 40%, transparent); }
+.pill-info { background-color: color-mix(in oklab, var(--info) 12%, transparent); color: var(--info); border-color: color-mix(in oklab, var(--info) 30%, transparent); }
+.pill-destructive { font-weight: 600; background-color: color-mix(in oklab, var(--destructive) 16%, transparent); color: color-mix(in oklab, var(--destructive) 85%, black); border-color: color-mix(in oklab, var(--destructive) 30%, transparent); }
+.pill-muted { background-color: var(--muted); color: var(--muted-foreground); border-color: var(--border); }
+
+/* ---- allocation workspace: progress bars + selected-row highlight ------- */
+
+.progress-track { height: 4px; border-radius: 999px; background-color: var(--muted); overflow: hidden; }
+.progress-fill { height: 100%; background-color: var(--primary); border-radius: 999px; }
+.workspace-row-selected { background-color: color-mix(in oklab, var(--primary) 8%, transparent); border-left: 2px solid var(--primary); }
+.workspace-row-selected:hover { background-color: color-mix(in oklab, var(--primary) 8%, transparent); }
+
+/* Stock Overview card only - an eyebrow-style header ("STOCK OVERVIEW")
+   rather than the sentence-case title every other panel uses. */
+.stock-overview-panel .panel-header-title {
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+}
+
+/* ---- tables ----------------------------------------------------------- */
+
+.data-table-wrap { overflow-x: auto; }
+.data-table { width: 100%; font-size: 0.875rem; border-collapse: collapse; }
+.data-table thead tr { border-bottom: 1px solid var(--border); background-color: color-mix(in oklab, var(--muted) 50%, transparent); text-align: left; }
+.data-table th {
+  padding: 0.625rem 1rem;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--foreground); /* Radix table header cells are full-strength text in the Reflex app */
+}
+.data-table tbody tr { border-bottom: 1px solid color-mix(in oklab, var(--border) 70%, transparent); }
+.data-table tbody tr:last-child { border-bottom: none; }
+.data-table tr.clickable { cursor: pointer; }
+.data-table tr.clickable:hover { background-color: color-mix(in oklab, var(--secondary) 50%, transparent); }
+.data-table tr.selected { background-color: color-mix(in oklab, var(--secondary) 70%, transparent); }
+.data-table td { padding: 0.75rem 1rem; vertical-align: middle; color: var(--foreground); }
+
+.pagination-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid var(--border);
+  padding: 0.625rem 1rem;
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+}
+
+/* ---- inputs ------------------------------------------------------------- */
+
+.field-label { font-size: 0.75rem; font-weight: 500; color: var(--foreground); margin-bottom: 0.375rem; display: block; }
+.field-hint { font-size: 11px; color: var(--muted-foreground); }
+.field-error { margin-top: 0.25rem; font-size: 11px; color: var(--destructive); }
+.field-required { color: var(--destructive); margin-left: 0.125rem; }
+
+.ui-input, .ui-select, .ui-textarea {
+  width: 100%;
+  min-width: 0;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background-color: var(--card);
+  padding: 0.5rem 0.75rem;
+  font-size: 13px;
+  outline: none;
+  color: var(--foreground);
+}
+.ui-input::placeholder, .ui-textarea::placeholder { color: color-mix(in oklab, var(--muted-foreground) 60%, transparent); }
+.ui-input:focus, .ui-select:focus, .ui-textarea:focus { border-color: var(--primary); }
+.ui-input:disabled, .ui-select:disabled, .ui-textarea:disabled { opacity: 0.6; }
+.ui-textarea { resize: vertical; font-size: 14px; }
+
+.search-input {
+  width: 100%;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background-color: var(--card);
+  padding: 0.375rem 0.75rem;
+  font-size: 13px;
+  outline: none;
+  color: var(--foreground);
+}
+.search-input::placeholder { color: color-mix(in oklab, var(--muted-foreground) 70%, transparent); }
+.search-input:focus { border-color: var(--primary); }
+
+.filter-select {
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background-color: var(--card);
+  padding: 0.375rem 0.625rem;
+  font-size: 13px;
+  outline: none;
+  color: var(--foreground);
+}
+.filter-select, .ui-select {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.5rem center;
+  padding-right: 1.75rem;
+}
+.filter-select { field-sizing: content; height: 32px; padding-top: 0; padding-bottom: 0; padding-left: 12px; }
+.filter-select:focus { border-color: var(--primary); }
+
+/* ---- date-range picker (e.g. Production Runs' date filter) -------------- */
+
+.calendar-nav-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: var(--radius-md);
+  color: var(--muted-foreground);
+}
+.calendar-nav-btn:hover { background-color: color-mix(in oklab, var(--foreground) 6%, transparent); color: var(--foreground); }
+.calendar-weekday {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 1.5rem;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted-foreground);
+}
+.calendar-day {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  color: var(--foreground);
+}
+.calendar-day:hover { background-color: color-mix(in oklab, var(--primary) 12%, transparent); }
+.calendar-day-empty { visibility: hidden; }
+.calendar-day-in-range { background-color: color-mix(in oklab, var(--primary) 14%, transparent); border-radius: 0; }
+.calendar-day-selected { background-color: var(--primary); color: var(--primary-foreground); font-weight: 600; }
+.calendar-day-selected:hover { background-color: var(--primary); }
+
+/* ---- removable chips (e.g. picked Inventory IDs) ------------------------ */
+
+.chip-row { display: flex; flex-wrap: wrap; gap: 0.375rem; width: 100%; margin-top: 0.5rem; }
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background-color: var(--muted);
+  color: var(--foreground);
+  padding: 0.125rem 0.25rem 0.125rem 0.625rem;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.chip-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  border: none;
+  background: transparent;
+  color: var(--muted-foreground);
+  cursor: pointer;
+  padding: 0;
+}
+.chip-remove:hover { background-color: color-mix(in oklab, var(--destructive) 15%, transparent); color: var(--destructive); }
+
+/* ---- modal ------------------------------------------------------------- */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  overflow-y: auto;
+  background-color: color-mix(in oklab, black 45%, transparent);
+  backdrop-filter: blur(2px);
+  padding: 2.5rem 1rem;
+}
+.modal-panel { width: 100%; max-width: 32rem; }
+.modal-panel-wide { width: 100%; max-width: 48rem; }
+.modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  border-bottom: 1px solid var(--border);
+  padding: 1rem 1.25rem;
+}
+.modal-title { font-size: 0.875rem; font-weight: 600; color: var(--foreground); }
+.modal-description { margin-top: 0.25rem; font-size: 0.75rem; color: var(--muted-foreground); }
+.modal-close { border-radius: 0.25rem; padding: 0.25rem; color: var(--muted-foreground); cursor: pointer; background: transparent; border: none; }
+.modal-close:hover { background-color: var(--secondary); }
+.modal-body { max-height: 65vh; overflow-y: auto; padding: 1rem 1.25rem; }
+.modal-footer { display: flex; justify-content: flex-end; gap: 0.5rem; border-top: 1px solid var(--border); padding: 0.875rem 1.25rem; }
+
+/* ---- notes / errors ------------------------------------------------------ */
+
+.note { display: flex; gap: 0.5rem; border-radius: var(--radius-md); border: 1px solid; padding: 0.5rem 0.75rem; font-size: 0.75rem; }
+.note-info { border-color: color-mix(in oklab, var(--info) 30%, transparent); background-color: color-mix(in oklab, var(--info) 10%, transparent); color: var(--foreground); }
+.note-warning { border-color: color-mix(in oklab, var(--warning) 40%, transparent); background-color: color-mix(in oklab, var(--warning) 10%, transparent); color: var(--foreground); }
+
+.inline-error {
+  display: flex;
+  gap: 0.5rem;
+  border-radius: var(--radius-md);
+  border: 1px solid color-mix(in oklab, var(--destructive) 30%, transparent);
+  background-color: color-mix(in oklab, var(--destructive) 10%, transparent);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.75rem;
+  color: var(--destructive);
+}
+
+.empty-state { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; padding: 3.5rem 1.5rem; text-align: center; }
+.empty-state-title { font-size: 0.875rem; font-weight: 500; color: var(--foreground); }
+.empty-state-hint { max-width: 24rem; font-size: 0.75rem; color: var(--muted-foreground); }
+
+.forbidden-panel { padding: 3.5rem 1.5rem; text-align: center; }
+
+/* ---- app chrome ---------------------------------------------------------- */
+
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: flex;
+  height: 3.5rem;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 0.75rem;
+  border-bottom: 1px solid var(--sidebar-border);
+  background-color: var(--sidebar);
+  color: var(--sidebar-foreground);
+  padding: 0 1rem;
+}
+.app-header-logo-text { font-family: var(--font-display); font-size: 1.125rem; font-weight: 600; color: var(--sidebar-accent-foreground); }
+.app-header-logo-sub { font-size: 12px; letter-spacing: 0.02em; color: color-mix(in oklab, var(--sidebar-foreground) 60%, transparent); }
+.app-header-divider { width: 1px; height: 1.5rem; background-color: var(--sidebar-border); margin: 0 0.25rem; }
+
+.header-pill {
+  border-radius: var(--radius-md);
+  border: 1px solid var(--sidebar-border);
+  background-color: color-mix(in oklab, var(--sidebar-accent) 40%, transparent);
+  color: color-mix(in oklab, var(--sidebar-foreground) 80%, transparent);
+  padding: 0.5rem;
+  cursor: pointer;
+}
+.header-pill:hover { background-color: var(--sidebar-accent); color: var(--sidebar-accent-foreground); }
+.header-pill-badge { position: absolute; right: 6px; top: 6px; height: 6px; width: 6px; border-radius: 999px; background-color: var(--destructive); }
+
+.profile-pill {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--sidebar-border);
+  background-color: color-mix(in oklab, var(--sidebar-accent) 40%, transparent);
+  padding: 0.375rem 0.625rem;
+  text-decoration: none;
+  cursor: pointer;
+}
+.profile-pill:hover { background-color: var(--sidebar-accent); }
+.profile-pill-avatar {
+  display: flex;
+  height: 1.5rem;
+  width: 1.5rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background-color: var(--sidebar-primary);
+  color: var(--sidebar-primary-foreground);
+  font-size: 10px;
+  font-weight: 600;
+}
+.profile-pill-name { font-size: 0.75rem; font-weight: 500; color: var(--sidebar-accent-foreground); }
+.profile-pill-role { font-size: 10px; color: color-mix(in oklab, var(--sidebar-foreground) 60%, transparent); }
+.profile-pill-caret { color: color-mix(in oklab, var(--sidebar-foreground) 70%, transparent); transition: transform 150ms; }
+.profile-pill-caret-open { transform: rotate(180deg); }
+.profile-pill:focus-visible, .header-pill:focus-visible { outline: 2px solid var(--sidebar-primary); outline-offset: 2px; }
+
+.profile-menu {
+  z-index: 60;
+  min-width: 14rem;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background-color: var(--popover);
+  color: var(--popover-foreground);
+  box-shadow: 0 10px 30px rgb(0 0 0 / 0.18);
+  animation: menu-in 120ms ease-out;
+}
+@keyframes menu-in { from { opacity: 0; transform: translateY(-4px) scale(0.98); } to { opacity: 1; transform: none; } }
+.profile-menu-head { padding: 8px 10px 10px; border-bottom: 1px solid var(--border); margin-bottom: 6px; }
+.profile-menu-name { font-size: 14px; font-weight: 600; }
+.profile-menu-email { font-size: 12px; color: var(--muted-foreground); overflow-wrap: anywhere; }
+.profile-menu-item {
+  display: flex; width: 100%; align-items: center; gap: 10px; padding: 8px 10px;
+  border-radius: 6px; font-size: 14px; text-align: left; cursor: pointer; color: inherit; background: transparent;
+}
+.profile-menu-item small { display: block; font-size: 11px; color: var(--muted-foreground); }
+.profile-menu-item:hover, .profile-menu-item:focus-visible { background-color: color-mix(in oklab, var(--foreground) 7%, transparent); outline: none; }
+.profile-menu-item:active { transform: scale(0.97); background-color: color-mix(in oklab, var(--foreground) 12%, transparent); }
+.profile-menu-item:disabled { opacity: 0.6; cursor: progress; }
+
+.global-search {
+  /* display is controlled by the "hidden md:flex" utility classes on the
+     element itself (search is desktop-only) - don't hardcode it here, or
+     it always wins the cascade over "hidden" and the search bar overflows
+     the header on mobile. */
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--sidebar-border);
+  background-color: color-mix(in oklab, var(--sidebar-accent) 40%, transparent);
+  padding: 0.375rem 0.75rem;
+  flex: 1 1 auto;
+  max-width: 28rem;
+}
+.global-search input {
+  flex: 1 1 auto;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--sidebar-accent-foreground);
+  font-size: 0.875rem;
+}
+.global-search input::placeholder { color: color-mix(in oklab, var(--sidebar-foreground) 50%, transparent); }
+.global-search kbd {
+  font-family: var(--font-mono);
+  border-radius: 0.25rem;
+  border: 1px solid var(--sidebar-border);
+  background-color: var(--sidebar);
+  color: color-mix(in oklab, var(--sidebar-foreground) 60%, transparent);
+  padding: 0.125rem 0.375rem;
+  font-size: 10px;
+}
+
+.app-sidebar {
+  position: sticky;
+  top: 3.5rem;
+  height: calc(100vh - 3.5rem);
+  width: 16rem;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--sidebar-border);
+  background-color: var(--sidebar);
+  color: var(--sidebar-foreground);
+}
+/* Below lg, the bottom tab bar (see .mobile-tabbar) replaces the sidebar.
+   Written as a plain (non-nested) media query rather than a Tailwind
+   "hidden lg:flex" utility class - deliberate, not stylistic: this app's
+   Tailwind v4 setup compiles responsive variants as CSS nesting
+   (".lg\:flex { @media (...) { display: flex } }"), and that nested form
+   doesn't reliably re-evaluate across breakpoints in every environment this
+   app gets tested in, whereas a plain top-level @media block always does. */
+@media (max-width: 1023.98px) {
+  .app-sidebar { display: none; }
+}
+.app-sidebar-nav { flex: 1 1 auto; overflow-y: auto; padding: 1rem 0.75rem; }
+.nav-group { margin-bottom: 1.25rem; }
+.nav-group-label {
+  padding: 0 0.5rem 0.5rem;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: color-mix(in oklab, var(--sidebar-foreground) 50%, transparent);
+}
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  border-radius: var(--radius-md);
+  padding: 0.5rem 0.625rem;
+  font-size: 13px;
+  color: color-mix(in oklab, var(--sidebar-foreground) 80%, transparent);
+  text-decoration: none;
+  margin-bottom: 2px;
+}
+.nav-item:hover { background-color: color-mix(in oklab, var(--sidebar-accent) 60%, transparent); color: var(--sidebar-accent-foreground); }
+.nav-item-active {
+  background-color: var(--sidebar-accent);
+  color: var(--sidebar-accent-foreground);
+  font-weight: 500;
+  box-shadow: inset 2px 0 0 0 var(--sidebar-primary);
+}
+.sidebar-footer { border-top: 1px solid var(--sidebar-border); padding: 1rem 1.25rem; font-size: 11px; color: color-mix(in oklab, var(--sidebar-foreground) 60%, transparent); }
+.sidebar-footer-dot { display: inline-block; height: 6px; width: 6px; border-radius: 999px; margin-right: 6px; }
+
+.main-content { flex: 1 1 auto; min-height: 0; padding: 1.5rem 1.25rem; overflow-y: auto; overflow-x: hidden; background-color: var(--background); }
+.main-content-inner { margin: 0 auto; width: 100%; max-width: 1400px; }
+.main-content-inner-wide { max-width: none; }
+
+/* ---- mobile bottom nav --------------------------------------------------
+   Replaces the sidebar below lg (see .app-sidebar's "hidden lg:flex" and
+   this bar's own "flex lg:hidden" - display itself is Tailwind's job, this
+   class only sizes/colors it) with a fixed bottom tab bar plus a "More"
+   tab that opens the full grouped nav as a full-screen drawer (reuses the
+   dialog full-screen rule above). */
+@media (max-width: 1023.98px) {
+  .main-content-mobile-pad { padding-bottom: calc(4.5rem + env(safe-area-inset-bottom)); }
+}
+
+.mobile-tabbar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 40;
+  display: flex;
+  align-items: stretch;
+  height: calc(3.75rem + env(safe-area-inset-bottom));
+  padding-bottom: env(safe-area-inset-bottom);
+  border-top: 1px solid var(--sidebar-border);
+  background-color: var(--sidebar);
+  color: var(--sidebar-foreground);
+}
+@media (min-width: 1024px) {
+  .mobile-tabbar { display: none; }
+}
+.mobile-tab-item {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  font-size: 10px;
+  font-weight: 500;
+  color: color-mix(in oklab, var(--sidebar-foreground) 70%, transparent);
+  text-decoration: none;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0.375rem 0.25rem;
+}
+.mobile-tab-item-active { color: var(--sidebar-primary); }
+
+.rt-DialogContent.mobile-nav-drawer, .rt-BaseDialogContent.mobile-nav-drawer {
+  background-color: var(--sidebar) !important;
+  color: var(--sidebar-foreground);
+  padding: 0 !important;
+}
+.mobile-nav-drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--sidebar-border);
+  padding: 1rem 1.25rem;
+}
+.mobile-nav-drawer .rt-DialogTitle, .mobile-nav-drawer-title { color: var(--sidebar-accent-foreground) !important; margin: 0 !important; }
+.mobile-nav-drawer-close { background: transparent; border: none; color: var(--sidebar-foreground); cursor: pointer; padding: 0.25rem; border-radius: var(--radius-md); }
+.mobile-nav-drawer-close:hover { background-color: var(--sidebar-accent); }
+.mobile-nav-drawer-nav { flex: 1 1 auto; overflow-y: auto; padding: 1rem 0.75rem; }
+
+/* ---- mobile record cards ------------------------------------------------
+   The desktop_only/mobile_only pair (components/ui_kit.py) swaps a table
+   for a stacked list of these below lg - same data/handlers, only the
+   markup differs. Plain @media, not a Tailwind lg: variant (see the note on
+   .app-sidebar above). */
+.desktop-only { display: block; }
+.mobile-only { display: none; }
+@media (max-width: 1023.98px) {
+  .desktop-only { display: none; }
+  .mobile-only { display: block; }
+}
+
+.mobile-record-card { border: 1px solid var(--border); border-radius: var(--radius-lg); background-color: var(--card); padding: 0.75rem; margin-bottom: 0.625rem; }
+.mobile-record-card-rows { display: flex; flex-direction: column; gap: 0.375rem; }
+.mobile-record-row { display: flex; align-items: baseline; justify-content: space-between; gap: 0.75rem; font-size: 0.8rem; }
+.mobile-record-label { color: var(--muted-foreground); flex-shrink: 0; }
+.mobile-record-value { color: var(--foreground); text-align: right; word-break: break-word; }
+.mobile-record-card-actions { display: flex; gap: 0.5rem; margin-top: 0.625rem; flex-wrap: wrap; }
+.mobile-record-card-actions > * { flex: 1 1 auto; }
+.mobile-record-row-inputs { display: flex; gap: 0.5rem; margin-top: 0.375rem; }
+.mobile-record-row-inputs > * { flex: 1 1 0; min-width: 0; }
+
+/* Production's field-grid sections (Basic details, Pack details, Production
+   team) - was a Tailwind "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4"
+   utility, replaced with plain @media for the same reliability reason noted
+   on .app-sidebar above, and to floor at a true single column on the
+   smallest phones instead of staying at 2. */
+.form-grid { display: grid; width: 100%; gap: 0.75rem; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (max-width: 639.98px) {
+  .form-grid { grid-template-columns: repeat(1, minmax(0, 1fr)); }
+}
+@media (min-width: 640px) and (max-width: 1023.98px) {
+  .form-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (min-width: 1024px) {
+  .form-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+.detail-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 2.5rem; }
+@media (max-width: 639.98px) {
+  .detail-grid { grid-template-columns: repeat(1, minmax(0, 1fr)); gap: 0; }
+}
+
+/* ---- dialogs (Radix Dialog, replaces the .rt-Dialog* overrides) ------------ */
+
+.dialog-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background-color: color-mix(in oklab, black 45%, transparent);
+  backdrop-filter: blur(2px);
+}
+.dialog-content {
+  position: fixed;
+  z-index: 51;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: calc(100vw - 2rem);
+  max-width: 600px;
+  max-height: calc(100vh - 3rem);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--card);
+  color: var(--foreground);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-raised);
+}
+.dialog-content-wide { max-width: 600px; }
+.dialog-title { font-family: var(--font-sans); font-size: 0.95rem; font-weight: 600; color: var(--foreground); }
+.dialog-description { font-size: 0.8rem; color: var(--muted-foreground); }
+
+/* Below the sidebar breakpoint (lg), every dialog becomes a full-screen
+   takeover - one rule for every dialog in the app. */
+@media (max-width: 1023.98px) {
+  .dialog-overlay { z-index: 100; }
+  .dialog-content {
+    inset: 0;
+    top: 0;
+    left: 0;
+    transform: none;
+    width: 100vw;
+    max-width: 100vw;
+    height: 100dvh;
+    max-height: 100dvh;
+    border-radius: 0;
+    border: none;
+    z-index: 101;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+.mobile-nav-drawer.dialog-content { background-color: var(--sidebar); color: var(--sidebar-foreground); }
+
+/* ---- tabs (Radix Tabs) ------------------------------------------------------- */
+.tabs-list { display: flex; gap: 0; overflow-x: auto; box-shadow: inset 0 -1px 0 color(display-p3 0.004 0.039 0.2 / 0.122); }
+/* Radix Themes Tabs size 2 as measured in the Reflex app: 40px tall, 14px text,
+   16px side padding, a 2px indigo indicator, dark active / grey inactive text. */
+.tabs-trigger {
+  position: relative;
+  height: 40px;
+  padding: 0 16px;
+  font-size: 14px;
+  font-weight: 400;
+  color: color(display-p3 0 0.02 0.063 / 0.62);
+  white-space: nowrap;
+  cursor: pointer;
+  background: transparent;
+}
+.tabs-trigger:hover { color: color(display-p3 0.113 0.125 0.14); }
+.tabs-trigger[data-state="active"] { color: color(display-p3 0.113 0.125 0.14); font-weight: 500; }
+.tabs-trigger[data-state="active"]::after {
+  content: "";
+  position: absolute;
+  left: 8px; right: 8px; bottom: 0;
+  height: 2px;
+  background-color: color(display-p3 0.276 0.384 0.837);
+}
+.tabs-content { margin-top: 1.25rem; min-width: 0; }
+
+/* ---- misc ---------------------------------------------------------------------- */
+.matrix-scroll-box { scrollbar-width: auto; scrollbar-color: var(--muted-foreground) var(--muted); }
+.matrix-scroll-box::-webkit-scrollbar { height: 14px; }
+.matrix-scroll-box::-webkit-scrollbar-track { background: var(--muted); }
+.matrix-scroll-box::-webkit-scrollbar-thumb { background-color: var(--muted-foreground); border-radius: 8px; border: 3px solid var(--muted); }
+
+/* Tables that were native Radix tables in the Reflex app (products, audit,
+   documents, notifications ...): full container width, cells wrap like the
+   Radix table (measured: table width == container width at 1280px, white-space
+   normal), and the wrapper scrolls sideways only below the content's minimum. */
+.data-table-fit { width: 100%; min-width: 0; }
+.data-table-fit th, .data-table-fit td { padding: 12px; line-height: 20px; vertical-align: top; }
+
+/* ---- compact buttons (the old size="1" buttons in table rows) ---------------- */
+/* Radix size="1" (measured in the Reflex app: 24px tall, 0 8px padding, 3px radius). */
+.action-btn-sm { box-sizing: border-box; height: 24px; padding: 0 8px; font-size: 12px; line-height: 16px; border-radius: 3px; gap: 4px; justify-content: center; white-space: nowrap; }
+
+/* ---- popover / multi-select ---------------------------------------------------- */
+.popover-content {
+  z-index: 60;
+  width: 20rem;
+  max-width: calc(100vw - 2rem);
+  padding: 0.75rem;
+  background-color: var(--popover);
+  color: var(--popover-foreground);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-raised);
+}
+.check-row { display: flex; align-items: center; gap: 0.5rem; font-size: 13px; color: var(--foreground); cursor: pointer; }
+.check-row input[type="checkbox"] { width: 1rem; height: 1rem; accent-color: var(--primary); flex-shrink: 0; }
+.check-list { display: flex; flex-direction: column; gap: 0.5rem; max-height: 14rem; overflow-y: auto; padding-right: 0.25rem; }
+
+/* ---- toast ---------------------------------------------------------------------- */
+.toast-stack { position: fixed; z-index: 200; right: 1rem; bottom: 1rem; display: flex; flex-direction: column; gap: 0.5rem; }
+@media (max-width: 1023.98px) { .toast-stack { bottom: calc(4.5rem + env(safe-area-inset-bottom)); left: 1rem; } }
+.toast { display: flex; align-items: center; gap: 0.5rem; padding: 0.625rem 0.875rem; font-size: 13px; background-color: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-raised); }
+.toast-success { border-left: 3px solid var(--success); }
+.toast-error { border-left: 3px solid var(--destructive); }
+
+/* Radix Themes <Link> as rendered by the Reflex app's rx.link (measured): indigo
+   text, a faint always-on underline that turns solid on hover. */
+.rx-link {
+  color: color(display-p3 0.256 0.354 0.755);
+  text-decoration: underline;
+  text-decoration-color: oklab(0.334987 -0.0218153 -0.195928 / 0.1595);
+  text-decoration-thickness: 1px;
+  cursor: pointer;
+}
+.rx-link:hover { text-decoration-color: currentColor; }
+
+/* Radix Themes <Heading> sizes as rendered by the Reflex app (measured): display face, bold, tight tracking. */
+.rx-heading-3, .rx-heading-4, .rx-heading-6 { font-family: var(--font-display); font-weight: 700; color: color(display-p3 0.113 0.125 0.14); }
+.rx-heading-3 { font-size: 16px; line-height: 22px; letter-spacing: -0.24px; }
+.rx-heading-4 { font-size: 18px; line-height: 24px; letter-spacing: -0.27px; }
+.rx-heading-6 { font-size: 24px; line-height: 30px; letter-spacing: -0.36px; }
+
+/* Radix Themes soft Badge size 1 (measured in the Reflex app: 12px, 2px 6px, 3px radius). */
+.rx-badge { display: inline-flex; align-items: center; height: 20px; padding: 0 6px; border-radius: 3px; font-size: 12px; line-height: 16px; font-weight: 500; letter-spacing: 0.03px; white-space: nowrap; }
+.rx-badge-green { color: color(display-p3 0.19 0.5 0.32); background-color: color(display-p3 0.012 0.596 0.145 / 0.087); }
+.rx-badge-red { color: color(display-p3 0.744 0.234 0.222); background-color: color(display-p3 0.792 0.008 0.008 / 0.075); }
+.rx-badge-gray { color: color(display-p3 0 0.02 0.063 / 0.62); background-color: color(display-p3 0.004 0.004 0.204 / 0.059); }
+.rx-badge-amber { color: color(display-p3 0.64 0.4 0); background-color: color(display-p3 0.965 0.859 0.004 / 0.22); }
+
+/* Radix TextField / Select trigger size 2 (measured in the Reflex app: 32px tall including the 1px border). */
+.ui-input, .ui-select, .search-input { box-sizing: border-box; height: 32px; padding-top: 0; padding-bottom: 0; }
+
+/* ---- dialogs as the Reflex app renders its Radix Themes Dialog (measured) ---------
+   600px max width, 24px padding, no header/footer rules, bold display-face title with a
+   12px gap, 16px description, and a 33px square close button pinned to the corner. */
+.dialog-content { padding: 24px; }
+.modal-header { display: block; border: 0; padding: 0; }
+.modal-title { display: block; font-family: var(--font-display); font-size: 20px; line-height: 26px; font-weight: 700; margin-bottom: 12px; color: color(display-p3 0.113 0.125 0.14); }
+.modal-description { margin: 0; font-size: 12px; line-height: 16px; color: color(display-p3 0 0.02 0.063 / 0.62); }
+.modal-description-2 { font-size: 14px; line-height: 20px; }
+.modal-description-radix { font-size: 16px; line-height: 24px; color: color(display-p3 0.113 0.125 0.14); }
+.dialog-content { border: 0; }
+.modal-body { max-height: none; overflow: visible; padding: 0; }
+.modal-footer { border: 0; padding: 0; margin-top: 12px; }
+.modal-close {
+  position: absolute; top: 13px; right: 13px; width: 33px; height: 33px; padding: 8px;
+  display: inline-flex; align-items: center; justify-content: center; border-radius: 6px;
+  background-color: oklab(0.3 -0.0149843 -0.0370874 / 0.4); color: oklab(0.85 -0.0075 -0.0129904 / 0.8);
+}
+.modal-close:hover { background-color: oklab(0.3 -0.0149843 -0.0370874 / 0.55); }
+@media (max-width: 1023.98px) { .dialog-content { padding-bottom: calc(24px + env(safe-area-inset-bottom)); } }
+
+/* A select still on its placeholder reads as grey, like the Radix select trigger's placeholder. */
+.ui-select:has(option[data-placeholder]:checked) { color: color-mix(in oklab, var(--muted-foreground) 70%, transparent); }
+.ui-select option { color: var(--foreground); }
+
+/* Radix select triggers without an explicit width fit their selected text. */
+.ui-select.ui-select-auto { width: auto; field-sizing: content; }
+
+/* Radix Themes Checkbox size 2 with its 14px label (measured in the Reflex app). */
+label:has(> input[type="checkbox"]) { font-size: 14px; }
+input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--primary); }
+
+/* A full-width select must not size a shrink-wrapped parent by its longest option (a Radix trigger doesn't). */
+.ui-select:not(.ui-select-auto):not([style*="width"]) { width: 0; min-width: 100%; }
+
+/* Radix TextArea size 2: about 62px tall for two rows. */
+.ui-textarea { min-height: 62px; }
+
+/* rx.upload zone: Reflex default is a dashed box with 5em padding (measured ~104px between label and text). */
+.rx-upload { border: 1px dashed color-mix(in oklab, var(--foreground) 60%, transparent); border-radius: 4px; padding: 5em; }

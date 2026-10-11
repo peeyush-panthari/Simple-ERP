@@ -1,0 +1,42 @@
+@import "tailwindcss";
+@import "./theme.css";
+
+/* Expose the design tokens (defined in theme.css) as Tailwind utilities, the
+   shadcn/ui convention: bg-card, text-muted-foreground, border-border, ... */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --font-sans: var(--font-sans);
+  --font-display: var(--font-display);
+  --font-mono: var(--font-mono);
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+}
+
+/* Two/three-way toggle (Radix Themes' SegmentedControl look) */
+/* Radix SegmentedControl size 2 (measured in Reflex: 32px tall, equal-width items, 4px radius, 85% white surface). */
+.segmented { display: inline-grid; grid-auto-flow: column; grid-auto-columns: 1fr; box-sizing: border-box; height: 32px; padding: 2px; border-radius: 4px; background: rgb(255 255 255 / 0.85); box-shadow: inset 0 0 0 1px var(--border); }
+.segmented button { padding: 0 14px; font-size: 14px; border-radius: 3px; color: var(--foreground); white-space: nowrap; }
+.segmented button[aria-pressed="true"] { background: var(--card); box-shadow: 0 0 0 1px var(--border), 0 1px 2px rgb(0 0 0 / 0.08); font-weight: 500; }
