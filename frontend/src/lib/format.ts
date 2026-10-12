@@ -121,6 +121,7 @@ export function date(value: string | Date | null | undefined): string {
   const parts = iso.slice(0, 10).split("-").map(Number);
   if (parts.length !== 3 || parts.some((p) => !Number.isInteger(p) || !p)) return "—";
   const [y, m, d] = parts;
+  if (y < 1900 || y > 9999 || m < 1 || m > 12 || d < 1 || d > 31) return "—";
   return `${String(d).padStart(2, "0")} ${MONTHS[m - 1]} ${y}`;
 }
 

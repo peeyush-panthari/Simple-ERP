@@ -4,7 +4,7 @@ import { useState, type ReactNode } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ScanToAddButton, useHardwareScanner } from "@/components/erp/scan";
 import { Shell } from "@/components/erp/shell";
-import { ActionButton, DataTable, DesktopOnly, Field, Forbidden, InlineError, MobileOnly, MobileRecordCard, MobileRecordRow, PageHeader, Pill, SelectInput, TextArea, TextInput } from "@/components/erp/ui";
+import { ActionButton, DataTable, DesktopOnly, Field, Forbidden, InlineError, MobileOnly, MobileRecordCard, MobileRecordRow, PageHeader, Pill, RecordNotFound, SelectInput, TextArea, TextInput } from "@/components/erp/ui";
 import { ItemMultiSelect, type AvailableItem } from "@/components/erp/pickers";
 import { useAuth } from "@/lib/auth";
 import { ApiError } from "@/lib/api";
@@ -314,13 +314,17 @@ function Content({ runId }: { runId: string }) {
       <Pill tone="muted">Locked</Pill>
     );
 
+  if (q.error instanceof ApiError && q.error.status === 404) {
+    return <RecordNotFound entity="Production Run" id={runId} backUrl="/production" />;
+  }
+
   return (
     <div className="flex w-full flex-col items-start gap-4">
       <Link to="/production" className="rx-link">← Back to production</Link>
       {!run ? (
         <>
           <InlineError message={q.error?.message} />
-          <p className="text-sm text-[var(--muted-foreground)]">Loading…</p>
+          {q.isLoading && <p className="text-sm text-[var(--muted-foreground)]">Loading…</p>}
         </>
       ) : (
         <>

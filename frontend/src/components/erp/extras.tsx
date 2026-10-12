@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 // ---- toasts ------------------------------------------------------------------------
 
 interface ToastItem {
-  id: number;
+  id: string;
   kind: "success" | "error";
   message: string;
 }
@@ -24,12 +24,14 @@ interface ToastApi {
 }
 
 const ToastContext = createContext<ToastApi | null>(null);
-let toastId = 0;
+let toastCounter = 0;
 
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const push = useCallback((kind: ToastItem["kind"], message: string) => {
-    const id = ++toastId;
+    const id = typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+      ? crypto.randomUUID()
+      : `${Date.now()}-${++toastCounter}`;
     setToasts((t) => [...t, { id, kind, message }]);
     window.setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 4000);
   }, []);

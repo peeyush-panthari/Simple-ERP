@@ -1,6 +1,6 @@
 /** Production & Shipping: production runs (planning, bulk upload) and the Order Shipping queue (pack / ship per line). */
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { BulkUploadButton, BulkUploadDialog } from "@/components/erp/bulk-upload";
 import { DateRangePicker } from "@/components/erp/date-range";
@@ -195,7 +195,7 @@ function RunsTab() {
       </DesktopOnly>
       <MobileOnly className="w-full">
         {runs.map((r) => (
-          <MobileRecordCard key={r.id} actions={complete(r, "w-full justify-center") || undefined}>
+          <MobileRecordCard key={r.id} actions={complete(r, "w-full justify-center") ? complete(r, "w-full justify-center") : undefined}>
             <MobileRecordRow label="Production ID" value={numberLink(r)} />
             <MobileRecordRow label="SKU Name" value={r.productName || r.sku} />
             <MobileRecordRow label="Warehouse" value={dash(r.warehouseName)} />
@@ -336,10 +336,13 @@ function ShippingTab() {
       return resp.data;
     },
   });
-  const all = shippingRows(orders.data ?? []);
-  const skuOptions = [...new Set(all.map((r) => r.skuName))].sort();
+  const all = useMemo(() => shippingRows(orders.data ?? []), [orders.data]);
+  const skuOptions = useMemo(() => [...new Set(all.map((r) => r.skuName))].sort(), [all]);
   const q = search.trim().toLowerCase();
-  const rows = all.filter((r) => (!q || r.orderNumber.toLowerCase().includes(q)) && (!status || r.status === status) && (!sku || r.skuName === sku));
+  const rows = useMemo(
+    () => all.filter((r) => (!q || r.orderNumber.toLowerCase().includes(q)) && (!status || r.status === status) && (!sku || r.skuName === sku)),
+    [all, q, status, sku],
+  );
 
   const button = (r: ShipRow, cls = "") => r.actionLabel && <ActionButton size="sm" className={cls} onClick={() => setActive(r)}>{r.actionLabel}</ActionButton>;
   const pill = (r: ShipRow) => <Pill tone={SHIPPING_TONE[r.status]}>{humanise(r.status)}</Pill>;

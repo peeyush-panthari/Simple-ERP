@@ -3,9 +3,10 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Shell } from "@/components/erp/shell";
-import { ActionButton, DataTable, DesktopOnly, Field, Forbidden, InlineError, MobileOnly, MobileRecordCard, MobileRecordRow, Modal, PageHeader, Panel, Pill, SelectInput, StatCard, TextArea, TextInput } from "@/components/erp/ui";
+import { ActionButton, DataTable, DesktopOnly, Field, Forbidden, InlineError, MobileOnly, MobileRecordCard, MobileRecordRow, Modal, PageHeader, Panel, Pill, RecordNotFound, SelectInput, StatCard, TextArea, TextInput } from "@/components/erp/ui";
 import type { PartyType } from "@/routes/parties";
 import { useAuth } from "@/lib/auth";
+import { ApiError } from "@/lib/api";
 import * as format from "@/lib/format";
 import { useApiQuery, useAsyncAction } from "@/lib/hooks";
 import { INDIAN_STATE_NAMES, INDIAN_STATE_OPTIONS } from "@/lib/reference";
@@ -184,12 +185,16 @@ function Content({ id }: { id: string }) {
   const stateName = (a: Address) => INDIAN_STATE_NAMES[a.stateCode ?? ""] ?? a.stateCode ?? "";
   const bankLine = (b: Bank) => `${b.bankName} / ${b.ifsc}`;
 
+  if (partyQuery.error instanceof ApiError && partyQuery.error.status === 404) {
+    return <RecordNotFound entity="Party" id={id} backUrl="/parties" />;
+  }
+
   return (
     <div className="party-detail-page flex w-full flex-col items-start gap-2">
       <Link to="/parties" className="rx-link">← Back to parties</Link>
       <InlineError message={pageError || partyQuery.error?.message} />
       {!party ? (
-        <p className="text-sm text-[var(--muted-foreground)]">Loading…</p>
+        partyQuery.isLoading ? <p className="text-sm text-[var(--muted-foreground)]">Loading…</p> : null
       ) : (
         <>
           <div>

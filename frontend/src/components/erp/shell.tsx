@@ -9,7 +9,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import * as Popover from "@radix-ui/react-popover";
 import { useQuery } from "@tanstack/react-query";
 import { Bell, ChevronDown, LogOut, Menu, Search, User, X } from "lucide-react";
-import { useState, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
+import { useMemo, useState, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { Logo } from "@/components/erp/logo";
 import { LoadingOverlay, Spinner, TopProgress } from "@/components/erp/ui";
@@ -194,9 +194,10 @@ function NavLinkItem({ item, onNavigate }: { item: NavItem; onNavigate?: () => v
 
 function NavGroups({ onNavigate }: { onNavigate?: () => void }) {
   const { permissions } = useAuth();
+  const groups = useMemo(() => groupedNav(permissions), [permissions]);
   return (
     <>
-      {groupedNav(permissions).map((g) => (
+      {groups.map((g) => (
         <div key={g.group} className="nav-group">
           <p className="nav-group-label">{g.group}</p>
           {g.items.map((item) => (

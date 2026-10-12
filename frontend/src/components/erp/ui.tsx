@@ -436,12 +436,28 @@ export function InlineError({ message }: { message?: string | null }) {
   );
 }
 
-export function EmptyState({ title, hint }: { title: string; hint?: string }) {
+export function EmptyState({ title, hint, description }: { title: string; hint?: string; description?: string }) {
+  const subtext = hint || description;
   return (
     <div className="empty-state">
       <Inbox size={28} className="opacity-40" />
       <p className="empty-state-title">{title}</p>
-      {hint ? <p className="empty-state-hint">{hint}</p> : null}
+      {subtext ? <p className="empty-state-hint">{subtext}</p> : null}
+    </div>
+  );
+}
+
+export function RecordNotFound({ entity, id, backUrl, backLabel }: { entity: string; id?: string; backUrl: string; backLabel?: string }) {
+  return (
+    <div className="flex w-full flex-col items-center justify-center gap-3 py-16 text-center">
+      <TriangleAlert size={36} className="text-[var(--destructive)] opacity-80" />
+      <h2 className="text-xl font-bold">{entity} not found</h2>
+      <p className="max-w-md text-sm text-[var(--muted-foreground)]">
+        {id ? `No ${entity.toLowerCase()} exists with identifier "${id}", or it may have been deleted or archived.` : `The requested ${entity.toLowerCase()} could not be found.`}
+      </p>
+      <Link to={backUrl} className="mt-2">
+        <ActionButton size="sm">{backLabel || `← Back to ${entity.toLowerCase()} list`}</ActionButton>
+      </Link>
     </div>
   );
 }

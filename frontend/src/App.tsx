@@ -13,10 +13,14 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boole
   }
   render() {
     if (this.state.hasError) {
+      const isDev = import.meta.env.DEV;
+      const message = isDev
+        ? (this.state.error?.message || "An unexpected error occurred.")
+        : "An unexpected error occurred. Please refresh the page or contact system support.";
       return (
         <div className="flex min-h-[50vh] flex-col items-center justify-center p-4 text-center">
           <p className="mb-2 text-lg font-medium">Something went wrong.</p>
-          <p className="mb-4 text-sm text-[var(--muted-foreground)]">{this.state.error?.message}</p>
+          <p className="mb-4 max-w-md text-sm text-[var(--muted-foreground)]">{message}</p>
           <button
             onClick={() => window.location.reload()}
             className="rounded bg-[var(--primary)] px-4 py-2 text-sm text-[var(--primary-foreground)]"

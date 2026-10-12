@@ -7,7 +7,7 @@ import { OrderAllocation } from "@/components/erp/order-allocation";
 import { Shell } from "@/components/erp/shell";
 import { Tabs } from "@/components/erp/tabs";
 import {
-  ActionButton, DataTable, DesktopOnly, Forbidden, InlineError, MobileOnly, MobileRecordCard, MobileRecordRow, Modal, PageHeader, Pagination, Pill, SelectInput, StatCard, TextArea, TextInput,
+  ActionButton, DataTable, DesktopOnly, EmptyState, Forbidden, InlineError, MobileOnly, MobileRecordCard, MobileRecordRow, Modal, PageHeader, Pagination, Pill, SelectInput, StatCard, TextArea, TextInput,
 } from "@/components/erp/ui";
 import { useAuth } from "@/lib/auth";
 import { ApiError } from "@/lib/api";
@@ -438,25 +438,31 @@ function SalesBook() {
         {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
       </select>
       <InlineError message={list.error?.message} />
-      <DesktopOnly className="w-full">
-        <DataTable columns={["Order", "Customer", "Total", "Promised", "Logistics Cost", "Status"]} fit>
-          {orders.map((o) => (
-            <tr key={o.id}><td>{link(o)}</td><td>{o.customerName}</td><td>{format.money(o.total)}</td><td>{format.date(o.promisedDate)}</td><td>{o.logisticsCostBorneBy || "—"}</td><td>{statusCell(o)}</td></tr>
-          ))}
-        </DataTable>
-      </DesktopOnly>
-      <MobileOnly className="w-full">
-        {orders.map((o) => (
-          <MobileRecordCard key={o.id}>
-            <MobileRecordRow label="Order" value={link(o)} />
-            <MobileRecordRow label="Customer" value={o.customerName} />
-            <MobileRecordRow label="Total" value={format.money(o.total)} />
-            <MobileRecordRow label="Promised" value={format.date(o.promisedDate)} />
-            <MobileRecordRow label="Logistics cost" value={o.logisticsCostBorneBy || "—"} />
-            <MobileRecordRow label="Status" value={statusCell(o)} />
-          </MobileRecordCard>
-        ))}
-      </MobileOnly>
+      {orders.length === 0 && !list.isLoading ? (
+        <EmptyState title="No sales orders found" hint="Adjust your status filter or create a new order." />
+      ) : (
+        <>
+          <DesktopOnly className="w-full">
+            <DataTable columns={["Order", "Customer", "Total", "Promised", "Logistics Cost", "Status"]} fit>
+              {orders.map((o) => (
+                <tr key={o.id}><td>{link(o)}</td><td>{o.customerName}</td><td>{format.money(o.total)}</td><td>{format.date(o.promisedDate)}</td><td>{o.logisticsCostBorneBy || "—"}</td><td>{statusCell(o)}</td></tr>
+              ))}
+            </DataTable>
+          </DesktopOnly>
+          <MobileOnly className="w-full">
+            {orders.map((o) => (
+              <MobileRecordCard key={o.id}>
+                <MobileRecordRow label="Order" value={link(o)} />
+                <MobileRecordRow label="Customer" value={o.customerName} />
+                <MobileRecordRow label="Total" value={format.money(o.total)} />
+                <MobileRecordRow label="Promised" value={format.date(o.promisedDate)} />
+                <MobileRecordRow label="Logistics cost" value={o.logisticsCostBorneBy || "—"} />
+                <MobileRecordRow label="Status" value={statusCell(o)} />
+              </MobileRecordCard>
+            ))}
+          </MobileOnly>
+        </>
+      )}
       <div className="w-full"><Pagination meta={list.data?.meta} onPage={setPage} /></div>
       {createOpen && <CreateDialog onClose={() => setCreateOpen(false)} onCreated={refresh} />}
       {openId && <DetailDialog orderId={openId} onClose={() => setOpenId("")} onChanged={refresh} />}

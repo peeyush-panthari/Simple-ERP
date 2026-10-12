@@ -1,6 +1,7 @@
 /** Procurement: purchase-order list, create, detail (cancel / short close / PDF / resend email) and CSV bulk upload. */
 import { useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent, type ReactNode } from "react";
+import { useSearchParams } from "react-router-dom";
 import { BulkUploadButton, BulkUploadDialog } from "@/components/erp/bulk-upload";
 import { ReasonDialog } from "@/components/erp/dialogs";
 import { REQUISITION_BASE, RequisitionsTab, trimDecimal, useRefreshRequisitions, useRequisitionCounts, type Requisition } from "@/components/erp/requisitions";
@@ -9,7 +10,7 @@ import { RfqStartDialog, SourcingTab } from "@/components/erp/sourcing";
 import { Shell } from "@/components/erp/shell";
 import { Tabs } from "@/components/erp/tabs";
 import {
-  ActionButton, DataTable, DesktopOnly, Forbidden, InlineError, MobileOnly, MobileRecordCard, MobileRecordRow, Modal, PageHeader, Pagination, Pill, SelectInput, TextInput,
+  ActionButton, DataTable, DesktopOnly, EmptyState, Forbidden, InlineError, MobileOnly, MobileRecordCard, MobileRecordRow, Modal, PageHeader, Pagination, Pill, SelectInput, TextInput,
 } from "@/components/erp/ui";
 import { useAuth } from "@/lib/auth";
 import * as format from "@/lib/format";
@@ -391,41 +392,47 @@ function PurchaseOrdersView() {
         {canWrite && <ActionButton onClick={() => setCreateOpen(true)}>New purchase order</ActionButton>}
       </div>
       <InlineError message={actionError || list.error?.message} />
-      <DesktopOnly className="w-full">
-        <DataTable columns={["PO", "Vendor", "Deliver to", "Value", "Expected", "Status", "Vendor", ""]} fit>
-          {pos.map((p) => (
-            <tr key={p.id}>
-              <td>{link(p)}</td>
-              <td>{p.vendorName}</td>
-              <td>{p.warehouseCode}</td>
-              <td>{format.money(p.total)}</td>
-              <td>{format.date(p.expectedDate)}</td>
-              <td><Pill>{p.status}</Pill></td>
-              <td>
-                <div className="flex flex-col items-start gap-1">
-                  {ackPill(p.ackStatus ?? "pending")}
-                  {p.dispatchStatus && p.dispatchStatus !== "none" && shipmentPill(p.dispatchStatus, p.inTransitCount)}
-                </div>
-              </td>
-              <td>{pdf(p)}</td>
-            </tr>
-          ))}
-        </DataTable>
-      </DesktopOnly>
-      <MobileOnly className="w-full">
-        {pos.map((p) => (
-          <MobileRecordCard key={p.id} actions={pdf(p, "w-full justify-center")}>
-            <MobileRecordRow label="PO" value={link(p)} />
-            <MobileRecordRow label="Vendor" value={p.vendorName} />
-            <MobileRecordRow label="Deliver to" value={p.warehouseCode} />
-            <MobileRecordRow label="Value" value={format.money(p.total)} />
-            <MobileRecordRow label="Expected" value={format.date(p.expectedDate)} />
-            <MobileRecordRow label="Status" value={<Pill>{p.status}</Pill>} />
-            <MobileRecordRow label="Vendor ack" value={ackPill(p.ackStatus ?? "pending")} />
-            <MobileRecordRow label="Shipment" value={shipmentPill(p.dispatchStatus ?? "none", p.inTransitCount)} />
-          </MobileRecordCard>
-        ))}
-      </MobileOnly>
+      {pos.length === 0 && !list.isLoading ? (
+        <EmptyState title="No purchase orders found" hint="Adjust your search, date range or status filters, or create a new purchase order." />
+      ) : (
+        <>
+          <DesktopOnly className="w-full">
+            <DataTable columns={["PO", "Vendor", "Deliver to", "Value", "Expected", "Status", "Vendor", ""]} fit>
+              {pos.map((p) => (
+                <tr key={p.id}>
+                  <td>{link(p)}</td>
+                  <td>{p.vendorName}</td>
+                  <td>{p.warehouseCode}</td>
+                  <td>{format.money(p.total)}</td>
+                  <td>{format.date(p.expectedDate)}</td>
+                  <td><Pill>{p.status}</Pill></td>
+                  <td>
+                    <div className="flex flex-col items-start gap-1">
+                      {ackPill(p.ackStatus ?? "pending")}
+                      {p.dispatchStatus && p.dispatchStatus !== "none" && shipmentPill(p.dispatchStatus, p.inTransitCount)}
+                    </div>
+                  </td>
+                  <td>{pdf(p)}</td>
+                </tr>
+              ))}
+            </DataTable>
+          </DesktopOnly>
+          <MobileOnly className="w-full">
+            {pos.map((p) => (
+              <MobileRecordCard key={p.id} actions={pdf(p, "w-full justify-center")}>
+                <MobileRecordRow label="PO" value={link(p)} />
+                <MobileRecordRow label="Vendor" value={p.vendorName} />
+                <MobileRecordRow label="Deliver to" value={p.warehouseCode} />
+                <MobileRecordRow label="Value" value={format.money(p.total)} />
+                <MobileRecordRow label="Expected" value={format.date(p.expectedDate)} />
+                <MobileRecordRow label="Status" value={<Pill>{p.status}</Pill>} />
+                <MobileRecordRow label="Vendor ack" value={ackPill(p.ackStatus ?? "pending")} />
+                <MobileRecordRow label="Shipment" value={shipmentPill(p.dispatchStatus ?? "none", p.inTransitCount)} />
+              </MobileRecordCard>
+            ))}
+          </MobileOnly>
+        </>
+      )}
       <div className="w-full">
         <Pagination meta={list.data?.meta} onPage={setPage} />
       </div>
@@ -478,7 +485,8 @@ function Content() {
   const canRequisitions = can("pr:read") || can("pr:approve") || can("pr:team_approve");
   const canSourcing = can("sourcing:read");
   const counts = useRequisitionCounts(canRequisitions);
-  const initialTab = new URLSearchParams(window.location.search).get("tab");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialTab = searchParams.get("tab");
   const [tab, setTab] = useState(() => (initialTab === "requisitions" && canRequisitions) || (!canOrders && canRequisitions) ? "requisitions" : !canOrders && canSourcing ? "sourcing" : "orders");
   const [poFor, setPoFor] = useState<Requisition | null>(null);
   const [sourceFor, setSourceFor] = useState<Requisition | null>(null);
@@ -486,14 +494,23 @@ function Content() {
   const [requisitionId, setRequisitionId] = useState("");
   const toReview = (counts.data?.awaitingReview ?? 0) + (counts.data?.awaitingMyApproval ?? 0);
 
+  const handleTabChange = (newTab: string) => {
+    setTab(newTab);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set("tab", newTab);
+      return next;
+    }, { replace: true });
+  };
+
   const openRfq = (id: string) => {
     setRfqId(id);
-    if (id) setTab("sourcing");
+    if (id) handleTabChange("sourcing");
   };
   const openRequisition = (id: string) => {
     setRequisitionId(id);
     setRfqId("");
-    setTab("requisitions");
+    handleTabChange("requisitions");
   };
 
   const views = [
@@ -509,7 +526,7 @@ function Content() {
   return (
     <div className="flex w-full flex-col items-start gap-4">
       <PageHeader eyebrow="Supply chain" title="Procurement" />
-      {views.length > 1 ? <Tabs value={tab} onValueChange={setTab} tabs={views} /> : views[0]?.content}
+      {views.length > 1 ? <Tabs value={tab} onValueChange={handleTabChange} tabs={views} /> : views[0]?.content}
       {poFor && <RequisitionPoDialog requisition={poFor} onClose={() => setPoFor(null)} />}
       {sourceFor && <RfqStartDialog requisition={sourceFor} onClose={() => setSourceFor(null)} onStarted={(id) => openRfq(id)} />}
     </div>

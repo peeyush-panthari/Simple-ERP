@@ -13,6 +13,7 @@ export default function LoginPage() {
   const [mfaRequired, setMfaRequired] = useState(false);
   const [useRecoveryCode, setUseRecoveryCode] = useState(false);
   const [error, setError] = useState("");
+  const [lockedUntil, setLockedUntil] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const fromState = (location.state as { from?: Location })?.from;
@@ -27,6 +28,7 @@ export default function LoginPage() {
     const form = new FormData(e.currentTarget);
     setBusy(true);
     setError("");
+    setLockedUntil(null);
     try {
       const result = await login({
         email: String(form.get("email") ?? ""),
@@ -37,7 +39,15 @@ export default function LoginPage() {
       if (result.mfaRequired) setMfaRequired(true);
       else navigate(targetPath, { replace: true });
     } catch (exc) {
-      setError(exc instanceof ApiError ? exc.detail : "Something went wrong");
+      if (exc instanceof ApiError) {
+        setError(exc.detail);
+        const locked = (exc.body?.meta as any)?.lockedUntil || (exc.body as any)?.lockedUntil;
+        if (locked || exc.code === "ACCOUNT_LOCKED") {
+          setLockedUntil(locked ? String(locked) : "locked");
+        }
+      } else {
+        setError("Something went wrong");
+      }
     } finally {
       setBusy(false);
     }
@@ -92,7 +102,17 @@ export default function LoginPage() {
                 <p>{error}</p>
               </div>
             )}
-            <ActionButton type="submit" loading={busy} className="w-full justify-center">
+            {lockedUntil && (
+              <div className="panel p-3 border-[var(--destructive)] text-xs text-[var(--destructive)]">
+                <p className="font-semibold">Security Alert: Account Temporarily Locked</p>
+                <p className="mt-1">
+                  {lockedUntil !== "locked"
+                    ? `Too many failed attempts. Account is locked until ${new Date(lockedUntil).toLocaleTimeString()}. Please wait or contact your administrator.`
+                    : "Too many failed attempts. Account is temporarily locked. Please contact your administrator."}
+                </p>
+              </div>
+            )}
+            <ActionButton type="submit" loading={busy} disabled={Boolean(lockedUntil)} className="w-full justify-center">
               {busy ? "Signing in…" : "Sign in"}
             </ActionButton>
           </form>
