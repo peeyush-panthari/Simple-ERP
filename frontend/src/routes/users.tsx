@@ -4,9 +4,9 @@ import { useState, type FormEvent } from "react";
 import { CheckRow, ConfirmDialog, MultiSelect, toggleIn, useToast } from "@/components/erp/extras";
 import { Shell } from "@/components/erp/shell";
 import { Tabs } from "@/components/erp/tabs";
-import { ActionButton, DataTable, DesktopOnly, Field, FilterSelect, Forbidden, InlineError, MobileOnly, MobileRecordCard, MobileRecordRow, Modal, Note, PageHeader, Pill, SearchInput, SelectInput, TextArea, TextInput } from "@/components/erp/ui";
+import { ActionButton, DataTable, DesktopOnly, Field, FilterSelect, Forbidden, InlineError, MobileOnly, MobileRecordCard, MobileRecordRow, Modal, Note, PageHeader, Pagination, Pill, SearchInput, SelectInput, TextArea, TextInput } from "@/components/erp/ui";
 import { useAuth } from "@/lib/auth";
-import { useApiQuery, useAsyncAction, type ListResponse } from "@/lib/hooks";
+import { useApiQuery, useAsyncAction, useDebounced, type ListResponse } from "@/lib/hooks";
 
 interface UserRow {
   id: string;
@@ -46,6 +46,19 @@ const STATUS_OPTIONS = [
   { label: "Invited", value: "invited" },
 ];
 
+/** Fetches all roles page-by-page up to MAX_PAGES (limit 200 = API max). */
+export async function fetchAllRoles(api: <T>(method: string, path: string, options?: any) => Promise<T>): Promise<RoleRow[]> {
+  const rows: RoleRow[] = [];
+  const MAX_PAGES = 50;
+  for (let page = 1; page <= MAX_PAGES; page += 1) {
+    const resp = await api<ListResponse<RoleRow>>("GET", "/api/v1/roles", { params: { limit: 200, page } });
+    if (!resp.data?.length) break;
+    rows.push(...resp.data);
+    if (page >= (resp.meta?.pages ?? 1)) break;
+  }
+  return rows;
+}
+
 /** Roles are a small bounded reference list used in full by several UIs, so every page is fetched (limit 200 = the API's max). */
 function useAllRoles(enabled: boolean) {
   const { api } = useAuth();
@@ -53,14 +66,7 @@ function useAllRoles(enabled: boolean) {
     queryKey: ["/api/v1/roles#all"],
     enabled,
     retry: false,
-    queryFn: async () => {
-      const rows: RoleRow[] = [];
-      for (let page = 1; ; page += 1) {
-        const resp = await api<ListResponse<RoleRow>>("GET", "/api/v1/roles", { params: { limit: 200, page } });
-        rows.push(...resp.data);
-        if (page >= (resp.meta?.pages ?? 1)) return rows;
-      }
-    },
+    queryFn: () => fetchAllRoles(api),
   });
 }
 
@@ -89,12 +95,46 @@ function UsersTab({ roles, warehouses, factories }: { roles: RoleRow[]; warehous
   const { api, can } = useAuth();
   const qc = useQueryClient();
   const toast = useToast();
-  const usersQuery = useApiQuery<ListResponse<UserRow>>("/api/v1/users", { limit: 100 }, { enabled: can("user:read") });
-  const users = usersQuery.data?.data ?? [];
+  const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounced(search, 250);
   const [statusFilter, setStatusFilter] = useState("");
   const [roleFilter, setRoleFilter] = useState("");
   const [pageError, setPageError] = useState("");
+
+  const usersQuery = useApiQuery<ListResponse<UserRow>>(
+    "/api/v1/users",
+    {
+      q: debouncedSearch.trim() || undefined,
+      status: statusFilter || undefined,
+      roleId: roleFilter || undefined,
+      page,
+      limit: 25,
+    },
+    { enabled: can("user:read") },
+  );
+  const users = usersQuery.data?.data ?? [];
+
+  // Active users query for manager dropdown selection (unpaginated up to 200)
+  const managersQuery = useApiQuery<ListResponse<UserRow>>(
+    "/api/v1/users",
+    { status: "active", limit: 200 },
+    { enabled: can("user:read") },
+  );
+  const managerUsers = managersQuery.data?.data ?? users;
+
+  const handleSearch = (v: string) => {
+    setSearch(v);
+    setPage(1);
+  };
+  const handleStatusFilter = (v: string) => {
+    setStatusFilter(v);
+    setPage(1);
+  };
+  const handleRoleFilter = (v: string) => {
+    setRoleFilter(v);
+    setPage(1);
+  };
 
   const resendInvite = async (id: string, email: string) => {
     setPageError("");
@@ -107,10 +147,11 @@ function UsersTab({ roles, warehouses, factories }: { roles: RoleRow[]; warehous
   };
 
   // Anyone active can be a manager (never the person themselves - the API also refuses loops).
-  const managerOptions = (selfId?: string) => [{ value: "", label: "No manager" }, ...users.filter((u) => u.status === "active" && u.id !== selfId).map((u) => ({ value: u.id, label: `${u.displayName} (${u.email})` }))];
+  const managerOptions = (selfId?: string) => [
+    { value: "", label: "No manager" },
+    ...managerUsers.filter((u) => u.status === "active" && u.id !== selfId).map((u) => ({ value: u.id, label: `${u.displayName} (${u.email})` })),
+  ];
 
-  const q = search.trim().toLowerCase();
-  const filtered = users.filter((u) => (!q || u.displayName.toLowerCase().includes(q) || u.email.toLowerCase().includes(q)) && (!statusFilter || u.status === statusFilter) && (!roleFilter || u.roles.includes(roleFilter)));
   const refresh = () => qc.invalidateQueries({ queryKey: ["/api/v1/users"] });
 
   // ---- invite
@@ -224,16 +265,16 @@ function UsersTab({ roles, warehouses, factories }: { roles: RoleRow[]; warehous
       <InlineError message={pageError || usersQuery.error?.message} />
       <div className="flex w-full flex-wrap md:flex-nowrap items-center gap-2">
         <div className="w-64">
-          <SearchInput value={search} onChange={setSearch} placeholder="Search by name or email…" />
+          <SearchInput value={search} onChange={handleSearch} placeholder="Search by name or email…" />
         </div>
-        <FilterSelect value={statusFilter} onChange={setStatusFilter} options={STATUS_OPTIONS} label="All statuses" />
-        <FilterSelect value={roleFilter} onChange={setRoleFilter} options={roles.map((r) => ({ label: r.name, value: r.name }))} label="All roles" />
+        <FilterSelect value={statusFilter} onChange={handleStatusFilter} options={STATUS_OPTIONS} label="All statuses" />
+        <FilterSelect value={roleFilter} onChange={handleRoleFilter} options={roles.map((r) => ({ label: r.name, value: r.id }))} label="All roles" />
         <div className="flex-1" />
         <ActionButton onClick={openInvite}>Invite user</ActionButton>
       </div>
       <DesktopOnly className="w-full">
         <DataTable columns={["Name", "Email", "Status", "Roles", "Reports to", "MFA", ""]} minWidth={640} fit>
-          {filtered.map((u) => (
+          {users.map((u) => (
             <tr key={u.id}>
               <td>{u.displayName}</td>
               <td>{u.email}</td>
@@ -255,7 +296,7 @@ function UsersTab({ roles, warehouses, factories }: { roles: RoleRow[]; warehous
         </DataTable>
       </DesktopOnly>
       <MobileOnly className="w-full">
-        {filtered.map((u) => (
+        {users.map((u) => (
           <MobileRecordCard
             key={u.id}
             actions={
@@ -277,6 +318,9 @@ function UsersTab({ roles, warehouses, factories }: { roles: RoleRow[]; warehous
           </MobileRecordCard>
         ))}
       </MobileOnly>
+      <div className="w-full">
+        <Pagination meta={usersQuery.data?.meta} onPage={setPage} />
+      </div>
 
       <Modal open={inviteOpen} onClose={() => setInviteOpen(false)} title="Invite user">
         <form onSubmit={createUser} className="flex flex-col gap-3">

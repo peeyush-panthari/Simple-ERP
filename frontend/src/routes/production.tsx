@@ -1,6 +1,6 @@
 /** Production & Shipping: production runs (planning, bulk upload) and the Order Shipping queue (pack / ship per line). */
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { BulkUploadButton, BulkUploadDialog } from "@/components/erp/bulk-upload";
 import { DateRangePicker } from "@/components/erp/date-range";
@@ -84,15 +84,17 @@ function PlanningDialog({ onClose, onCreated }: { onClose: () => void; onCreated
   // GET /warehouses already only returns the ones this actor can see, so "one row" means a locked warehouse.
   const locked = whList.length === 1;
   const effectiveWarehouse = locked ? whList[0].id : warehouseId;
-
   const patch = (i: number, p: Partial<(typeof rows)[number]>) => setRows(rows.map((r, j) => (j === i ? { ...r, ...p } : r)));
+  const submittingRef = useRef(false);
 
   const submit = async () => {
+    if (submittingRef.current) return;
     setError("");
     if (!date) return setError("Production date is required");
     if (!effectiveWarehouse) return setError("Warehouse is required");
     const items = rows.filter((r) => r.productId).map((r) => ({ productId: r.productId, packId: r.packId || null }));
     if (!items.length) return setError("Add at least one finished good");
+    submittingRef.current = true;
     setSaving(true);
     try {
       await api("POST", "/api/v1/inventory/production/plan", { json: { productionDate: date, warehouseId: effectiveWarehouse, items } });
@@ -101,6 +103,7 @@ function PlanningDialog({ onClose, onCreated }: { onClose: () => void; onCreated
     } catch (exc) {
       setError(exc instanceof ApiError ? exc.detail : String(exc));
     } finally {
+      submittingRef.current = false;
       setSaving(false);
     }
   };
@@ -242,11 +245,11 @@ interface ShipRow {
 }
 
 /** One row per allocated, non-cancelled SKU line - packing/shipping happens per line, not per order. */
-function shippingRows(orders: ShippingOrder[]): ShipRow[] {
+export function shippingRows(orders?: ShippingOrder[] | null): ShipRow[] {
   const rows: ShipRow[] = [];
-  for (const o of orders) {
-    for (const l of o.lines ?? []) {
-      if (l.status === "cancelled") continue;
+  for (const o of orders ?? []) {
+    for (const l of o?.lines ?? []) {
+      if (!l || l.status === "cancelled") continue;
       const allocated = Number(l.allocatedQty || 0);
       if (allocated <= 0) continue;
       const packed = Number(l.packedQty || 0);
@@ -262,9 +265,9 @@ function shippingRows(orders: ShippingOrder[]): ShipRow[] {
       const ids = l.allocation?.inventoryIds ?? [];
       rows.push({
         lineId: l.id,
-        orderNumber: o.number,
-        customerName: o.customerName,
-        skuName: l.productName || l.sku,
+        orderNumber: o?.number ?? "",
+        customerName: o?.customerName ?? "",
+        skuName: l.productName || l.sku || "",
         qty: format.qty(String(allocated), l.uom),
         status,
         inventoryIds: ids.length ? ids.join(", ") : l.allocation?.batchNo || "—",

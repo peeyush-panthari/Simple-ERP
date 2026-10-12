@@ -3,6 +3,12 @@ import { useCallback, useEffect, useState, useRef } from "react";
 import { useAuth } from "@/lib/auth";
 import { ApiError, type Params } from "@/lib/api";
 
+/** Retry predicate: only retry transient network drops (status 0) and 503 Service Unavailable, max 2 attempts. */
+export function shouldRetryApiQuery(failureCount: number, error: unknown): boolean {
+  if (failureCount >= 2) return false;
+  return error instanceof ApiError && (error.status === 0 || error.status === 503);
+}
+
 /** GET a path with the authorised client; the cache key is the path + params. */
 export function useApiQuery<T>(path: string, params?: Params, options?: Partial<Omit<UseQueryOptions<T>, "queryKey" | "queryFn">>) {
   const { api } = useAuth();
@@ -10,7 +16,7 @@ export function useApiQuery<T>(path: string, params?: Params, options?: Partial<
     queryKey: [path, params ?? {}],
     queryFn: ({ signal }) => api<T>("GET", path, { params, signal }),
     placeholderData: keepPreviousData,
-    retry: false,
+    retry: shouldRetryApiQuery,
     ...options,
   });
 }
