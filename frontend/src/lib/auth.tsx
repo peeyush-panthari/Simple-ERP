@@ -150,6 +150,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => window.clearInterval(id);
   }, [status, tryRefresh]);
 
+  // Synchronize authentication status and token rotation across open browser tabs.
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === ACCESS_KEY && e.newValue) {
+        request<User>("GET", "/api/v1/auth/me", { token: e.newValue })
+          .then((me) => {
+            setUser(me);
+            setStatus("authenticated");
+          })
+          .catch(() => {});
+      } else if (e.key === REFRESH_KEY && !e.newValue) {
+        setUser(null);
+        setStatus("anonymous");
+      }
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
+
   const withAuth = useCallback(
     async <R,>(call: (token: string) => Promise<R>): Promise<R> => {
       const tokenUsed = readToken(ACCESS_KEY);

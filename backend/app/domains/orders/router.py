@@ -186,6 +186,7 @@ def list_orders(
     logisticsState: str | None = None,
     from_: str | None = None,
     to_: str | None = None,
+    includeLines: bool = False,
 ):
     tenant_id = actor["tenant_id"]
 
@@ -228,7 +229,18 @@ def list_orders(
     order_by = column.desc() if (query.sort or "").startswith("-") or not query.sort else column.asc()
     rows = q.order_by(order_by).limit(query.limit).offset(offset_of(query)).all()
 
-    return list_response([order_repo.to_order_api(r) for r in rows], query, total)
+    lines_by_order: dict[uuid_mod.UUID, list[OrderLine]] = {r.id: [] for r in rows}
+    if includeLines and rows:
+        order_ids = [r.id for r in rows]
+        all_lines = OrderLine.query.filter(OrderLine.order_id.in_(order_ids)).order_by(OrderLine.line_no).all()
+        for l in all_lines:
+            lines_by_order[l.order_id].append(l)
+
+    return list_response(
+        [order_repo.to_order_api(r, lines_by_order[r.id] if includeLines else None) for r in rows],
+        query,
+        total,
+    )
 
 
 @router.get("/orders/{id}")

@@ -1,6 +1,6 @@
 import { TriangleAlert } from "lucide-react";
 import { useState, type FormEvent } from "react";
-import { Navigate, useNavigate, Link } from "react-router-dom";
+import { Navigate, useNavigate, useLocation, Link, type Location } from "react-router-dom";
 import { Logo } from "@/components/erp/logo";
 import { ActionButton, Field, TextInput } from "@/components/erp/ui";
 import { ApiError } from "@/lib/api";
@@ -9,12 +9,18 @@ import { useAuth } from "@/lib/auth";
 export default function LoginPage() {
   const { status, login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [mfaRequired, setMfaRequired] = useState(false);
   const [useRecoveryCode, setUseRecoveryCode] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
-  if (status === "authenticated") return <Navigate to="/" replace />;
+  const fromState = (location.state as { from?: Location })?.from;
+  const targetPath = fromState?.pathname
+    ? `${fromState.pathname}${fromState.search || ""}${fromState.hash || ""}`
+    : "/";
+
+  if (status === "authenticated") return <Navigate to={targetPath} replace />;
 
   const submit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -25,11 +31,11 @@ export default function LoginPage() {
       const result = await login({
         email: String(form.get("email") ?? ""),
         password: String(form.get("password") ?? ""),
-        mfaCode: useRecoveryCode ? undefined : String(form.get("mfaCode") ?? ""),
-        mfaRecoveryCode: useRecoveryCode ? String(form.get("mfaRecoveryCode") ?? "") : undefined,
+        mfaCode: mfaRequired && !useRecoveryCode ? (String(form.get("mfaCode") ?? "").trim() || undefined) : undefined,
+        mfaRecoveryCode: mfaRequired && useRecoveryCode ? (String(form.get("mfaRecoveryCode") ?? "").trim() || undefined) : undefined,
       });
       if (result.mfaRequired) setMfaRequired(true);
-      else navigate("/", { replace: true });
+      else navigate(targetPath, { replace: true });
     } catch (exc) {
       setError(exc instanceof ApiError ? exc.detail : "Something went wrong");
     } finally {

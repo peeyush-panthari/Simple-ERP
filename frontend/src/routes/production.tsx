@@ -327,8 +327,10 @@ function ShippingTab() {
     queryKey: ["production-shipping-orders"],
     retry: false,
     queryFn: async () => {
-      const list = await api<ListResponse<{ id: string }>>("GET", "/api/v1/orders", { params: { status: "allocated,partially_allocated,partially_shipped", limit: 100 } });
-      return Promise.all(list.data.map((o) => api<ShippingOrder>("GET", `/api/v1/orders/${o.id}`)));
+      const resp = await api<ListResponse<ShippingOrder>>("GET", "/api/v1/orders", {
+        params: { status: "allocated,partially_allocated,partially_shipped", includeLines: "true", limit: 100 },
+      });
+      return resp.data;
     },
   });
   const all = shippingRows(orders.data ?? []);

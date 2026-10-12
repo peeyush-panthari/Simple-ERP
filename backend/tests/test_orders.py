@@ -390,3 +390,34 @@ def test_order_to_cash_invoice_ar_payment_and_auto_logistics(client, fresh_admin
     assert str(Party.query.filter_by(id=customer.id).first().credit_used) == "0.000000"  # released on settlement
 
     _cleanup_order_to_cash(order_id, customer.id)
+
+
+def test_list_orders_with_include_lines(client, fresh_admin, customer, product):
+    headers = _auth_headers(client, fresh_admin)
+    order_res = client.post(
+        "/api/v1/orders",
+        headers=headers,
+        json={
+            "customerId": str(customer.id),
+            "promisedDate": "2026-12-01",
+            "lines": [{"productId": str(product.id), "quantity": "3", "uom": "UNIT", "unitPrice": "50", "taxCode": "GST0"}],
+        },
+    )
+    assert order_res.status_code == 201, order_res.text
+    order_id = order_res.json()["id"]
+
+    # Without includeLines: lines key omitted
+    resp_no_lines = client.get("/api/v1/orders", headers=headers, params={"customerId": str(customer.id)})
+    assert resp_no_lines.status_code == 200
+    item = next(o for o in resp_no_lines.json()["data"] if o["id"] == order_id)
+    assert "lines" not in item
+
+    # With includeLines=true: lines batch-loaded
+    resp_lines = client.get("/api/v1/orders", headers=headers, params={"customerId": str(customer.id), "includeLines": "true"})
+    assert resp_lines.status_code == 200
+    item_with_lines = next(o for o in resp_lines.json()["data"] if o["id"] == order_id)
+    assert "lines" in item_with_lines
+    assert len(item_with_lines["lines"]) == 1
+    assert item_with_lines["lines"][0]["productId"] == str(product.id)
+
+    _cleanup_order_to_cash(order_id, customer.id)
