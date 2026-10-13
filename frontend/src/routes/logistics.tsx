@@ -281,7 +281,8 @@ function Content() {
     <div className="flex w-full flex-col items-start gap-4">
       <PageHeader eyebrow="Demand" title="Logistics" />
       <div className="flex gap-4"><StatCard label="Requests on this page" value={requests.length} /></div>
-      <select className="filter-select" value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }}>
+      <label htmlFor="logistics-status-filter" className="sr-only">Filter by status</label>
+      <select id="logistics-status-filter" className="filter-select" value={status} aria-label="Filter by all" onChange={(e) => { setStatus(e.target.value); setPage(1); }}>
         <option value="">all</option>
         {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
       </select>

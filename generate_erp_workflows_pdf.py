@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Axon ERP - Workflow & Cross-Module Architecture Specification Generator
+Simple ERP - Workflow & Cross-Module Architecture Specification Generator
 Compiles an exhaustive, publication-grade technical PDF detailing all module workflows,
 decision engines, state machines, and cross-module integrations with high-fidelity vector flowcharts.
 """
@@ -1478,7 +1478,7 @@ def generate_html():
 <html>
 <head>
 <meta charset="utf-8">
-<title>Axon ERP - Workflow &amp; Cross-Module Architecture Specification</title>
+<title>Simple ERP - Workflow &amp; Cross-Module Architecture Specification</title>
 <style>
 {css}
 </style>
@@ -1490,7 +1490,7 @@ def generate_html():
     html.append("""
     <div class="cover-page">
         <div>
-            <div class="cover-brand">Axon ERP &bull; Architecture Series</div>
+            <div class="cover-brand">Simple ERP &bull; Architecture Series</div>
             <h1 class="cover-title">Enterprise Workflow &amp;<br>Cross-Module Integration<br>Specification</h1>
             <div class="cover-subtitle">Complete operational manual, visual vector flowcharts, state machine engines, and cross-module data connection blueprints across all 18 enterprise domains.</div>
             <div class="cover-accent-bar"></div>
@@ -1515,7 +1515,7 @@ def generate_html():
             </div>
         </div>
         <div class="cover-footer">
-            &copy; 2026 Axon Technologies Inc. All rights reserved. Prepared for Solution Architects, Software Engineers, and Operations Leadership.
+            &copy; 2026 Simple ERP Technologies Inc. All rights reserved. Prepared for Solution Architects, Software Engineers, and Operations Leadership.
         </div>
     </div>
     """)
@@ -1524,7 +1524,7 @@ def generate_html():
     html.append("""
     <div class="page">
         <h2>Executive Summary &amp; Table of Contents</h2>
-        <p><strong>Axon ERP</strong> is an enterprise-grade manufacturing and supply chain operating system. It coordinates the end-to-end commercial lifecycle across multi-site manufacturing facilities, automated warehouses, regulatory compliance gateways, and double-entry financial ledgers.</p>
+        <p><strong>Simple ERP</strong> is an enterprise-grade manufacturing and supply chain operating system. It coordinates the end-to-end commercial lifecycle across multi-site manufacturing facilities, automated warehouses, regulatory compliance gateways, and double-entry financial ledgers.</p>
         <p>This technical manual provides an exhaustive operational reference for every domain module in the platform. Each section pairs a <strong>high-fidelity vector flowchart</strong> with precise step-by-step business logic, state machine specifications, and explicit upstream and downstream cross-module integration contracts.</p>
         
         <h3 style="margin-top: 14px; margin-bottom: 8px;">Document Structure &amp; Navigation</h3>
@@ -1553,7 +1553,7 @@ def generate_html():
 
         <div class="card card-blue" style="margin-top: 10px;">
             <div class="card-title">Architectural Principles &bull; The Modular Monolith Engine</div>
-            <p style="font-size: 7.8pt; margin: 0;">Axon ERP is engineered as a clean <em>modular monolith</em> with strictly bounded domains. State transitions in one module (such as GRN approval) trigger transactional side effects in dependent modules (such as Inventory balance increases and Finance 3-way match staging) through domain service contracts and ACID database transactions, preventing data desynchronization.</p>
+            <p style="font-size: 7.8pt; margin: 0;">Simple ERP is engineered as a clean <em>modular monolith</em> with strictly bounded domains. State transitions in one module (such as GRN approval) trigger transactional side effects in dependent modules (such as Inventory balance increases and Finance 3-way match staging) through domain service contracts and ACID database transactions, preventing data desynchronization.</p>
         </div>
     </div>
     """)
@@ -1562,7 +1562,7 @@ def generate_html():
     html.append(f"""
     <div class="page">
         <h2>Global Enterprise Architecture &amp; Value Stream</h2>
-        <p>The diagram below depicts the end-to-end operational lifecycle of Axon ERP. Data originates in the foundational governance layers and cascades through procurement, manufacturing, warehousing, order fulfillment, and financial accounting.</p>
+        <p>The diagram below depicts the end-to-end operational lifecycle of Simple ERP. Data originates in the foundational governance layers and cascades through procurement, manufacturing, warehousing, order fulfillment, and financial accounting.</p>
         
         <div class="svg-container">
             {generate_global_architecture_svg()}
@@ -1868,10 +1868,10 @@ def generate_html():
 
 def main():
     print("==================================================================")
-    print("Axon ERP: Compiling Technical Specification PDF...")
+    print("Simple ERP: Compiling Technical Specification PDF...")
     print("==================================================================")
 
-    output_pdf_path = os.path.abspath("Axon_ERP_Workflows_and_Module_Integration.pdf")
+    output_pdf_path = os.path.abspath("Simple ERP_ERP_Workflows_and_Module_Integration.pdf")
     
     print("[1/3] Generating comprehensive HTML specification with vector SVG flowcharts...")
     html_content = generate_html()

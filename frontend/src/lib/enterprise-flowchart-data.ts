@@ -55,8 +55,8 @@ export const STREAM_METADATA: Record<
 > = {
   "Procure-to-Pay": {
     label: "Procure-to-Pay (P2P)",
-    color: "#0d9488", // teal-600
-    badgeClass: "bg-teal-500/10 text-teal-600 border border-teal-500/20",
+    color: "#0f766e", // teal-700
+    badgeClass: "bg-teal-500/10 text-teal-700 dark:text-teal-300 border border-teal-500/20",
     borderClass: "border-teal-500",
     bgClass: "bg-teal-500/5",
     icon: "ShoppingCart",
@@ -64,8 +64,8 @@ export const STREAM_METADATA: Record<
   },
   "Plan-to-Produce": {
     label: "Plan-to-Produce (Manufacturing)",
-    color: "#7c3aed", // violet-600
-    badgeClass: "bg-purple-500/10 text-purple-600 border border-purple-500/20",
+    color: "#6d28d9", // purple-700
+    badgeClass: "bg-purple-500/10 text-purple-700 dark:text-purple-300 border border-purple-500/20",
     borderClass: "border-purple-500",
     bgClass: "bg-purple-500/5",
     icon: "Factory",
@@ -73,8 +73,8 @@ export const STREAM_METADATA: Record<
   },
   "Order-to-Cash": {
     label: "Order-to-Cash (O2C)",
-    color: "#d97706", // amber-600
-    badgeClass: "bg-amber-500/10 text-amber-600 border border-amber-500/20",
+    color: "#b45309", // amber-700
+    badgeClass: "bg-amber-500/10 text-amber-800 dark:text-amber-200 border border-amber-500/20",
     borderClass: "border-amber-500",
     bgClass: "bg-amber-500/5",
     icon: "ClipboardList",
@@ -82,8 +82,8 @@ export const STREAM_METADATA: Record<
   },
   "Warehouse & WMS": {
     label: "Warehouse, Receiving & WMS",
-    color: "#2563eb", // blue-600
-    badgeClass: "bg-blue-500/10 text-blue-600 border border-blue-500/20",
+    color: "#1d4ed8", // blue-700
+    badgeClass: "bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-500/20",
     borderClass: "border-blue-500",
     bgClass: "bg-blue-500/5",
     icon: "Warehouse",
@@ -91,8 +91,8 @@ export const STREAM_METADATA: Record<
   },
   "Finance & Accounting": {
     label: "Finance & Accounting Control",
-    color: "#059669", // emerald-600
-    badgeClass: "bg-emerald-500/10 text-emerald-600 border border-emerald-500/20",
+    color: "#047857", // emerald-700
+    badgeClass: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20",
     borderClass: "border-emerald-500",
     bgClass: "bg-emerald-500/5",
     icon: "Receipt",
@@ -100,8 +100,8 @@ export const STREAM_METADATA: Record<
   },
   Governance: {
     label: "System Administration & Governance",
-    color: "#475569", // slate-600
-    badgeClass: "bg-slate-500/10 text-slate-600 border border-slate-500/20",
+    color: "#334155", // slate-700
+    badgeClass: "bg-slate-500/10 text-slate-700 dark:text-slate-300 border border-slate-500/20",
     borderClass: "border-slate-500",
     bgClass: "bg-slate-500/5",
     icon: "ShieldCheck",

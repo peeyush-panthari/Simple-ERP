@@ -8,6 +8,7 @@ import {
   DesktopOnly,
   Field,
   Forbidden,
+  InfoTooltip,
   InlineError,
   MobileOnly,
   MobileRecordCard,
@@ -20,6 +21,7 @@ import {
   StatCard,
   TextInput,
 } from "@/components/erp/ui";
+import { ScreenTourButton } from "@/components/erp/screen-tour";
 import { useAuth } from "@/lib/auth";
 import * as format from "@/lib/format";
 import { useApiQuery, useAsyncAction } from "@/lib/hooks";
@@ -141,11 +143,34 @@ function Content() {
         title="Material Requirements Planning (MRP)"
         description="Automated gross-to-net demand explosion across sales orders, safety stock, lead times, and active BOMs."
         actions={
-          canWrite && (
-            <ActionButton onClick={() => setDialog("run")}>
-              Run MRP Calculation
-            </ActionButton>
-          )
+          <div className="flex items-center gap-2">
+            <ScreenTourButton
+              screenTitle="MRP Planning"
+              trainingModuleId="mrp"
+              steps={[
+                {
+                  title: "Gross-to-Net Calculation Engine",
+                  highlightTag: "Execution Engine",
+                  description: "Click 'Run MRP Calculation' to explode dependent component requirements from BOMs, evaluate current stock, and schedule purchase/production orders.",
+                },
+                {
+                  title: "Planned Orders Workbench",
+                  highlightTag: "Workbench Grid",
+                  description: "Review Net Requirements calculated via: Net Qty = (Gross Demand + Safety Stock) - (Projected On-Hand + Scheduled Receipts).",
+                },
+                {
+                  title: "Release to Purchase & Production",
+                  highlightTag: "Order Release Gates",
+                  description: "Select suggested orders using the checkbox column and click 'Release Selected' to instantly dispatch requisitions to Procurement or Production queues.",
+                },
+              ]}
+            />
+            {canWrite && (
+              <ActionButton onClick={() => setDialog("run")}>
+                Run MRP Calculation
+              </ActionButton>
+            )}
+          </div>
         }
       />
 
@@ -163,16 +188,23 @@ function Content() {
         aside={
           <div className="flex items-center gap-2">
             {runs.length > 1 && (
-              <SelectInput
-                value={currentRun?.id ?? ""}
-                onChange={(e) => setSelectedRunId(e.target.value)}
-                options={runs.map((r) => ({
-                  value: r.id,
-                  label: `${r.number} (${format.date(r.createdAt)})`,
-                }))}
-              />
+              <>
+                <label htmlFor="mrp-run-select" className="sr-only">Select MRP Run</label>
+                <SelectInput
+                  id="mrp-run-select"
+                  value={currentRun?.id ?? ""}
+                  onChange={(e) => setSelectedRunId(e.target.value)}
+                  options={runs.map((r) => ({
+                    value: r.id,
+                    label: `${r.number} (${format.date(r.createdAt)})`,
+                  }))}
+                />
+              </>
             )}
+            <label htmlFor="mrp-type-filter" className="sr-only">Filter planned orders by type</label>
             <SelectInput
+              id="mrp-type-filter"
+              aria-label="Filter planned orders by type"
               value={typeFilter}
               onChange={(e) => setTypeFilter(e.target.value)}
               options={[
@@ -203,22 +235,26 @@ function Content() {
               <DesktopOnly className="w-full">
                 <DataTable
                   columns={[
-                    <input
-                      type="checkbox"
-                      aria-label="Select all"
-                      checked={
-                        orders.filter((o) => o.status === "suggested").length > 0 &&
-                        orders
-                          .filter((o) => o.status === "suggested")
-                          .every((o) => selectedOrderIds.includes(o.id))
-                      }
-                      onChange={toggleSelectAll}
-                    />,
+                    <label key="select-all" className="inline-flex items-center cursor-pointer">
+                      <span className="sr-only">Select all suggested orders</span>
+                      <input
+                        id="mrp-select-all"
+                        type="checkbox"
+                        aria-label="Select all"
+                        checked={
+                          orders.filter((o) => o.status === "suggested").length > 0 &&
+                          orders
+                            .filter((o) => o.status === "suggested")
+                            .every((o) => selectedOrderIds.includes(o.id))
+                        }
+                        onChange={toggleSelectAll}
+                      />
+                    </label>,
                     "Type",
                     "SKU & Item Name",
-                    "Net Required",
+                    <span className="inline-flex items-center">Net Requirements <InfoTooltip content="Net Qty = (Gross Requirements + Safety Stock) - (Projected Available + Scheduled Receipts)" /></span>,
                     "Required Date",
-                    "Suggested Order Date",
+                    <span className="inline-flex items-center">Suggested Order Date <InfoTooltip content="Backward-scheduled target order release date calculated from supplier lead times." /></span>,
                     "Lead Time",
                     "Demand Source",
                     "Status",

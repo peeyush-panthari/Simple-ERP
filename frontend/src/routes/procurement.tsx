@@ -12,6 +12,7 @@ import { Tabs } from "@/components/erp/tabs";
 import {
   ActionButton, DataTable, DesktopOnly, EmptyState, Forbidden, InlineError, MobileOnly, MobileRecordCard, MobileRecordRow, Modal, PageHeader, Pagination, Pill, SelectInput, TextInput,
 } from "@/components/erp/ui";
+import { ScreenTourButton } from "@/components/erp/screen-tour";
 import { useAuth } from "@/lib/auth";
 import * as format from "@/lib/format";
 import { downloadBlob, useApiQuery, useAsyncAction, useDebounced, type ListResponse } from "@/lib/hooks";
@@ -378,12 +379,15 @@ function PurchaseOrdersView() {
   return (
     <div className="flex w-full flex-col items-start gap-4">
       <div className="flex w-full flex-wrap items-center gap-3 md:flex-nowrap">
-        <input className="search-input" style={{ width: "20rem" }} placeholder="Search PO number or vendor…" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} />
-        <select className="filter-select" style={{ width: "12rem" }} value={vendor} onChange={(e) => { setVendor(e.target.value); setPage(1); }}>
+        <label htmlFor="po-search-input" className="sr-only">Search PO number or vendor</label>
+        <input id="po-search-input" className="search-input" style={{ width: "20rem" }} placeholder="Search PO number or vendor…" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} />
+        <label htmlFor="po-vendor-filter" className="sr-only">Filter by vendor</label>
+        <select id="po-vendor-filter" className="filter-select" style={{ width: "12rem" }} value={vendor} aria-label="Filter by All vendors" onChange={(e) => { setVendor(e.target.value); setPage(1); }}>
           <option value="">All vendors</option>
           {(vendors.data?.data ?? []).map((v) => <option key={v.id} value={v.id}>{v.displayName}</option>)}
         </select>
-        <select className="filter-select" style={{ width: "11rem" }} value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }}>
+        <label htmlFor="po-status-filter" className="sr-only">Filter by status</label>
+        <select id="po-status-filter" className="filter-select" style={{ width: "11rem" }} value={status} aria-label="Filter by All Status" onChange={(e) => { setStatus(e.target.value); setPage(1); }}>
           <option value="">All Status</option>
           {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
         </select>
@@ -525,7 +529,33 @@ function Content() {
 
   return (
     <div className="flex w-full flex-col items-start gap-4">
-      <PageHeader eyebrow="Supply chain" title="Procurement" />
+      <PageHeader
+        eyebrow="Supply chain"
+        title="Procurement"
+        actions={
+          <ScreenTourButton
+            screenTitle="Procurement Hub"
+            trainingModuleId="procurement"
+            steps={[
+              {
+                title: "Purchase Requisitions",
+                highlightTag: "Internal Demand",
+                description: "Internal teams request inventory or non-stock supplies. Requisitions require approval before advancing to procurement.",
+              },
+              {
+                title: "Sourcing & RFQ Comparison",
+                highlightTag: "Supplier Bidding",
+                description: "Send Request for Quotations (RFQs) to multiple qualified vendors and evaluate side-by-side landed quote matrices.",
+              },
+              {
+                title: "PO Generation & Multi-Tier Approval",
+                highlightTag: "Purchase Orders",
+                description: "Generate legally binding Purchase Orders with automatic tiered authorization rules based on PO monetary threshold.",
+              },
+            ]}
+          />
+        }
+      />
       {views.length > 1 ? <Tabs value={tab} onValueChange={handleTabChange} tabs={views} /> : views[0]?.content}
       {poFor && <RequisitionPoDialog requisition={poFor} onClose={() => setPoFor(null)} />}
       {sourceFor && <RfqStartDialog requisition={sourceFor} onClose={() => setSourceFor(null)} onStarted={(id) => openRfq(id)} />}

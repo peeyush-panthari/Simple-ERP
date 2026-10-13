@@ -55,7 +55,7 @@ interface Invoice {
 /** Shared list chrome: filter select + error + desktop table / mobile cards. */
 function StatusFilter({ value, onChange, options }: { value: string; onChange: (v: string) => void; options: string[] }) {
   return (
-    <select className="filter-select" value={value} onChange={(e) => onChange(e.target.value)}>
+    <select className="filter-select" value={value} aria-label="Filter by all" onChange={(e) => onChange(e.target.value)}>
       <option value="">all</option>
       {options.map((o) => <option key={o} value={o}>{o}</option>)}
     </select>
@@ -387,7 +387,7 @@ function PaymentsTab() {
           <ActionButton onClick={() => setRecord("inbound")}>Record AR payment</ActionButton>
         </div>
       )}
-      <select className="filter-select" value={direction} onChange={(e) => { setDirection(e.target.value); setPage(1); }}>
+      <select className="filter-select" value={direction} aria-label="Filter by all" onChange={(e) => { setDirection(e.target.value); setPage(1); }}>
         <option value="">all</option><option value="inbound">inbound</option><option value="outbound">outbound</option>
       </select>
       <InlineError message={list.error?.message} />
@@ -500,7 +500,7 @@ function InvoicesTab() {
         <div className="flex items-center gap-1"><span className="text-xs text-[var(--muted-foreground)]">Status</span><StatusFilter value={status} onChange={setStatus} options={INVOICE_ORDER_STATUSES} /></div>
         <div className="flex items-center gap-1">
           <span className="text-xs text-[var(--muted-foreground)]">Invoiced</span>
-          <select className="filter-select" value={invoiced} onChange={(e) => setInvoiced(e.target.value)}><option value="">all</option><option value="yes">yes</option><option value="no">no</option></select>
+          <select className="filter-select" value={invoiced} aria-label="Filter by all" onChange={(e) => setInvoiced(e.target.value)}><option value="">all</option><option value="yes">yes</option><option value="no">no</option></select>
         </div>
         <TextInput style={{ width: "12rem" }} placeholder="Customer" value={customer} onChange={(e) => setCustomer(e.target.value)} />
         <TextInput style={{ width: "16rem" }} placeholder="Search order ID / invoice ID" value={search} onChange={(e) => setSearch(e.target.value)} />
@@ -542,7 +542,7 @@ function AgingTab() {
   const docs = (report.documents ?? []).map((d) => ({ ...d, due: format.date(d.dueDate), out: format.money(d.outstanding) }));
   return (
     <div className="flex w-full flex-col items-start gap-3 pt-4">
-      <select className="filter-select" value={side} onChange={(e) => setSide(e.target.value)}><option value="ap">ap</option><option value="ar">ar</option></select>
+      <select className="filter-select" value={side} aria-label="Filter by ap" onChange={(e) => setSide(e.target.value)}><option value="ap">ap</option><option value="ar">ar</option></select>
       <InlineError message={ap.error?.message || ar.error?.message} />
       <div className="flex flex-wrap gap-3">
         <StatCard label="Total outstanding" value={format.money(report.total)} />

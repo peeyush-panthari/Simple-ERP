@@ -24,7 +24,7 @@ from app.models.notification_template import NotificationTemplate
 
 logger = logging.getLogger("axon.notification.templates")
 
-_DEFAULT_FOOTER = "This is an automated message from Axon ERP. Please do not reply to this address."
+_DEFAULT_FOOTER = "This is an automated message from Simple ERP. Please do not reply to this address."
 
 
 def _layout(title: str, body: str, footer: str = _DEFAULT_FOOTER) -> str:
@@ -61,7 +61,7 @@ SEED_TEMPLATES: list[SeedTemplate] = [
     SeedTemplate(
         "purchase-order.issued",
         "email",
-        "Purchase order {{number}} from Axon Industries",
+        "Purchase order {{number}} from Simple ERP Industries",
         "Purchase order {{number}} has been issued to {{vendor.name}}.\nDated {{poDate}}, required by {{expectedDate}}.\nDeliver to: {{warehouse}}.\nTotal: {{currency}} {{total}} ({{paymentTerms}}).",
         _layout(
             "Purchase order {{number}}",
@@ -113,15 +113,15 @@ SEED_TEMPLATES: list[SeedTemplate] = [
     SeedTemplate(
         "user.invitation",
         "email",
-        "You have been invited to Axon ERP",
-        "Hello {{displayName}}, you have been invited to Axon ERP. Use this token to set your password: {{inviteToken}}",
-        _layout("You have been invited to Axon ERP", "<p>Hello {{displayName}}, you have been invited to Axon ERP.</p><p>Use this token to set your password: <b>{{inviteToken}}</b></p>"),
+        "You have been invited to Simple ERP",
+        "Hello {{displayName}}, you have been invited to Simple ERP. Use this token to set your password: {{inviteToken}}",
+        _layout("You have been invited to Simple ERP", "<p>Hello {{displayName}}, you have been invited to Simple ERP.</p><p>Use this token to set your password: <b>{{inviteToken}}</b></p>"),
         "Sent when a new user is created without a password (invite flow).",
     ),
     SeedTemplate(
         "user.password_reset",
         "email",
-        "Reset your Axon ERP password",
+        "Reset your Simple ERP password",
         "Hello {{displayName}}, a password reset request was received for your account. Use this reset token: {{resetToken}} (valid for 1 hour). If you did not request this, you can ignore this email.",
         _layout("Reset your password", "<p>Hello {{displayName}},</p><p>A password reset request was received for your account.</p><p>Use this reset token to change your password: <b>{{resetToken}}</b></p><p>This token is valid for 1 hour. If you did not request a password reset, you can safely ignore this email.</p>"),
         "Sent when a user requests a password reset.",

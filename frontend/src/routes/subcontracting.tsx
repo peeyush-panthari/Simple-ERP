@@ -258,7 +258,9 @@ export default function SubcontractingPage() {
             ))}
           </div>
 
+          <label htmlFor="subcontracting-search-input" className="sr-only">Search Order #, Vendor, SKU</label>
           <TextInput
+            id="subcontracting-search-input"
             placeholder="Search Order #, Vendor, SKU..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}

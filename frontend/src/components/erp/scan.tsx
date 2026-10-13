@@ -42,7 +42,9 @@ export function ScanToJumpBox({ placeholder = "Scan to jump to an Inventory IDâ€
 
   return (
     <div className="flex flex-col items-start gap-1">
+      <label htmlFor="scan-jump-input" className="sr-only">Scan to jump to an Inventory ID</label>
       <input
+        id="scan-jump-input"
         className="ui-input"
         style={{ width: "20rem" }}
         placeholder={placeholder}
@@ -62,15 +64,19 @@ export function ScanToJumpBox({ placeholder = "Scan to jump to an Inventory IDâ€
 /** A photo button that opens the device camera directly on a phone (file input with `capture`). */
 export function ScanToAddButton({ onPhoto, busy, label = "Scan to Add", busyLabel = "Scanningâ€¦" }: { onPhoto: (file: File) => void; busy: boolean; label?: string; busyLabel?: string }) {
   const ref = useRef<HTMLInputElement>(null);
+  const inputId = useRef(`scan-photo-${Math.random().toString(36).substring(2, 9)}`);
   return (
     <div>
       <ActionButton size="sm" tone="ghost" loading={busy} onClick={() => ref.current?.click()}>
         <Camera size={14} />
         {busy ? busyLabel : label}
       </ActionButton>
+      <label htmlFor={inputId.current} className="sr-only">Upload or capture photo to add</label>
       <input
+        id={inputId.current}
         ref={ref}
         type="file"
+        aria-label="Upload or capture photo to add"
         accept="image/*"
         capture="environment"
         className="hidden"

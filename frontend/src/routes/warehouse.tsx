@@ -501,16 +501,20 @@ function GrnTab({ grns, filters, setFilters, vendors, warehouses, error, onRefre
       </div>
       <ScanToJumpBox />
       <div className="flex w-full flex-wrap items-center gap-3 md:flex-nowrap">
-        <input className="search-input shrink-0" style={{ width: "20rem" }} placeholder="Search GRN number or PO number…" value={filters.search} onChange={(e) => set({ search: e.target.value })} />
-        <select className="filter-select" style={{ width: "12rem" }} value={filters.vendor} onChange={(e) => set({ vendor: e.target.value })}>
+        <label htmlFor="grn-search-input" className="sr-only">Search GRN number or PO number</label>
+        <input id="grn-search-input" className="search-input shrink-0" style={{ width: "20rem" }} placeholder="Search GRN number or PO number…" value={filters.search} onChange={(e) => set({ search: e.target.value })} />
+        <label htmlFor="grn-vendor-filter" className="sr-only">Filter by vendor</label>
+        <select id="grn-vendor-filter" className="filter-select" style={{ width: "12rem" }} value={filters.vendor} aria-label="Filter by All vendors" onChange={(e) => set({ vendor: e.target.value })}>
           <option value="">All vendors</option>
           {vendors.map((v) => <option key={v.id} value={v.id}>{v.displayName}</option>)}
         </select>
-        <select className="filter-select" style={{ width: "12rem" }} value={filters.warehouse} onChange={(e) => set({ warehouse: e.target.value })}>
+        <label htmlFor="grn-warehouse-filter" className="sr-only">Filter by warehouse</label>
+        <select id="grn-warehouse-filter" className="filter-select" style={{ width: "12rem" }} value={filters.warehouse} aria-label="Filter by All warehouses" onChange={(e) => set({ warehouse: e.target.value })}>
           <option value="">All warehouses</option>
           {warehouses.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
         </select>
-        <select className="filter-select" value={filters.status} onChange={(e) => set({ status: e.target.value })}>
+        <label htmlFor="grn-status-filter" className="sr-only">Filter by status</label>
+        <select id="grn-status-filter" className="filter-select" value={filters.status} aria-label="Filter by All Status" onChange={(e) => set({ status: e.target.value })}>
           <option value="">All Status</option>
           {GRN_STATUSES.map((s) => <option key={s} value={s}>{grnStatusLabel(s)}</option>)}
         </select>

@@ -1,6 +1,6 @@
-import { CheckCircle2, TriangleAlert, ArrowLeft } from "lucide-react";
+import { ArrowLeft, CheckCircle2, HelpCircle, TriangleAlert } from "lucide-react";
 import { useState, type FormEvent } from "react";
-import { Link, Navigate } from "react-router-dom";
+import { Link, Navigate, useNavigate } from "react-router-dom";
 import { Logo } from "@/components/erp/logo";
 import { ActionButton, Field, TextInput } from "@/components/erp/ui";
 import { ApiError, request } from "@/lib/api";
@@ -8,6 +8,7 @@ import { useAuth } from "@/lib/auth";
 
 export default function ForgotPasswordPage() {
   const { status } = useAuth();
+  const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [tenantSlug, setTenantSlug] = useState("");
   const [submitted, setSubmitted] = useState(false);
@@ -36,12 +37,17 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4 py-10" style={{ background: "var(--background)" }}>
+    <main id="main-content" role="main" aria-label="Forgot password" className="flex min-h-screen items-center justify-center px-4 py-10" style={{ background: "var(--background)" }}>
       <div className="w-full max-w-sm">
         <div className="mb-7">
           <Logo markClass="h-14 w-auto" textClass="font-display tracking-tight text-[var(--foreground)] font-semibold text-2xl" />
         </div>
         <div className="panel p-6">
+          <nav aria-label="breadcrumb" className="breadcrumb mb-4 flex items-center gap-1.5 text-xs text-[var(--muted-foreground)]">
+            <Link to="/login" className="hover:text-[var(--foreground)]">Sign In</Link>
+            <span>/</span>
+            <span className="font-medium text-[var(--foreground)]">Reset Password</span>
+          </nav>
           {submitted ? (
             <div className="flex flex-col items-center text-center">
               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
@@ -70,8 +76,9 @@ export default function ForgotPasswordPage() {
                 Enter your work email address and we'll send you a link to reset your credentials.
               </p>
               <form onSubmit={submit} className="mt-5 flex flex-col gap-4">
-                <Field label="Email address">
+                <Field label="Email address" htmlFor="forgot-email">
                   <TextInput
+                    id="forgot-email"
                     name="email"
                     type="email"
                     required
@@ -81,12 +88,13 @@ export default function ForgotPasswordPage() {
                     autoComplete="email"
                   />
                 </Field>
-                <Field label="Organization / Tenant slug" hint="Optional, leave blank for default">
+                <Field label="Organization / Tenant slug" hint="Optional, leave blank for default" htmlFor="forgot-tenant-slug">
                   <TextInput
+                    id="forgot-tenant-slug"
                     name="tenantSlug"
                     value={tenantSlug}
                     onChange={(e) => setTenantSlug(e.target.value)}
-                    placeholder="e.g. axon-main"
+                    placeholder="e.g. simple-erp-main"
                   />
                 </Field>
                 {error && (
@@ -107,7 +115,17 @@ export default function ForgotPasswordPage() {
             </>
           )}
         </div>
+        <div className="mt-4 flex justify-center">
+          <button
+            type="button"
+            aria-label="Help and training documentation"
+            onClick={() => navigate("/training")}
+            className="inline-flex items-center gap-1.5 text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+          >
+            <HelpCircle className="w-3.5 h-3.5" /> Help &amp; Interactive Training
+          </button>
+        </div>
       </div>
-    </div>
+    </main>
   );
 }

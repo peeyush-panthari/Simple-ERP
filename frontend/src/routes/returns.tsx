@@ -1,6 +1,7 @@
-/** Reverse Logistics: Customer Returns (RMA) and Supplier Returns (RTV). */
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { Link } from "react-router-dom";
+import { RotateCcw, Undo2 } from "lucide-react";
 import { Shell } from "@/components/erp/shell";
 import {
   ActionButton,
@@ -324,8 +325,20 @@ function Content() {
         <Panel title="Customer Returns (RMA) Book">
           <div className="flex w-full flex-col items-start gap-2 px-4 py-3">
             {rmas.length === 0 ? (
-              <div className="py-8 text-center text-sm text-[var(--muted-foreground)] w-full">
-                No customer returns recorded yet. Click "Authorize Customer Return (RMA)" to create one.
+              <div className="p-8 text-center border-2 border-dashed border-[var(--border)] rounded-xl w-full my-2">
+                <RotateCcw className="w-10 h-10 mx-auto text-[var(--muted-foreground)] mb-2" />
+                <h3 className="text-sm font-semibold text-[var(--foreground)]">No Active Customer Returns (RMA)</h3>
+                <p className="text-xs text-[var(--muted-foreground)] max-w-sm mx-auto mt-1 mb-4">
+                  Returns from customer sales orders or warranty claims queue here for inspection, disposition, and credit note issuance.
+                </p>
+                <div className="flex items-center justify-center gap-3">
+                  <ActionButton size="sm" onClick={() => setDialog("new-rma")}>
+                    Authorize Customer Return (RMA) →
+                  </ActionButton>
+                  <Link to="/orders" className="text-xs font-semibold text-[var(--primary)] hover:underline">
+                    View Sales Orders
+                  </Link>
+                </div>
               </div>
             ) : (
               <DesktopOnly className="w-full">
@@ -418,8 +431,20 @@ function Content() {
         <Panel title="Supplier Returns (RTV) Book">
           <div className="flex w-full flex-col items-start gap-2 px-4 py-3">
             {rtvs.length === 0 ? (
-              <div className="py-8 text-center text-sm text-[var(--muted-foreground)] w-full">
-                No supplier returns recorded yet. Click "New Return to Vendor (RTV)" to initiate one.
+              <div className="p-8 text-center border-2 border-dashed border-[var(--border)] rounded-xl w-full my-2">
+                <Undo2 className="w-10 h-10 mx-auto text-[var(--muted-foreground)] mb-2" />
+                <h3 className="text-sm font-semibold text-[var(--foreground)]">No Active Returns to Vendor (RTV)</h3>
+                <p className="text-xs text-[var(--muted-foreground)] max-w-sm mx-auto mt-1 mb-4">
+                  Rejected items from inbound receipt inspection or defective raw materials queue here for return delivery and vendor debit notes.
+                </p>
+                <div className="flex items-center justify-center gap-3">
+                  <ActionButton size="sm" onClick={() => setDialog("new-rtv")}>
+                    New Return to Vendor (RTV) →
+                  </ActionButton>
+                  <Link to="/warehouse" className="text-xs font-semibold text-[var(--primary)] hover:underline">
+                    Inbound Warehouse Receipts
+                  </Link>
+                </div>
               </div>
             ) : (
               <DesktopOnly className="w-full">

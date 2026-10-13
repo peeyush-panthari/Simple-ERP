@@ -433,7 +433,8 @@ function SalesBook() {
         <StatCard label="Open order value (this page)" value={format.money(openValue)} />
         <StatCard label="Orders on this page" value={orders.length} />
       </div>
-      <select className="filter-select" value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }}>
+      <label htmlFor="orders-status-filter" className="sr-only">Filter by status</label>
+      <select id="orders-status-filter" className="filter-select" value={status} aria-label="Filter by all" onChange={(e) => { setStatus(e.target.value); setPage(1); }}>
         <option value="">all</option>
         {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
       </select>

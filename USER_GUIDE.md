@@ -1,6 +1,6 @@
-# Axon ERP | Module User Guide & FAQs
+# Simple ERP | Module User Guide & FAQs
 
-**A practical, screen-by-screen manual for everyday use of the Axon ERP system — what each screen is for, how to reach it, and how to complete the tasks it supports.**
+**A practical, screen-by-screen manual for everyday use of the Simple ERP system — what each screen is for, how to reach it, and how to complete the tasks it supports.**
 
 *Version:* 2.4.0 Enterprise Edition  
 *Date of Revision:* October 2026  
@@ -36,7 +36,7 @@
 
 ## 1. Platform Architecture & Navigation Overview
 
-Axon ERP is built around a secure, role-based access control (RBAC) model and enterprise site scoping (governing physical access to factories and warehouses). 
+Simple ERP is built around a secure, role-based access control (RBAC) model and enterprise site scoping (governing physical access to factories and warehouses). 
 
 ### Navigation Hierarchy
 The system groups operational modules into business domains within the collapsible sidebar:
@@ -64,13 +64,13 @@ The system groups operational modules into business domains within the collapsib
 `GETTING STARTED` • Route: `/login` • Access: Public / Auto-redirected
 
 ### Purpose
-The sign-in screen is the front door to Axon ERP. It establishes who you are and, from that, which modules and buttons you will see everywhere else in the system. Every screen in the app checks your permissions before showing its content, and those permissions come from the session created here.
+The sign-in screen is the front door to Simple ERP. It establishes who you are and, from that, which modules and buttons you will see everywhere else in the system. Every screen in the app checks your permissions before showing its content, and those permissions come from the session created here.
 
 ### How to Get There
-You do not navigate to this screen deliberately — if you open Axon ERP without a valid session, you are sent here automatically. The address is `/login`. Once you are signed in, the app never shows this screen again unless you sign out or your session is fully invalidated.
+You do not navigate to this screen deliberately — if you open Simple ERP without a valid session, you are sent here automatically. The address is `/login`. Once you are signed in, the app never shows this screen again unless you sign out or your session is fully invalidated.
 
 ### Layout Overview
-* A centered card holds the Axon logo, the heading **"Sign in"**, and a short line reminding you that your role determines which modules and actions are available.
+* A centered card holds the Simple ERP logo, the heading **"Sign in"**, and a short line reminding you that your role determines which modules and actions are available.
 * Below that is the sign-in form: an **Email** field, a **Password** field, and — only once the server tells the page it is needed — an **Authentication code** field for multi-factor authentication (MFA).
 * If a sign-in attempt fails, a red banner appears above the button with the reason the server gave.
 * The **Sign in** button reads *"Signing in…"* and disables itself while your credentials are being checked, so a second click cannot fire a duplicate request.
@@ -83,7 +83,7 @@ You do not navigate to this screen deliberately — if you open Axon ERP without
 ### Step-by-Step: Common Tasks
 
 #### To sign in
-1. Open Axon ERP in your browser — you will land on the Sign in screen if you are not already signed in.
+1. Open Simple ERP in your browser — you will land on the Sign in screen if you are not already signed in.
 2. Enter your **Email** and **Password**.
 3. Click **Sign in**.
 4. If your account does not use MFA, you are taken straight to the Control Tower (the home dashboard).
@@ -114,7 +114,7 @@ A: There is no self-service "forgot password" link on the Sign-in screen. If you
 A: Your account has multi-factor authentication enabled. This is expected — enter the current code from your authenticator app.
 
 **Q: My session keeps timing out. Why?**  
-A: Axon ERP uses short-lived access tokens that refresh automatically in the background while you use the app. You are only returned to Sign in if the longer-lived refresh token itself has expired or been invalidated (for example, because it was already used once from another tab or device).
+A: Simple ERP uses short-lived access tokens that refresh automatically in the background while you use the app. You are only returned to Sign in if the longer-lived refresh token itself has expired or been invalidated (for example, because it was already used once from another tab or device).
 
 **Q: Why was I redirected to Sign in from a page I had bookmarked?**  
 A: Every page requires an active, authenticated session. If your session was not active when you opened the link, you are sent to Sign in first and returned to your intended page after you log in.
@@ -128,7 +128,7 @@ A: Every page requires an active, authenticated session. If your session was not
 The Control Tower gives an immediate, company-wide snapshot of current operational and financial health: open orders, production progress, working capital, inventory valuation, and recent system activity. It is the first screen you see after signing in, provided your account holds the analytics permission.
 
 ### How to Get There
-Click the Axon logo in the header, or the **"Control tower"** item at the top of the Overview group in the sidebar. The address is simply `/` — it is the page you land on immediately after signing in. Seeing the dashboard's charts and figures requires the `analytics:read` permission; without it, you still land on this page after signing in, but you see a plain message pointing you to the modules in the sidebar instead of the dashboard content.
+Click the Simple ERP logo in the header, or the **"Control tower"** item at the top of the Overview group in the sidebar. The address is simply `/` — it is the page you land on immediately after signing in. Seeing the dashboard's charts and figures requires the `analytics:read` permission; without it, you still land on this page after signing in, but you see a plain message pointing you to the modules in the sidebar instead of the dashboard content.
 
 ### Layout Overview
 * Top statistics strip: high-level cards summarizing **Open orders**, **Production runs**, **Working capital**, and **Inventory valuation** — clicking an operational card takes you straight to the corresponding module.
@@ -177,7 +177,7 @@ A: It reuses the same Audit Log entries described in the Audit Log chapter — i
 `FOUNDATION` • Route: `/parties` • Detail: `/parties/:id` • Permissions: `party:read` (view), `party:write` (create/edit/upload), `party:block` (block/unblock)
 
 ### Purpose
-Every organization Axon ERP transacts with — vendors you buy from, customers you sell to, and transporters/carriers used in logistics — is recorded once here as a "party". This is the master record that Procurement, Orders, Logistics and Finance all draw their vendor/customer names, credit terms, addresses, contacts and bank details from.
+Every organization Simple ERP transacts with — vendors you buy from, customers you sell to, and transporters/carriers used in logistics — is recorded once here as a "party". This is the master record that Procurement, Orders, Logistics and Finance all draw their vendor/customer names, credit terms, addresses, contacts and bank details from.
 
 ### How to Get There
 Sidebar → Foundation → Party master (path `/parties`). Requires the `party:read` permission. Clicking a party's code or its Open button takes you to that party's own detail page (`/parties/:id`).
@@ -273,7 +273,7 @@ A: Orders checks the customer's Credit used against their Credit limit here on t
 `FOUNDATION` • Route: `/products` • Permissions: `product:read` (view), `product:write` (create/edit/upload), `bom:read` (view BOMs), `bom:write` (create/version BOMs), `bom:approve` (approve/reject BOMs)
 
 ### Purpose
-The Product Catalog is the master directory of everything Axon ERP buys, sells, or manufactures: raw materials, finished goods, consumables and services. Tied directly to each finished good is its Bill of Materials (BOM) — the precise recipe of raw materials and consumables needed to produce one unit of that good.
+The Product Catalog is the master directory of everything Simple ERP buys, sells, or manufactures: raw materials, finished goods, consumables and services. Tied directly to each finished good is its Bill of Materials (BOM) — the precise recipe of raw materials and consumables needed to produce one unit of that good.
 
 ### How to Get There
 Sidebar → Foundation → Products & BOM (path `/products`). Requires `product:read` for the Products tab and `bom:read` for the BOM tab.
@@ -376,7 +376,7 @@ Sidebar → Supply chain → Procurement (path `/procurement`). Requires `po:rea
 
 ### Key Fields & What They Mean
 * **Vendor:** The party the PO is raised against — must be an active vendor-type party.
-* **Invoice to (business entity):** Which of Axon's own legal entities is the buyer of record on this PO (from the PO & Invoice module).
+* **Invoice to (business entity):** Which of Simple ERP's own legal entities is the buyer of record on this PO (from the PO & Invoice module).
 * **Ship to (warehouse):** The warehouse the goods should be delivered to (from Factory & Warehouse).
 * **Unit price:** Entered before GST; the selected GST % is added per line to compute the line's tax and gross amount.
 * **Status:** draft, pending_approval, approved, issued, partially_received, received, closed, or cancelled — in practice, new POs go straight to issued.
@@ -991,7 +991,7 @@ A: Opening the dispatch record and clicking "Mark Delivered" updates the status,
 `DEMAND / FINANCE` • Route: `/finance` • Permissions: `finance:read` (view), `invoice:post` (post AP invoices), `order:invoice` (generate customer invoices), `payment:write` (record payments), `payment:approve` (approve/reverse payments)
 
 ### Purpose
-Finance is the accounting hub of Axon ERP where money owed to vendors (Accounts Payable) and owed by customers (Accounts Receivable) is tracked, three-way vendor invoice matching is performed, customer tax invoices are generated and downloaded, payments are recorded and approved, credit notes are issued, and aging schedules and working capital are monitored.
+Finance is the accounting hub of Simple ERP where money owed to vendors (Accounts Payable) and owed by customers (Accounts Receivable) is tracked, three-way vendor invoice matching is performed, customer tax invoices are generated and downloaded, payments are recorded and approved, credit notes are issued, and aging schedules and working capital are monitored.
 
 ### How to Get There
 Sidebar → Finance → **Finance & AR/AP** (path `/finance`). Requires `finance:read`.
@@ -1065,7 +1065,7 @@ PO & Invoice manages the organization's own registered legal business entities (
 1. **Seller of Record on Invoices:** The legal name, registered office address, GSTIN, PAN, and corporate identity stamped onto customer sales invoices and delivery challans.
 2. **Buyer / Bill-To Party on POs:** The corporate identity and billing address on purchase orders issued to vendors.
 3. **Remittance Banking Rails:** The official bank account name, branch, account number, and IFSC code printed on customer invoices directing where wire payments (NEFT/RTGS/IMPS) should be remitted.
-4. **Multi-Vertical Operations:** Allows different operating divisions (e.g., Battery Division vs. Chemicals Division) to raise official documents under distinct legal registrations and tax IDs within a single Axon ERP tenant.
+4. **Multi-Vertical Operations:** Allows different operating divisions (e.g., Battery Division vs. Chemicals Division) to raise official documents under distinct legal registrations and tax IDs within a single Simple ERP tenant.
 
 ### How to Get There
 Sidebar → Finance (or Foundation) → **PO & Invoice** (path `/po-invoice`). Requires `org:read` to view and `org:write` to create, modify, or bulk upload.
@@ -1075,7 +1075,7 @@ Sidebar → Finance (or Foundation) → **PO & Invoice** (path `/po-invoice`). R
 * **Action Toolbar:** Displays **Bulk Upload** and **New business entity** buttons when holding `org:write`.
 * **Desktop Table:**
   * **Code:** Unique entity code (e.g., `ENT-001`), generated automatically.
-  * **Name:** Registered corporate name (e.g., "Axon Technologies Pvt Ltd").
+  * **Name:** Registered corporate name (e.g., "Simple ERP Technologies Pvt Ltd").
   * **Location:** City and Indian State representation (e.g., "Pune, 27 — Maharashtra").
   * **Tax ID:** Registered Tax ID / GSTIN (e.g., `27AABCF1234F1Z5`).
   * **Bank:** Masked bank summary showing Bank Name and last 4 digits (e.g., `HDFC Bank ••4321`).
@@ -1115,7 +1115,7 @@ Sidebar → Finance (or Foundation) → **PO & Invoice** (path `/po-invoice`). R
 #### To create a new legal business entity
 1. Navigate to **PO & Invoice** (under Finance or Foundation).
 2. Click **New business entity**.
-3. Enter the registered **Name** (e.g., "Axon Energy Solutions Pvt Ltd").
+3. Enter the registered **Name** (e.g., "Simple ERP Energy Solutions Pvt Ltd").
 4. Enter the registered address: Address Line 1, City, Postal code, and select the **State** from the dropdown.
 5. In the statutory section, enter the **Tax ID / GSTIN** and **Company PAN**.
 6. In the contact section, enter the **Contact email** (e.g., `billing@axon-erp.local`) and phone.
@@ -1476,4 +1476,4 @@ A: Parties, Products, BOMs, Purchase Orders, GRNs, QC Decisions, Stock Adjustmen
 A: Yes. Bulk uploads evaluate each row independently. Valid records are committed, and failed rows are packaged into a downloadable error CSV for correction.
 
 ---
-*End of User Guide — Axon ERP System Manual*
+*End of User Guide — Simple ERP System Manual*

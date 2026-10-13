@@ -54,9 +54,15 @@ function Content() {
       {d.kind === "generated" && <ActionButton size="sm" tone="ghost" onClick={() => reprint(d)}>Reprint</ActionButton>}
     </>
   );
-  const input = (key: keyof typeof filters, placeholder: string, width: string) => (
-    <input className="search-input" style={{ width }} placeholder={placeholder} value={filters[key]} onChange={(e) => setFilters({ ...filters, [key]: e.target.value })} />
-  );
+  const input = (key: keyof typeof filters, placeholder: string, width: string) => {
+    const id = `doc-filter-${key}`;
+    return (
+      <div key={key}>
+        <label htmlFor={id} className="sr-only">{placeholder}</label>
+        <input id={id} className="search-input" style={{ width }} placeholder={placeholder} value={filters[key]} onChange={(e) => setFilters({ ...filters, [key]: e.target.value })} />
+      </div>
+    );
+  };
 
   return (
     <div className="flex w-full flex-col gap-4">

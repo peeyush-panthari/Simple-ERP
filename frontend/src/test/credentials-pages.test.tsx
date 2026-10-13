@@ -119,7 +119,7 @@ describe("Credentials & User Lifecycle Pages", () => {
         </MemoryRouter>
       );
 
-      expect(screen.getByText("Welcome to Axon ERP")).toBeInTheDocument();
+      expect(screen.getByText("Welcome to Simple ERP")).toBeInTheDocument();
 
       const nameInput = screen.getByPlaceholderText("Jane Doe");
       fireEvent.change(nameInput, { target: { value: "Jane Doe" } });

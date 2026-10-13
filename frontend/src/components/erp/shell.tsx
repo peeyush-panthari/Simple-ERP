@@ -13,8 +13,9 @@ import { useMemo, useState, type FormEvent, type KeyboardEvent, type ReactNode }
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { Logo } from "@/components/erp/logo";
 import { LoadingOverlay, Spinner, TopProgress } from "@/components/erp/ui";
+import { GlobalHelpDrawer } from "@/components/erp/help-drawer";
 import { useAuth } from "@/lib/auth";
-import { groupedNav, mobileTabItems, type NavItem } from "@/lib/nav";
+import { groupedNav, mobileTabItems, resolveBreadcrumbs, type NavItem } from "@/lib/nav";
 import { cn } from "@/lib/utils";
 
 /** Routes a typed identifier to the module page whose prefix it matches (e.g. "PO-3005" -> /procurement). */
@@ -39,10 +40,17 @@ function GlobalSearch() {
     navigate(`${target}?q=${encodeURIComponent(q)}`);
   };
   return (
-    <form onSubmit={submit} className="global-search hidden md:flex">
-      <Search size={16} className="shrink-0 text-[var(--sidebar-foreground)]/60" />
-      <input value={value} onChange={(e) => setValue(e.target.value)} placeholder="Search POs, SKUs, parties…" />
-      <kbd>⏎</kbd>
+    <form onSubmit={submit} className="global-search hidden md:flex" role="search">
+      <label htmlFor="global-search-input" className="sr-only">Search POs, SKUs, parties</label>
+      <Search size={16} className="shrink-0 text-[var(--sidebar-foreground)]/60" aria-hidden="true" />
+      <input
+        id="global-search-input"
+        aria-label="Search POs, SKUs, parties, or records"
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        placeholder="Search POs, SKUs, parties…"
+      />
+      <kbd aria-hidden="true">⏎</kbd>
     </form>
   );
 }
@@ -149,6 +157,7 @@ function ProfileMenu() {
   );
 }
 
+
 function Header({ degraded }: { degraded: boolean }) {
   return (
     <header className="app-header">
@@ -157,6 +166,7 @@ function Header({ degraded }: { degraded: boolean }) {
       </Link>
       <div className="app-header-divider hidden md:block" />
       <GlobalSearch />
+      <GlobalHelpDrawer />
       <NotificationBell degraded={degraded} />
       <ProfileMenu />
     </header>
@@ -273,6 +283,37 @@ function BottomTabBar() {
   );
 }
 
+function BreadcrumbTrail() {
+  const { pathname } = useLocation();
+  const crumbs = useMemo(() => resolveBreadcrumbs(pathname), [pathname]);
+
+  if (crumbs.length === 0) return null;
+
+  return (
+    <nav className="breadcrumb-trail" aria-label="breadcrumb">
+      <ol>
+        {crumbs.map((crumb, idx) => {
+          const isLast = idx === crumbs.length - 1;
+          return (
+            <li key={idx}>
+              {crumb.to && !isLast ? (
+                <Link to={crumb.to} className="breadcrumb-link">
+                  {crumb.label}
+                </Link>
+              ) : (
+                <span className={cn(isLast ? "breadcrumb-current" : "text-[var(--muted-foreground)]")}>
+                  {crumb.label}
+                </span>
+              )}
+              {!isLast && <span className="breadcrumb-separator" aria-hidden="true">/</span>}
+            </li>
+          );
+        })}
+      </ol>
+    </nav>
+  );
+}
+
 export function Shell({ children, fullWidth = false }: { children: ReactNode; fullWidth?: boolean }) {
   const status = usePlatformStatus();
   const degraded = status.enabled && !status.isPending && !status.isError && !status.data?.checks?.database?.healthy;
@@ -289,8 +330,11 @@ export function Shell({ children, fullWidth = false }: { children: ReactNode; fu
           <SidebarFooter status={status} />
         </aside>
         <div className="flex min-w-0 min-h-0 flex-1 flex-col">
-          <main className="main-content main-content-mobile-pad">
-            <div className={cn("main-content-inner", fullWidth && "main-content-inner-wide")}>{children}</div>
+          <main tabIndex={0} id="main-content" aria-label="Main content" className="main-content main-content-mobile-pad focus:outline-none">
+            <div className={cn("main-content-inner", fullWidth && "main-content-inner-wide")}>
+              <BreadcrumbTrail />
+              {children}
+            </div>
           </main>
         </div>
       </div>

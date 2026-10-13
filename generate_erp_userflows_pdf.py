@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Axon ERP - Detailed Module User Flows & Operator Journeys Guide
+Simple ERP - Detailed Module User Flows & Operator Journeys Guide
 Compiles a publication-grade technical PDF detailing screen-by-screen human-computer interaction,
 UI controls, forms, modals, validation mechanisms, and cross-persona handoffs across all 18 ERP modules.
 """
@@ -666,7 +666,7 @@ USERFLOW_MODULES = [
         "err_text": "CIN format error or unmapped state GSTIN",
         "secondary": ("Upload Corporate Stamp", "Attach high-res digital signature for automated PDF generation"),
         "walkthrough": [
-            ("Entity Navigation", "User enters `/po-invoice`. The screen displays active corporate profiles (e.g. 'Axon Technologies Private Limited')."),
+            ("Entity Navigation", "User enters `/po-invoice`. The screen displays active corporate profiles (e.g. 'Simple ERP Technologies Private Limited')."),
             ("Corporate Registration", "User clicks `[+ Add Business Entity]` and enters Corporate Identification Number (CIN), Company PAN, and official registered legal address."),
             ("State Branch Mapping", "User adds state tax branches (e.g., Maharashtra GSTIN 27..., Gujarat GSTIN 24...) and maps them to operating physical factories."),
             ("Banking Disbursement Linking", "User adds commercial bank accounts, uploading IFSC codes and account numbers to designate the default account for vendor wire transfers."),
@@ -1191,7 +1191,7 @@ def generate_html_userflows():
 <html>
 <head>
 <meta charset="utf-8">
-<title>Axon ERP - Detailed Module User Flows Guide</title>
+<title>Simple ERP - Detailed Module User Flows Guide</title>
 <style>
 {css}
 </style>
@@ -1203,7 +1203,7 @@ def generate_html_userflows():
     html.append("""
     <div class="cover-page">
         <div>
-            <div class="cover-brand">Axon ERP &bull; UX Architecture Series</div>
+            <div class="cover-brand">Simple ERP &bull; UX Architecture Series</div>
             <h1 class="cover-title">Comprehensive Module-by-Module<br>Operator User Flows &amp;<br>Interaction Specification</h1>
             <div class="cover-subtitle">Detailed screen-by-screen human interaction journeys, vector user flow diagrams, form controls, validation rules, error handling, and cross-persona handoffs across all 18 ERP modules.</div>
             <div class="cover-accent-bar"></div>
@@ -1228,7 +1228,7 @@ def generate_html_userflows():
             </div>
         </div>
         <div class="cover-footer">
-            &copy; 2026 Axon Technologies Inc. All rights reserved. Operator Training &amp; Interaction Architecture Manual.
+            &copy; 2026 Simple ERP Technologies Inc. All rights reserved. Operator Training &amp; Interaction Architecture Manual.
         </div>
     </div>
     """)
@@ -1237,7 +1237,7 @@ def generate_html_userflows():
     html.append("""
     <div class="page">
         <h2>Executive UX Framework &amp; Global Navigation Architecture</h2>
-        <p>Axon ERP is engineered around <strong>role-tailored operator experiences</strong>. Unlike monolithic ERP systems with cluttered forms, Axon optimizes human-computer interaction through clean, contextual workspaces, fast keyboard navigation, and specialized mobile terminal interfaces for industrial shop floors and warehouses.</p>
+        <p>Simple ERP is engineered around <strong>role-tailored operator experiences</strong>. Unlike monolithic ERP systems with cluttered forms, Simple ERP optimizes human-computer interaction through clean, contextual workspaces, fast keyboard navigation, and specialized mobile terminal interfaces for industrial shop floors and warehouses.</p>
         
         <h3 style="margin-top: 12px; margin-bottom: 6px;">Global Navigation Layout Hierarchy</h3>
         <p>The screen workspace is structured into four consistent interface zones across every module:</p>
@@ -1308,7 +1308,7 @@ def generate_html_userflows():
     html.append("""
     <div class="page">
         <h2>Global Persona Roles &amp; Operational Responsibilities</h2>
-        <p>In Axon ERP, operational tasks flow sequentially between human personas. The matrix below defines the primary user roles, their day-to-day screens, and their core responsibilities across the platform.</p>
+        <p>In Simple ERP, operational tasks flow sequentially between human personas. The matrix below defines the primary user roles, their day-to-day screens, and their core responsibilities across the platform.</p>
         
         <table class="spec-table">
             <thead>
@@ -1392,7 +1392,7 @@ def generate_html_userflows():
         <div class="card card-indigo" style="margin-top: 10px;">
             <div class="card-title">Cross-Persona Hand-off Paradigm</div>
             <p style="font-size: 7.7pt; margin: 0;">
-                In Axon ERP, when an operator completes a stage (e.g. Storekeeper approves a GRN), the system performs two simultaneous actions: (1) atomically commits the database state; and (2) deposits the task directly into the next persona's operational queue (QC Inspector console). This eliminates manual emails, phone calls, and paper handoffs.
+                In Simple ERP, when an operator completes a stage (e.g. Storekeeper approves a GRN), the system performs two simultaneous actions: (1) atomically commits the database state; and (2) deposits the task directly into the next persona's operational queue (QC Inspector console). This eliminates manual emails, phone calls, and paper handoffs.
             </p>
         </div>
     </div>
@@ -1562,10 +1562,10 @@ def generate_html_userflows():
 
 def main():
     print("==================================================================")
-    print("Axon ERP: Compiling Detailed Module Userflows PDF...")
+    print("Simple ERP: Compiling Detailed Module Userflows PDF...")
     print("==================================================================")
 
-    output_pdf_path = os.path.abspath("Axon_ERP_Detailed_User_Flows_Guide.pdf")
+    output_pdf_path = os.path.abspath("Simple ERP_ERP_Detailed_User_Flows_Guide.pdf")
 
     print("[1/3] Generating comprehensive Userflow HTML with vector SVGs...")
     html_content = generate_html_userflows()

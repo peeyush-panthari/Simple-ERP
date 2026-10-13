@@ -9,6 +9,7 @@ import { Tabs } from "@/components/erp/tabs";
 import {
   ActionButton, DataTable, DesktopOnly, Field, Forbidden, InlineError, MobileOnly, MobileRecordCard, MobileRecordRow, Modal, PageHeader, Pagination, Pill, SelectInput, TextInput,
 } from "@/components/erp/ui";
+import { ScreenTourButton } from "@/components/erp/screen-tour";
 import { useAuth } from "@/lib/auth";
 import { ApiError } from "@/lib/api";
 import * as format from "@/lib/format";
@@ -164,13 +165,16 @@ function RunsTab() {
   return (
     <div className="flex w-full flex-col items-start gap-4">
       <div className="flex w-full flex-wrap items-center gap-3">
-        <input className="search-input" style={{ width: "16rem" }} placeholder="Search Production ID or Pack ID…" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} />
+        <label htmlFor="production-search-input" className="sr-only">Search Production Runs or Packs</label>
+        <input id="production-search-input" aria-label="Search Production Runs or Packs" className="search-input" style={{ width: "16rem" }} placeholder="Search Production Runs or Packs…" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} />
         <DateRangePicker from={range.from} to={range.to} onApply={(from, to) => { setRange({ from, to }); setPage(1); }} />
-        <select className="filter-select" style={{ width: "11rem" }} value={warehouse} onChange={(e) => back(() => setWarehouse(e.target.value))()}>
+        <label htmlFor="production-warehouse-filter" className="sr-only">Filter by warehouse</label>
+        <select id="production-warehouse-filter" className="filter-select" style={{ width: "11rem" }} value={warehouse} aria-label="Filter by All warehouses" onChange={(e) => back(() => setWarehouse(e.target.value))()}>
           <option value="">All warehouses</option>
           {(warehouses.data?.data ?? []).map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
         </select>
-        <select className="filter-select" style={{ width: "9rem" }} value={status} onChange={(e) => back(() => setStatus(e.target.value))()}>
+        <label htmlFor="production-status-filter" className="sr-only">Filter by status</label>
+        <select id="production-status-filter" className="filter-select" style={{ width: "9rem" }} value={status} aria-label="Filter by All Status" onChange={(e) => back(() => setStatus(e.target.value))()}>
           <option value="">All Status</option>
           {RUN_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
         </select>
@@ -184,7 +188,7 @@ function RunsTab() {
       </div>
       <InlineError message={list.error?.message} />
       <DesktopOnly className="w-full">
-        <DataTable columns={["Production ID", "SKU Name", "Warehouse", "Pack ID", "Qty", "Status", "Production Date", ""]} fit>
+        <DataTable columns={["Production Run #", "SKU Name", "Warehouse", "Pack #", "Qty", "Status", "Production Date", ""]} fit>
           {runs.map((r) => (
             <tr key={r.id}>
               <td>{numberLink(r)}</td><td>{r.productName || r.sku}</td><td>{dash(r.warehouseName)}</td><td>{dash(r.packId)}</td><td>{format.qty(r.quantity)}</td>
@@ -196,10 +200,10 @@ function RunsTab() {
       <MobileOnly className="w-full">
         {runs.map((r) => (
           <MobileRecordCard key={r.id} actions={complete(r, "w-full justify-center") ? complete(r, "w-full justify-center") : undefined}>
-            <MobileRecordRow label="Production ID" value={numberLink(r)} />
+            <MobileRecordRow label="Production Run #" value={numberLink(r)} />
             <MobileRecordRow label="SKU Name" value={r.productName || r.sku} />
             <MobileRecordRow label="Warehouse" value={dash(r.warehouseName)} />
-            <MobileRecordRow label="Pack ID" value={dash(r.packId)} />
+            <MobileRecordRow label="Pack #" value={dash(r.packId)} />
             <MobileRecordRow label="Qty" value={format.qty(r.quantity)} />
             <MobileRecordRow label="Status" value={<Pill>{r.status}</Pill>} />
             <MobileRecordRow label="Production Date" value={format.date(r.productionDate)} />
@@ -352,11 +356,11 @@ function ShippingTab() {
       <p className="text-xs text-[var(--muted-foreground)]">Orders with Finished Good stock already allocated, listed one row per SKU - pack and ship each line, partial quantities included.</p>
       <div className="flex flex-wrap gap-3">
         <input className="search-input" style={{ width: "16rem" }} placeholder="Search Order Number…" value={search} onChange={(e) => setSearch(e.target.value)} />
-        <select className="filter-select" style={{ width: "11rem" }} value={status} onChange={(e) => setStatus(e.target.value)}>
+        <select className="filter-select" style={{ width: "11rem" }} value={status} aria-label="Filter by All Status" onChange={(e) => setStatus(e.target.value)}>
           <option value="">All Status</option>
           {SHIPPING_STATUSES.map((s) => <option key={s} value={s}>{humanise(s)}</option>)}
         </select>
-        <select className="filter-select" style={{ width: "12rem" }} value={sku} onChange={(e) => setSku(e.target.value)}>
+        <select className="filter-select" style={{ width: "12rem" }} value={sku} aria-label="Filter by All SKU Names" onChange={(e) => setSku(e.target.value)}>
           <option value="">All SKU Names</option>
           {skuOptions.map((s) => <option key={s} value={s}>{s}</option>)}
         </select>
@@ -400,7 +404,35 @@ export default function ProductionPage() {
     <Shell>
       {can("inventory:read") ? (
         <div className="flex w-full flex-col items-start gap-2">
-          <div className="production-page-header w-full"><PageHeader eyebrow="Supply chain" title="Production & Shipping" /></div>
+          <div className="production-page-header w-full">
+            <PageHeader
+              eyebrow="Supply chain"
+              title="Production & Shipping"
+              actions={
+                <ScreenTourButton
+                  screenTitle="Production & Shipping"
+                  trainingModuleId="production"
+                  steps={[
+                    {
+                      title: "Work Order Release & Planning",
+                      highlightTag: "Planning Queue",
+                      description: "Schedule manufacturing runs by specifying SKU, target warehouse, and planned quantity. Runs allocate required raw materials against the active BOM.",
+                    },
+                    {
+                      title: "FIFO Component Backflush",
+                      highlightTag: "Auto-Consumption",
+                      description: "Executing and posting a run auto-consumes component inventory based on FIFO valuation and updates real-time batch allocation records.",
+                    },
+                    {
+                      title: "Order Shipping Queue",
+                      highlightTag: "Fulfillment Dock",
+                      description: "Pack and ship allocated goods line-by-line with direct inventory traceability and carrier dispatch tracking.",
+                    },
+                  ]}
+                />
+              }
+            />
+          </div>
           <Tabs
             tabs={[
               { value: "runs", label: "Production", content: <div className="pt-4">{<RunsTab />}</div> },

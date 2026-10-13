@@ -391,13 +391,13 @@ function Content({ runId }: { runId: string }) {
                     {isUnit ? (
                       <ItemMultiSelect items={addItems} selected={addItemIds} onToggle={toggleItem} />
                     ) : (
-                      <select className="ui-select" disabled={addItems.length === 0} value={addItemIds[0] ?? ""} onChange={(e) => pickItem(e.target.value)}>
+                      <select aria-label="Select Raw Material Inventory Batch" className="ui-select" disabled={addItems.length === 0} value={addItemIds[0] ?? ""} onChange={(e) => pickItem(e.target.value)}>
                         <option value="">{!addProductId ? "Select a raw material first" : addItems.length > 0 ? "Inventory ID (optional)" : "No stock at this warehouse"}</option>
                         {addItems.map((it) => <option key={it.id} value={it.id}>{`${it.inventoryId} (${it.availableQty} avail)`}</option>)}
                       </select>
                     )}
                   </div>
-                  <TextInput style={{ width: "6rem" }} placeholder="Quantity" value={addQty} onChange={(e) => setAddQty(e.target.value)} />
+                  <TextInput style={{ width: "6rem" }} placeholder="Quantity" aria-label="Quantity to consume" value={addQty} onChange={(e) => setAddQty(e.target.value)} />
                   <ActionButton size="sm" disabled={!pickValid || addBusy} onClick={addLine}>Add line</ActionButton>
                 </div>
               </div>

@@ -275,3 +275,79 @@ export function mobileTabItems(granted: readonly string[]): NavItem[] {
     .filter((i) => MOBILE_TAB_PATHS.includes(i.path))
     .sort((a, b) => MOBILE_TAB_PATHS.indexOf(a.path) - MOBILE_TAB_PATHS.indexOf(b.path));
 }
+
+export interface BreadcrumbSegment {
+  label: string;
+  to?: string;
+}
+
+/** Resolves path segments into a semantic breadcrumb hierarchy. */
+export function resolveBreadcrumbs(pathname: string): BreadcrumbSegment[] {
+  if (pathname === "/" || pathname === "/login") return [];
+
+  // Match exact root nav item first
+  const exact = NAV_ITEMS.find((item) => item.path === pathname);
+  if (exact) {
+    return [
+      { label: "Home", to: "/" },
+      { label: exact.group },
+      { label: exact.label },
+    ];
+  }
+
+  // Handle nested sub-views
+  if (pathname.startsWith("/party/")) {
+    return [
+      { label: "Home", to: "/" },
+      { label: "Procurement", to: "/procurement" },
+      { label: "Supplier Directory", to: "/parties" },
+      { label: "Party Details" },
+    ];
+  }
+  if (pathname.startsWith("/warehouse/qc/")) {
+    return [
+      { label: "Home", to: "/" },
+      { label: "Warehouse & Logistics", to: "/warehouse" },
+      { label: "GRN & QC", to: "/warehouse" },
+      { label: "Quality Inspection Station" },
+    ];
+  }
+  if (pathname.startsWith("/inventory-item/")) {
+    return [
+      { label: "Home", to: "/" },
+      { label: "Warehouse & Logistics", to: "/inventory" },
+      { label: "Inventory", to: "/inventory" },
+      { label: "Item Record" },
+    ];
+  }
+  if (pathname.startsWith("/production/complete/")) {
+    return [
+      { label: "Home", to: "/" },
+      { label: "Manufacturing", to: "/production" },
+      { label: "Production & Runs", to: "/production" },
+      { label: "Complete Run" },
+    ];
+  }
+  if (pathname.startsWith("/production/")) {
+    return [
+      { label: "Home", to: "/" },
+      { label: "Manufacturing", to: "/production" },
+      { label: "Production & Runs", to: "/production" },
+      { label: "Run Record" },
+    ];
+  }
+
+  // Fallback for any other path: split segments
+  const segments = pathname.split("/").filter(Boolean);
+  const crumbs: BreadcrumbSegment[] = [{ label: "Home", to: "/" }];
+  let accum = "";
+  for (let i = 0; i < segments.length; i++) {
+    const seg = segments[i];
+    accum += `/${seg}`;
+    const match = NAV_ITEMS.find((n) => n.path === accum);
+    const label = match ? match.label : seg.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+    const isLast = i === segments.length - 1;
+    crumbs.push(isLast ? { label } : { label, to: accum });
+  }
+  return crumbs;
+}

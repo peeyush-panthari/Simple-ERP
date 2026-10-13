@@ -10,6 +10,7 @@ import { Shell } from "@/components/erp/shell";
 import {
   ActionButton,
   Field,
+  InfoTooltip,
   Modal,
   PageHeader,
   Panel,
@@ -198,8 +199,10 @@ export default function ForecastingPage() {
         {/* Scenario Selection Header & Governance Toolbar */}
         <div className="flex flex-wrap items-center justify-between gap-4 p-4 rounded-xl border border-[var(--border)] bg-[var(--card)] shadow-xs">
           <div className="flex items-center gap-3">
-            <span className="text-sm font-medium text-[var(--muted-foreground)]">Select Scenario:</span>
+            <label htmlFor="forecast-scenario-select" className="text-sm font-medium text-[var(--muted-foreground)]">Select Scenario:</label>
             <select
+              id="forecast-scenario-select"
+              aria-label="Select Planning Scenario"
               className="rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-1.5 text-sm font-medium text-[var(--foreground)] focus:outline-hidden"
               value={activeScenarioId || ""}
               onChange={(e) => setSelectedScenarioId(e.target.value)}
@@ -253,9 +256,18 @@ export default function ForecastingPage() {
               <table className="w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-[var(--border)] bg-[var(--muted)]/50 text-[var(--muted-foreground)] text-xs font-semibold">
-                    <th className="p-3">SKU & Item Name</th>
-                    <th className="p-3">Champion Model</th>
-                    <th className="p-3">Error (MAPE)</th>
+                    <th className="p-3">
+                      <span className="inline-flex items-center gap-1">
+                        Champion Model
+                        <InfoTooltip content="Algorithm tournament winner: Holt-Winters (triple exponential with trend & seasonality) vs Simple Exponential Smoothing (alpha level-only weighting)." />
+                      </span>
+                    </th>
+                    <th className="p-3">
+                      <span className="inline-flex items-center gap-1">
+                        Error (MAPE)
+                        <InfoTooltip content="Mean Absolute Percentage Error from statistical tournament model back-testing. Target MAPE < 15%." />
+                      </span>
+                    </th>
                     {skuRows[0]?.periods.map((p) => (
                       <th key={p.id} className="p-3 text-right">
                         {formatDate(p.period_date)}

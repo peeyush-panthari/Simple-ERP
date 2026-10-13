@@ -2,9 +2,10 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import { ClipboardCheck } from "lucide-react";
 import { GrnStatusPill, useQrDownloads } from "@/components/erp/grn";
 import { Shell } from "@/components/erp/shell";
-import { ActionButton, DataTable, DesktopOnly, Forbidden, InlineError, MobileOnly, MobileRecordCard, MobileRecordRow, Modal, PageHeader, Pill, TextArea, TextInput } from "@/components/erp/ui";
+import { ActionButton, DataTable, DesktopOnly, Forbidden, InlineError, MobileOnly, MobileRecordCard, MobileRecordRow, Modal, PageHeader, Pill, RecordNotFound, TextArea, TextInput } from "@/components/erp/ui";
 import { useAuth } from "@/lib/auth";
 import { ApiError } from "@/lib/api";
 import * as format from "@/lib/format";
@@ -161,26 +162,54 @@ function Content({ grnId }: { grnId: string }) {
       </div>
     );
 
+  if (grnQ.error instanceof ApiError && grnQ.error.status === 404) {
+    return <RecordNotFound entity="Quality Control Station" id={grnId} backUrl="/warehouse" backLabel="← Back to GRN & QC" />;
+  }
+
   return (
     <div className="flex w-full flex-col items-start gap-4">
-      <Link to="/warehouse" className="rx-link">← Back to GRN &amp; QC</Link>
+      <Link to="/warehouse" className="rx-link font-medium">← Back to GRN &amp; QC</Link>
       <InlineError message={actionError || grnQ.error?.message || itemsQ.error?.message} />
       {!grn ? (
-        <p className="text-sm text-[var(--muted-foreground)]">Loading…</p>
+        grnQ.isError ? (
+          <RecordNotFound entity="Quality Control Station" id={grnId} backUrl="/warehouse" backLabel="← Back to GRN & QC" />
+        ) : (
+          <div>
+            <h1 className="text-xl font-bold mb-2">Quality Inspection</h1>
+            <p className="text-sm text-[var(--muted-foreground)]">Loading…</p>
+          </div>
+        )
       ) : (
         <>
           <PageHeader eyebrow="Supply chain" title={`QC — ${grn.number}`} titleSuffix={<GrnStatusPill status={grn.status} />} description="The receipt posts to inventory automatically once everything is resolved." />
+          <div className="stepper flex flex-wrap items-center gap-2 md:gap-4 rounded-xl border border-[var(--border)] bg-[var(--card)] p-3 text-xs font-semibold text-[var(--muted-foreground)] w-full">
+            <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
+              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500/20 text-[11px] font-bold">1</span>
+              Goods Received ✓
+            </span>
+            <span>→</span>
+            <span className="flex items-center gap-1.5 font-bold text-[var(--primary)] underline underline-offset-4">
+              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[var(--primary)] text-white text-[11px] font-bold">2</span>
+              Quality Inspection (Active)
+            </span>
+            <span>→</span>
+            <span className="flex items-center gap-1.5">
+              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[var(--muted)] text-[11px] font-bold">3</span>
+              Putaway &amp; Stocking
+            </span>
+          </div>
           <div className="mb-2 flex w-full flex-wrap md:flex-nowrap items-center gap-2">
-            <input className="search-input" style={{ width: "20rem" }} placeholder="Search by Inventory ID…" value={search} onChange={(e) => setSearch(e.target.value)} />
-            <select className="filter-select" style={{ width: "12rem" }} value={product} onChange={(e) => setProduct(e.target.value)}>
+            <label htmlFor="qc-search-input" className="sr-only">Search by Inventory ID</label>
+            <input id="qc-search-input" aria-label="Search by Inventory ID" className="search-input" style={{ width: "20rem" }} placeholder="Search by Inventory ID…" value={search} onChange={(e) => setSearch(e.target.value)} />
+            <select className="filter-select" style={{ width: "12rem" }} value={product} aria-label="Filter by All products" onChange={(e) => setProduct(e.target.value)}>
               <option value="">All products</option>
               {productOptions.map((p) => <option key={p} value={p}>{p}</option>)}
             </select>
-            <select className="filter-select" style={{ width: "12rem" }} value={make} onChange={(e) => setMake(e.target.value)}>
+            <select className="filter-select" style={{ width: "12rem" }} value={make} aria-label="Filter by All makes" onChange={(e) => setMake(e.target.value)}>
               <option value="">All makes</option>
               {makeOptions.map((m) => <option key={m} value={m}>{m}</option>)}
             </select>
-            <select className="filter-select" value={status} onChange={(e) => setStatus(e.target.value)}>
+            <select className="filter-select" value={status} aria-label="Filter by All Status" onChange={(e) => setStatus(e.target.value)}>
               <option value="">All Status</option>
               {statusOptions.map((s) => <option key={s} value={s}>{humanise(s)}</option>)}
             </select>
@@ -257,6 +286,22 @@ function Content({ grnId }: { grnId: string }) {
                 ))}
               </MobileOnly>
             </>
+          )}
+
+          {serialLineIds.length === 0 && lotLines.length === 0 && (
+            <div className="p-8 text-center border-2 border-dashed border-[var(--border)] rounded-xl w-full my-4">
+              <ClipboardCheck className="w-10 h-10 mx-auto text-[var(--muted-foreground)] mb-2" />
+              <h3 className="text-sm font-semibold text-[var(--foreground)]">No Pending Quality Inspections</h3>
+              <p className="text-xs text-[var(--muted-foreground)] max-w-sm mx-auto mt-1 mb-4">
+                Goods Receipt Notes (GRN) automatically queue here once received at the dock. All line items on this receipt have been dispositioned.
+              </p>
+              <Link
+                to="/warehouse"
+                className="inline-flex items-center text-xs font-semibold px-3 py-1.5 bg-[var(--primary)] text-white rounded-lg shadow-xs hover:opacity-90 transition-opacity"
+              >
+                Receive Inbound POs →
+              </Link>
+            </div>
           )}
         </>
       )}

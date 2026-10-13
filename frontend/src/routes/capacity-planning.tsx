@@ -308,7 +308,7 @@ export default function CapacityPlanningPage() {
             type="button"
             className={`border-b-2 px-4 py-2 font-medium text-sm transition-colors ${
               activeTab === "work_centers"
-                ? "border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400"
+                ? "border-blue-700 text-blue-700 dark:border-blue-400 dark:text-blue-300 font-semibold"
                 : "border-transparent text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
             }`}
             onClick={() => setActiveTab("work_centers")}
@@ -319,7 +319,7 @@ export default function CapacityPlanningPage() {
             type="button"
             className={`border-b-2 px-4 py-2 font-medium text-sm transition-colors ${
               activeTab === "schedule"
-                ? "border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400"
+                ? "border-blue-700 text-blue-700 dark:border-blue-400 dark:text-blue-300 font-semibold"
                 : "border-transparent text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
             }`}
             onClick={() => setActiveTab("schedule")}
@@ -330,7 +330,7 @@ export default function CapacityPlanningPage() {
             type="button"
             className={`border-b-2 px-4 py-2 font-medium text-sm transition-colors ${
               activeTab === "rccp"
-                ? "border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400"
+                ? "border-blue-700 text-blue-700 dark:border-blue-400 dark:text-blue-300 font-semibold"
                 : "border-transparent text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
             }`}
             onClick={() => setActiveTab("rccp")}

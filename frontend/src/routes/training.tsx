@@ -263,13 +263,18 @@ export default function TrainingPage() {
               className={cn(
                 "px-3.5 py-2 rounded-lg text-xs font-semibold transition-all flex items-center gap-2",
                 viewMode === "master_flowchart"
-                  ? "bg-teal-600 text-white shadow-sm"
-                  : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+                  ? "bg-teal-700 text-white shadow-sm"
+                  : "text-[var(--foreground)] hover:bg-[var(--muted)]"
               )}
             >
               <Network size={16} />
               <span>Complete Enterprise Flowchart</span>
-              <span className="text-[10px] px-1.5 py-0.2 bg-teal-800/40 rounded text-teal-100 font-mono">
+              <span className={cn(
+                "text-[10px] px-1.5 py-0.2 rounded font-mono font-medium",
+                viewMode === "master_flowchart"
+                  ? "bg-teal-900/60 text-white"
+                  : "bg-[var(--muted)] text-[var(--foreground)] border border-[var(--border)]"
+              )}>
                 {ENTERPRISE_MASTER_FLOWCHART.length} Nodes
               </span>
             </button>
@@ -280,13 +285,18 @@ export default function TrainingPage() {
               className={cn(
                 "px-3.5 py-2 rounded-lg text-xs font-semibold transition-all flex items-center gap-2",
                 viewMode === "module_training"
-                  ? "bg-teal-600 text-white shadow-sm"
-                  : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+                  ? "bg-teal-700 text-white shadow-sm"
+                  : "text-[var(--foreground)] hover:bg-[var(--muted)]"
               )}
             >
               <BookOpen size={16} />
               <span>Module Deep-Dive & SOPs</span>
-              <span className="text-[10px] px-1.5 py-0.2 bg-teal-800/40 rounded text-teal-100 font-mono">
+              <span className={cn(
+                "text-[10px] px-1.5 py-0.2 rounded font-mono font-medium",
+                viewMode === "module_training"
+                  ? "bg-teal-900/60 text-white"
+                  : "bg-[var(--muted)] text-[var(--foreground)] border border-[var(--border)]"
+              )}>
                 9 Modules
               </span>
             </button>
@@ -297,7 +307,9 @@ export default function TrainingPage() {
         <div className="relative">
           <div className="relative flex items-center">
             <Search size={18} className="absolute left-3.5 text-[var(--muted-foreground)] pointer-events-none" />
+            <label htmlFor="training-search-input" className="sr-only">Search training workflows and checks</label>
             <input
+              id="training-search-input"
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -380,7 +392,7 @@ export default function TrainingPage() {
                             className={cn(
                               "px-3 py-1.5 rounded-lg text-xs font-semibold transition-all",
                               isSelected
-                                ? "bg-teal-600 text-white shadow-sm"
+                                ? "bg-teal-700 text-white shadow-sm"
                                 : "bg-[var(--muted)] text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
                             )}
                           >
@@ -430,7 +442,7 @@ export default function TrainingPage() {
                             {stageNodes.length} Workflows
                           </span>
                         </div>
-                        <h3 className="text-sm font-bold text-[var(--foreground)] mt-1">{stageInfo.title}</h3>
+                        <h2 className="text-sm font-bold text-[var(--foreground)] mt-1">{stageInfo.title}</h2>
                         <p className="text-[11px] text-[var(--muted-foreground)]">{stageInfo.subtitle}</p>
                       </div>
 
@@ -466,20 +478,20 @@ export default function TrainingPage() {
                                 </span>
                               </div>
 
-                              <h4 className="text-xs font-bold text-[var(--foreground)] group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors">
+                              <h3 className="text-xs font-bold text-[var(--foreground)] group-hover:text-teal-700 dark:group-hover:text-teal-300 transition-colors">
                                 {node.title}
-                              </h4>
+                              </h3>
                               <p className="text-[11px] text-[var(--muted-foreground)] line-clamp-2 mt-1">
                                 {node.summary}
                               </p>
 
                               {/* Connects Counters Badges */}
                               <div className="mt-2.5 pt-2 border-t border-[var(--border)] flex items-center justify-between text-[10px]">
-                                <span className="flex items-center gap-1 text-teal-600 dark:text-teal-400 font-medium">
+                                <span className="flex items-center gap-1 text-teal-700 dark:text-teal-300 font-medium">
                                   <ArrowUp size={12} />
                                   <span>{node.upperlineConnects.length} Upperline</span>
                                 </span>
-                                <span className="flex items-center gap-1 text-blue-600 dark:text-blue-400 font-medium">
+                                <span className="flex items-center gap-1 text-blue-700 dark:text-blue-300 font-medium">
                                   <ArrowDown size={12} />
                                   <span>{node.downlineConnects.length} Downline</span>
                                 </span>
@@ -545,12 +557,12 @@ export default function TrainingPage() {
                     <div className="p-4 rounded-xl border border-teal-500/30 bg-[var(--card)] space-y-3">
                       <div className="flex items-center justify-between border-b border-[var(--border)] pb-2">
                         <div className="flex items-center gap-2">
-                          <span className="p-1 rounded bg-teal-500/10 text-teal-600">
+                          <span className="p-1 rounded bg-teal-500/10 text-teal-700 dark:text-teal-300">
                             <ArrowUp size={16} />
                           </span>
-                          <h4 className="text-sm font-bold text-[var(--foreground)]">
+                          <h3 className="text-sm font-bold text-[var(--foreground)]">
                             Upperline Connects ({activeMasterNode.upperlineConnects.length} Upstream Inputs)
-                          </h4>
+                          </h3>
                         </div>
                         <span className="text-[10px] text-[var(--muted-foreground)]">What feeds into this step</span>
                       </div>
@@ -568,7 +580,7 @@ export default function TrainingPage() {
                               className="p-3 rounded-lg border border-[var(--border)] bg-[var(--muted)]/30 hover:border-teal-500/50 hover:bg-teal-500/5 cursor-pointer transition-all space-y-1 text-xs"
                             >
                               <div className="flex items-center justify-between">
-                                <span className="font-bold text-teal-600 dark:text-teal-400">
+                                <span className="font-bold text-teal-700 dark:text-teal-300">
                                   ← {conn.label} ({conn.sourceModule})
                                 </span>
                                 {conn.isHardDependency && (
@@ -591,12 +603,12 @@ export default function TrainingPage() {
                     <div className="p-4 rounded-xl border border-blue-500/30 bg-[var(--card)] space-y-3">
                       <div className="flex items-center justify-between border-b border-[var(--border)] pb-2">
                         <div className="flex items-center gap-2">
-                          <span className="p-1 rounded bg-blue-500/10 text-blue-600">
+                          <span className="p-1 rounded bg-blue-500/10 text-blue-700 dark:text-blue-300">
                             <ArrowDown size={16} />
                           </span>
-                          <h4 className="text-sm font-bold text-[var(--foreground)]">
+                          <h3 className="text-sm font-bold text-[var(--foreground)]">
                             Downline Connects ({activeMasterNode.downlineConnects.length} Downstream Outputs)
-                          </h4>
+                          </h3>
                         </div>
                         <span className="text-[10px] text-[var(--muted-foreground)]">What this step triggers</span>
                       </div>
@@ -614,7 +626,7 @@ export default function TrainingPage() {
                               className="p-3 rounded-lg border border-[var(--border)] bg-[var(--muted)]/30 hover:border-blue-500/50 hover:bg-blue-500/5 cursor-pointer transition-all space-y-1 text-xs"
                             >
                               <div className="flex items-center justify-between">
-                                <span className="font-bold text-blue-600 dark:text-blue-400">
+                                <span className="font-bold text-blue-700 dark:text-blue-300">
                                   → {conn.label} ({conn.targetModule})
                                 </span>
                                 {conn.isTrigger && (
@@ -636,10 +648,10 @@ export default function TrainingPage() {
 
                   {/* Validations Enforced & Checks */}
                   <div className="space-y-3">
-                    <h4 className="text-sm font-bold text-[var(--foreground)] flex items-center gap-2">
+                    <h3 className="text-sm font-bold text-[var(--foreground)] flex items-center gap-2">
                       <ShieldCheck size={16} className="text-teal-600" />
                       <span>Critical Validations & Guard Conditions Enforced at this Node:</span>
-                    </h4>
+                    </h3>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       {activeMasterNode.keyValidations.map((val, idx) => (

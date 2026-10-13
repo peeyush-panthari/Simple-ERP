@@ -8,7 +8,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ScanToAddButton, useHardwareScanner } from "@/components/erp/scan";
 import { Shell } from "@/components/erp/shell";
-import { ActionButton, DataTable, DesktopOnly, Field, Forbidden, InlineError, MobileOnly, MobileRecordCard, MobileRecordRow, Note, PageHeader, Pill, SelectInput, TextArea, TextInput } from "@/components/erp/ui";
+import { ActionButton, DataTable, DesktopOnly, Field, Forbidden, InlineError, MobileOnly, MobileRecordCard, MobileRecordRow, Note, PageHeader, Pill, RecordNotFound, SelectInput, TextArea, TextInput } from "@/components/erp/ui";
 import { Chip, ItemMultiSelect, type AvailableItem } from "@/components/erp/pickers";
 import { useAuth } from "@/lib/auth";
 import { ApiError } from "@/lib/api";
@@ -348,10 +348,32 @@ function Content({ completeRunId }: { completeRunId: string }) {
     <Field key={k} label={label}><TextInput value={form[k] ?? ""} onChange={(e) => set(k, e.target.value)} /></Field>
   );
 
+  if (completing && error && (error.toLowerCase().includes("not found") || error.toLowerCase().includes("cannot find"))) {
+    return <RecordNotFound entity="Production Run" id={completeRunId} backUrl="/production" backLabel="← Back to Production Hub" />;
+  }
+
   return (
     <div className="flex w-full max-w-[64rem] flex-col items-start gap-4">
-      <Link to="/production" className="rx-link">← Back to Production</Link>
+      <Link to="/production" className="rx-link font-medium">← Back to Production Hub</Link>
       <PageHeader eyebrow="Supply chain" title={completing ? "Complete production" : "New production run"} />
+      {completing && (
+        <div className="stepper flex flex-wrap items-center gap-2 md:gap-4 rounded-xl border border-[var(--border)] bg-[var(--card)] p-3 text-xs font-semibold text-[var(--muted-foreground)] w-full">
+          <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
+            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500/20 text-[11px] font-bold">1</span>
+            Planning &amp; BOM Scheduled ✓
+          </span>
+          <span>→</span>
+          <span className="flex items-center gap-1.5 font-bold text-[var(--primary)] underline underline-offset-4">
+            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[var(--primary)] text-white text-[11px] font-bold">2</span>
+            Material Consumption &amp; QA (Active)
+          </span>
+          <span>→</span>
+          <span className="flex items-center gap-1.5">
+            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[var(--muted)] text-[11px] font-bold">3</span>
+            Finished Good Stocked
+          </span>
+        </div>
+      )}
       <InlineError message={error} />
 
       <Section title="Basic details">
@@ -394,7 +416,7 @@ function Content({ completeRunId }: { completeRunId: string }) {
                       {r.uom === "UNIT" ? (
                         <ItemMultiSelect items={items} selected={list.map((p) => p.itemId)} onToggle={(id) => toggleBomPick(pid, id)} />
                       ) : (
-                        <select className="ui-select" disabled={items.length === 0} value={bomPickItem[pid] ?? ""} onChange={(e) => setBomPick(pid, e.target.value)}>
+                        <select aria-label="Select BOM Component Batch" className="ui-select" disabled={items.length === 0} value={bomPickItem[pid] ?? ""} onChange={(e) => setBomPick(pid, e.target.value)}>
                           <option value="">{!warehouseId ? "Select a warehouse first" : items.length > 0 ? "Inventory ID" : "No stock at this warehouse"}</option>
                           {items.map((it) => <option key={it.id} value={it.id}>{`${it.inventoryId} (${it.availableQty} avail)`}</option>)}
                         </select>
@@ -444,19 +466,24 @@ function Content({ completeRunId }: { completeRunId: string }) {
           )}
           <div className="flex w-full flex-wrap md:flex-nowrap items-center gap-2">
             <div className="min-w-[8rem] flex-1">
-              <SelectInput value={addProductId} onChange={(e) => void pickAddProduct(e.target.value)} placeholder="Raw material" options={rawCandidates.map((p) => ({ value: p.id, label: p.sku }))} />
+              <label htmlFor="prod-new-add-material" className="sr-only">Raw material</label>
+              <SelectInput id="prod-new-add-material" aria-label="Raw material" value={addProductId} onChange={(e) => void pickAddProduct(e.target.value)} placeholder="Raw material" options={rawCandidates.map((p) => ({ value: p.id, label: p.sku }))} />
             </div>
             <div className="min-w-[8rem] flex-1">
               {addIsUnit ? (
                 <ItemMultiSelect items={addItems} selected={addItemIds} onToggle={toggleAddItem} />
               ) : (
-                <select className="ui-select" disabled={addItems.length === 0} value={addItemIds[0] ?? ""} onChange={(e) => pickAddItem(e.target.value)}>
-                  <option value="">{!addProductId ? "Select a raw material first" : addItems.length > 0 ? "Inventory ID (optional)" : "No stock at this warehouse"}</option>
-                  {addItems.map((it) => <option key={it.id} value={it.id}>{`${it.inventoryId} (${it.availableQty} avail)`}</option>)}
-                </select>
+                <>
+                  <label htmlFor="prod-new-add-batch" className="sr-only">Select Additional Raw Material Batch</label>
+                  <select id="prod-new-add-batch" aria-label="Select Additional Raw Material Batch" className="ui-select" disabled={addItems.length === 0} value={addItemIds[0] ?? ""} onChange={(e) => pickAddItem(e.target.value)}>
+                    <option value="">{!addProductId ? "Select a raw material first" : addItems.length > 0 ? "Inventory ID (optional)" : "No stock at this warehouse"}</option>
+                    {addItems.map((it) => <option key={it.id} value={it.id}>{`${it.inventoryId} (${it.availableQty} avail)`}</option>)}
+                  </select>
+                </>
               )}
             </div>
-            <TextInput style={{ width: "6rem" }} placeholder="Quantity" value={addQty} onChange={(e) => changeAddQty(e.target.value)} />
+            <label htmlFor="prod-new-add-qty" className="sr-only">Additional Material Quantity</label>
+            <TextInput id="prod-new-add-qty" aria-label="Additional Material Quantity" style={{ width: "6rem" }} placeholder="Quantity" value={addQty} onChange={(e) => changeAddQty(e.target.value)} />
             {/* The current pick is already auto-saved; this just clears the picker to start on a different material. */}
             <ActionButton size="sm" tone="ghost" onClick={() => { setAddProductId(""); setAddItems([]); setAddItemIds([]); setAddQty(""); }}>Add line</ActionButton>
           </div>

@@ -232,7 +232,9 @@ export default function TraceabilityPage() {
             </div>
 
             <div className="flex-1 min-w-[240px] flex gap-2">
+              <label htmlFor="traceability-search-input" className="sr-only">Enter Lot / Serial #</label>
               <TextInput
+                id="traceability-search-input"
                 placeholder="Enter Lot / Serial # (e.g. RAW-BAT-2026-A1)"
                 value={searchLot}
                 onChange={(e) => setSearchLot(e.target.value)}
@@ -332,7 +334,7 @@ export default function TraceabilityPage() {
           <DataTable
             columns={[
               "Case #",
-              "Incident Title",
+              "Case Title",
               "Severity",
               "Root Cause Lot",
               "Quarantined Stock",

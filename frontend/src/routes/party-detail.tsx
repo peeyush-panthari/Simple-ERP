@@ -95,14 +95,14 @@ function CoreDetails({ party, types, canWrite, onSaved }: { party: PartyDetail; 
         <InlineError message={error} />
         <form onSubmit={submit} className="flex w-full flex-col items-start gap-3" key={party.id + (party.legalName ?? "")}>
           <div className="grid w-full grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-            <Field label="Legal name"><TextInput name="legalName" defaultValue={party.legalName} disabled={!canWrite} /></Field>
-            <Field label="Party label">
-              <SelectInput value={subtype} onChange={(e) => setSubtype(e.target.value)} disabled={!canWrite} placeholder="Party label" options={types.filter((t) => t.status === "active").map((t) => ({ value: t.code, label: t.label }))} />
+            <Field label="Legal name" htmlFor="party-legal-name"><TextInput id="party-legal-name" name="legalName" defaultValue={party.legalName} disabled={!canWrite} /></Field>
+            <Field label="Party label" htmlFor="party-subtype">
+              <SelectInput id="party-subtype" value={subtype} onChange={(e) => setSubtype(e.target.value)} disabled={!canWrite} placeholder="Party label" options={types.filter((t) => t.status === "active").map((t) => ({ value: t.code, label: t.label }))} />
             </Field>
-            <Field label="Tax ID / GSTIN"><TextInput name="taxId" defaultValue={party.taxId ?? ""} disabled={!canWrite} /></Field>
-            <Field label="Payment terms"><TextInput name="paymentTerms" placeholder="e.g. NET30" defaultValue={party.paymentTerms ?? ""} disabled={!canWrite} /></Field>
-            <Field label="Currency"><TextInput name="currency" placeholder="e.g. INR" defaultValue={party.currency ?? ""} disabled={!canWrite} /></Field>
-            <Field label="Credit limit"><TextInput name="creditLimit" defaultValue={party.creditLimit ?? ""} disabled={!canWrite} /></Field>
+            <Field label="Tax ID / GSTIN" htmlFor="party-tax-id"><TextInput id="party-tax-id" name="taxId" defaultValue={party.taxId ?? ""} disabled={!canWrite} /></Field>
+            <Field label="Payment terms" htmlFor="party-payment-terms"><TextInput id="party-payment-terms" name="paymentTerms" placeholder="e.g. NET30" defaultValue={party.paymentTerms ?? ""} disabled={!canWrite} /></Field>
+            <Field label="Currency" htmlFor="party-currency"><TextInput id="party-currency" name="currency" placeholder="e.g. INR" defaultValue={party.currency ?? ""} disabled={!canWrite} /></Field>
+            <Field label="Credit limit" htmlFor="party-credit-limit"><TextInput id="party-credit-limit" name="creditLimit" defaultValue={party.creditLimit ?? ""} disabled={!canWrite} /></Field>
             <StatCard label="Credit used" value={format.money(party.creditUsed, cur)} />
             <StatCard label="Risk" value={party.riskFlag} />
           </div>
@@ -186,15 +186,19 @@ function Content({ id }: { id: string }) {
   const bankLine = (b: Bank) => `${b.bankName} / ${b.ifsc}`;
 
   if (partyQuery.error instanceof ApiError && partyQuery.error.status === 404) {
-    return <RecordNotFound entity="Party" id={id} backUrl="/parties" />;
+    return <RecordNotFound entity="Supplier / Party" id={id} backUrl="/parties" backLabel="← Back to Supplier Directory" />;
   }
 
   return (
     <div className="party-detail-page flex w-full flex-col items-start gap-2">
-      <Link to="/parties" className="rx-link">← Back to parties</Link>
+      <Link to="/parties" className="rx-link font-medium">← Back to Supplier Directory</Link>
       <InlineError message={pageError || partyQuery.error?.message} />
       {!party ? (
-        partyQuery.isLoading ? <p className="text-sm text-[var(--muted-foreground)]">Loading…</p> : null
+        partyQuery.isError ? (
+          <RecordNotFound entity="Supplier / Party" id={id} backUrl="/parties" backLabel="← Back to Supplier Directory" />
+        ) : partyQuery.isLoading ? (
+          <p className="text-sm text-[var(--muted-foreground)]">Loading…</p>
+        ) : null
       ) : (
         <>
           <div>
@@ -279,7 +283,9 @@ function Content({ id }: { id: string }) {
           <Modal open={dialog === "block"} onClose={() => setDialog("")} title="Block this party">
             <form onSubmit={submitBlock} className="flex flex-col gap-3">
               <InlineError message={block.error} />
-              <TextArea name="reason" placeholder="Reason (min 5 characters)" required />
+              <Field label="Reason" required>
+                <TextArea name="reason" placeholder="Reason (min 5 characters)" required />
+              </Field>
               <div className="flex justify-end gap-2">
                 <ActionButton tone="ghost" onClick={() => setDialog("")}>Cancel</ActionButton>
                 <ActionButton tone="danger" type="submit" loading={block.busy}>Block party</ActionButton>
@@ -290,30 +296,58 @@ function Content({ id }: { id: string }) {
           {dialog === "address" && (
             <AddDialog title="Add address" submitLabel="Add address" path="addresses" partyId={id} onClose={() => setDialog("")} onAdded={refresh} gridClass="grid w-full grid-cols-1 gap-2 sm:grid-cols-2"
               buildBody={(g) => ({ type: g("type") || "billing", label: g("label") || null, line1: g("line1"), city: g("city"), stateCode: g("stateCode") || null, postalCode: g("postalCode") || null, country: g("country") || "IN", isDefault: false })}>
-              <SelectInput name="type" defaultValue="billing" options={["billing", "shipping", "registered"].map((v) => ({ value: v, label: v }))} />
-              <TextInput name="label" placeholder="Location name, e.g. Warehouse 2 (optional)" />
-              <TextInput name="line1" placeholder="Address line 1" required />
-              <TextInput name="city" placeholder="City" required />
-              <SelectInput name="stateCode" placeholder="State" options={INDIAN_STATE_OPTIONS.map((o) => ({ value: o.value, label: `${o.value} — ${o.label}` }))} />
-              <TextInput name="postalCode" placeholder="Postal code" />
+              <Field label="Address Type">
+                <SelectInput name="type" defaultValue="billing" options={["billing", "shipping", "registered"].map((v) => ({ value: v, label: v }))} />
+              </Field>
+              <Field label="Location Name">
+                <TextInput name="label" placeholder="Location name, e.g. Warehouse 2 (optional)" />
+              </Field>
+              <Field label="Address Line 1" required>
+                <TextInput name="line1" placeholder="Address line 1" required />
+              </Field>
+              <Field label="City" required>
+                <TextInput name="city" placeholder="City" required />
+              </Field>
+              <Field label="State">
+                <SelectInput name="stateCode" placeholder="State" options={INDIAN_STATE_OPTIONS.map((o) => ({ value: o.value, label: `${o.value} — ${o.label}` }))} />
+              </Field>
+              <Field label="Postal Code">
+                <TextInput name="postalCode" placeholder="Postal code" />
+              </Field>
             </AddDialog>
           )}
           {dialog === "contact" && (
             <AddDialog title="Add contact" submitLabel="Add contact" path="contacts" partyId={id} onClose={() => setDialog("")} onAdded={refresh} gridClass="grid w-full grid-cols-1 gap-2 sm:grid-cols-3"
               buildBody={(g) => ({ name: g("name"), role: g("role") || null, email: g("email") || null, phone: g("phone") || null, isPrimary: false })}>
-              <TextInput name="name" placeholder="Contact name" required />
-              <TextInput name="email" placeholder="Email" />
-              <TextInput name="phone" placeholder="Phone" />
+              <Field label="Contact Name" required>
+                <TextInput name="name" placeholder="Contact name" required />
+              </Field>
+              <Field label="Email">
+                <TextInput name="email" placeholder="Email" />
+              </Field>
+              <Field label="Phone">
+                <TextInput name="phone" placeholder="Phone" />
+              </Field>
             </AddDialog>
           )}
           {dialog === "bank" && (
             <AddDialog title="Add bank account" submitLabel="Add bank account" path="bank-accounts" partyId={id} onClose={() => setDialog("")} onAdded={refresh} gridClass="grid w-full grid-cols-1 gap-2 sm:grid-cols-2"
               buildBody={(g) => ({ accountName: g("accountName"), accountNumber: g("accountNumber"), ifsc: g("ifsc") || null, swift: g("swift") || null, bankName: g("bankName"), branch: g("branch") || null })}>
-              <TextInput name="accountName" placeholder="Account holder name" required />
-              <TextInput name="accountNumber" placeholder="Account number" required />
-              <TextInput name="bankName" placeholder="Bank name" required />
-              <TextInput name="ifsc" placeholder="IFSC (domestic)" />
-              <TextInput name="swift" placeholder="SWIFT (international)" />
+              <Field label="Account Holder Name" required>
+                <TextInput name="accountName" placeholder="Account holder name" required />
+              </Field>
+              <Field label="Account Number" required>
+                <TextInput name="accountNumber" placeholder="Account number" required />
+              </Field>
+              <Field label="Bank Name" required>
+                <TextInput name="bankName" placeholder="Bank name" required />
+              </Field>
+              <Field label="IFSC Code">
+                <TextInput name="ifsc" placeholder="IFSC (domestic)" />
+              </Field>
+              <Field label="SWIFT Code">
+                <TextInput name="swift" placeholder="SWIFT (international)" />
+              </Field>
             </AddDialog>
           )}
         </>

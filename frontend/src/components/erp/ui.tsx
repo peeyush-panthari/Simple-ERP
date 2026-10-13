@@ -9,7 +9,7 @@
 
 import * as Dialog from "@radix-ui/react-dialog";
 import { Clock, Inbox, Info, ShieldAlert, TriangleAlert, X } from "lucide-react";
-import { forwardRef, useEffect, useRef, useState, type ButtonHTMLAttributes, type MouseEvent, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from "react";
+import { cloneElement, forwardRef, isValidElement, useEffect, useId, useRef, useState, type ButtonHTMLAttributes, type MouseEvent, type InputHTMLAttributes, type ReactElement, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from "react";
 import { Link } from "react-router-dom";
 import { useActiveReads, useActiveRequests } from "@/lib/activity";
 import { useAuth } from "@/lib/auth";
@@ -226,9 +226,14 @@ export function DataTable({ columns, children, minWidth = 720, fit = false }: { 
       <table className={cn("data-table", fit && "data-table-fit")} style={fit ? undefined : { minWidth }}>
         <thead>
           <tr>
-            {columns.map((c, i) => (
-              <th key={i}>{c}</th>
-            ))}
+            {columns.map((c, i) => {
+              const isEmpty = c === "" || c === null || c === undefined || (typeof c === "string" && c.trim() === "");
+              return (
+                <th key={i} scope="col">
+                  {isEmpty ? <span className="sr-only">Row Actions</span> : c}
+                </th>
+              );
+            })}
           </tr>
         </thead>
         <tbody>{children}</tbody>
@@ -302,8 +307,15 @@ export function MobileRecordRow({ label, value }: { label: ReactNode; value: Rea
 
 // ---- filter controls ---------------------------------------------------------------
 
-export function SearchInput({ value, onChange, placeholder = "Search…" }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
-  return <input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="search-input" />;
+export function SearchInput({ value, onChange, placeholder = "Search…", id: explicitId }: { value: string; onChange: (v: string) => void; placeholder?: string; id?: string }) {
+  const generatedId = useId();
+  const inputId = explicitId || generatedId;
+  return (
+    <>
+      <label htmlFor={inputId} className="sr-only">{placeholder}</label>
+      <input id={inputId} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="search-input" />
+    </>
+  );
 }
 
 export interface Option {
@@ -311,9 +323,34 @@ export interface Option {
   label: string;
 }
 
-export function FilterSelect({ value, onChange, options, label }: { value: string; onChange: (v: string) => void; options: Option[]; label: string }) {
-  return (
-    <select value={value} onChange={(e) => onChange(e.target.value)} className="filter-select">
+export function FilterSelect({
+  value,
+  onChange,
+  options,
+  label,
+  showLabel = false,
+  id: explicitId,
+  className,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  options: Option[];
+  label: string;
+  showLabel?: boolean;
+  id?: string;
+  className?: string;
+}) {
+  const generatedId = useId();
+  const selectId = explicitId || generatedId;
+
+  const selectNode = (
+    <select
+      id={selectId}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className={cn("filter-select", className)}
+      aria-label={label}
+    >
       <option value="">{label}</option>
       {options.map((o) => (
         <option key={o.value} value={o.value}>
@@ -321,6 +358,24 @@ export function FilterSelect({ value, onChange, options, label }: { value: strin
         </option>
       ))}
     </select>
+  );
+
+  if (!showLabel) {
+    return (
+      <>
+        <label htmlFor={selectId} className="sr-only">{label}</label>
+        {selectNode}
+      </>
+    );
+  }
+
+  return (
+    <div className="filter-group">
+      <label htmlFor={selectId} className="filter-group-label">
+        {label}:
+      </label>
+      {selectNode}
+    </div>
   );
 }
 
@@ -373,18 +428,53 @@ export function Modal({
 
 // ---- form primitives -----------------------------------------------------------------
 
-export function Field({ label, children, hint, error, required = false }: { label: string; children: ReactNode; hint?: ReactNode; error?: ReactNode; required?: boolean }) {
+export function Field({
+  label,
+  children,
+  hint,
+  error,
+  required = false,
+  htmlFor,
+}: {
+  label: string;
+  children: ReactNode;
+  hint?: ReactNode;
+  error?: ReactNode;
+  required?: boolean;
+  htmlFor?: string;
+}) {
+  const generatedId = useId();
+  const childId = isValidElement(children) && (children.props as any)?.id ? (children.props as any).id : undefined;
+  const fieldId = htmlFor || childId || generatedId;
+  const errorId = error ? `${fieldId}-error` : undefined;
+
+  const renderedChild = isValidElement(children)
+    ? cloneElement(children as ReactElement<any>, {
+        id: (children.props as any)?.id || fieldId,
+        ...(error
+          ? {
+              "aria-describedby": errorId,
+              "aria-invalid": true,
+            }
+          : {}),
+      })
+    : children;
+
   return (
     <div>
-      <label className="flex items-baseline justify-between gap-2">
+      <label htmlFor={fieldId} className="flex items-baseline justify-between gap-2">
         <span className="field-label">
           {label}
           {required ? <span className="field-required">*</span> : null}
         </span>
         {hint ? <span className="field-hint">{hint}</span> : null}
       </label>
-      <div>{children}</div>
-      {error ? <p className="field-error">{error}</p> : null}
+      <div>{renderedChild}</div>
+      {error ? (
+        <p id={errorId} className="field-error" role="alert">
+          {error}
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -402,9 +492,10 @@ export const TextArea = forwardRef<HTMLTextAreaElement, TextareaHTMLAttributes<H
   return <textarea ref={ref} rows={rows} className={cn("ui-textarea", className)} {...props} />;
 });
 
-export function SelectInput({ options, placeholder, className, ...props }: SelectHTMLAttributes<HTMLSelectElement> & { options: Option[]; placeholder?: string }) {
+export function SelectInput({ options, placeholder, className, "aria-label": ariaLabel, ...props }: SelectHTMLAttributes<HTMLSelectElement> & { options: Option[]; placeholder?: string }) {
+  const fallbackLabel = ariaLabel || placeholder || (options[0]?.label ? `${options[0].label} selector` : "Selection");
   return (
-    <select className={cn("ui-select", className)} {...props}>
+    <select className={cn("ui-select", className)} aria-label={fallbackLabel} {...props}>
       {placeholder ? <option value="" data-placeholder>{placeholder}</option> : null}
       {options.map((o) => (
         <option key={o.value} value={o.value}>
@@ -416,6 +507,26 @@ export function SelectInput({ options, placeholder, className, ...props }: Selec
 }
 
 // ---- notes / errors / empty states ------------------------------------------------------
+
+export function InfoTooltip({ content, label }: { content: string; label?: string }) {
+  return (
+    <span className="relative inline-flex items-center group cursor-help ml-1 align-middle">
+      <button
+        type="button"
+        aria-label={label || `Info: ${content}`}
+        className="inline-flex items-center justify-center p-0.5 rounded text-[var(--muted-foreground)] hover:text-[var(--foreground)] focus:outline-hidden"
+      >
+        <Info size={13} className="shrink-0" />
+      </button>
+      <span
+        role="tooltip"
+        className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:flex group-focus-within:flex z-50 w-max max-w-xs rounded-md bg-[var(--popover)] text-[var(--popover-foreground)] px-2.5 py-1.5 text-xs shadow-md border border-[var(--border)] leading-normal text-left font-normal"
+      >
+        {content}
+      </span>
+    </span>
+  );
+}
 
 export function Note({ children, tone = "info" }: { children: ReactNode; tone?: "info" | "warning" }) {
   return (
@@ -451,7 +562,7 @@ export function RecordNotFound({ entity, id, backUrl, backLabel }: { entity: str
   return (
     <div className="flex w-full flex-col items-center justify-center gap-3 py-16 text-center">
       <TriangleAlert size={36} className="text-[var(--destructive)] opacity-80" />
-      <h2 className="text-xl font-bold">{entity} not found</h2>
+      <h1 className="text-xl font-bold">{entity} not found</h1>
       <p className="max-w-md text-sm text-[var(--muted-foreground)]">
         {id ? `No ${entity.toLowerCase()} exists with identifier "${id}", or it may have been deleted or archived.` : `The requested ${entity.toLowerCase()} could not be found.`}
       </p>

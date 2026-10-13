@@ -5,6 +5,7 @@ import {
   Check,
   CheckCircle2,
   ChevronRight,
+  Info,
   PackageCheck,
   PackagePlus,
   QrCode,
@@ -118,6 +119,8 @@ export default function WmsMobilePage() {
       playFeedbackSound(false);
     } finally {
       setIsScanning(false);
+      setLookupBarcode("");
+      setTimeout(() => inputRef.current?.focus(), 50);
     }
   };
 
@@ -213,19 +216,31 @@ export default function WmsMobilePage() {
               <Smartphone className="w-5 h-5" />
             </div>
             <div>
-              <div className="font-bold text-sm tracking-wide flex items-center gap-1.5">
-                WMS MOBILE RF <span className="bg-emerald-500/20 text-emerald-400 text-[10px] px-1.5 py-0.2 rounded font-mono">ONLINE</span>
-              </div>
-              <div className="text-[11px] text-slate-400 flex items-center gap-1">
-                <Volume2 className="w-3 h-3 text-emerald-400" /> Audio Cues Active
+              <h1 className="font-bold text-sm tracking-wide flex items-center gap-1.5">
+                WMS Mobile Scanner <span className="bg-emerald-950/80 border border-emerald-500/30 text-emerald-300 text-[10px] px-1.5 py-0.2 rounded font-mono font-bold">ONLINE</span>
+              </h1>
+              <div className="text-[11px] text-slate-300 flex items-center gap-2 mt-0.5">
+                <span className="flex items-center gap-1"><Volume2 className="w-3 h-3 text-emerald-300" /> Audio Cues</span>
+                <span>•</span>
+                <button
+                  type="button"
+                  aria-label="Hardware Wedge Auto-Refocus Trigger Accelerator"
+                  onClick={() => inputRef.current?.focus()}
+                  className="flex items-center gap-1 text-emerald-300 hover:underline font-semibold"
+                >
+                  <Scan className="w-3 h-3" /> Auto-Refocus Active
+                </button>
               </div>
             </div>
           </div>
 
+          <label htmlFor="wms-mobile-wh-select" className="sr-only">Active Warehouse</label>
           <select
+            id="wms-mobile-wh-select"
             value={warehouseId}
             onChange={(e) => setWarehouseId(e.target.value)}
             className="text-xs bg-slate-800 text-slate-200 border border-slate-700 rounded-lg p-1.5 focus:outline-none"
+            aria-label="Active Warehouse"
           >
             {warehouses.map((w) => (
               <option key={w.id} value={w.id}>
@@ -294,7 +309,10 @@ export default function WmsMobilePage() {
 
             <form onSubmit={handleUniversalScan} className="space-y-3">
               <div className="relative">
+                <label htmlFor="mobile-barcode-input" className="sr-only">Scan SKU, Bin, PO barcode</label>
                 <input
+                  id="mobile-barcode-input"
+                  aria-label="Scan SKU, Bin, PO barcode"
                   ref={inputRef}
                   type="text"
                   value={lookupBarcode}
@@ -305,6 +323,10 @@ export default function WmsMobilePage() {
                 />
                 <Scan className="w-5 h-5 absolute left-3 top-3.5 text-primary" />
               </div>
+              <p className="text-[11px] text-slate-500 flex items-center gap-1.5 px-0.5">
+                <Info className="w-3.5 h-3.5 text-primary shrink-0" />
+                <span>Supports symbologies: Code-128, GS1-128, DataMatrix, and QR codes.</span>
+              </p>
               <button
                 type="submit"
                 disabled={isScanning}

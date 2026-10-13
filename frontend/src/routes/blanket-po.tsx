@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   FileSpreadsheet,
+  FileText,
   Plus,
   RefreshCw,
   Send,
@@ -103,19 +104,28 @@ export default function BlanketPoPage() {
   // 2. Fetch Vendors for dropdown
   const vendorsQuery = useQuery({
     queryKey: ["vendor-parties"],
-    queryFn: () => api<Array<{ id: string; display_name: string; code: string }>>("GET", "/api/v1/parties?type=vendor"),
+    queryFn: async () => {
+      const res = await api<any>("GET", "/api/v1/parties?type=vendor&limit=100");
+      return Array.isArray(res) ? res : res?.data || [];
+    },
   });
 
   // 3. Fetch Products for line item dropdown
   const productsQuery = useQuery({
     queryKey: ["bpa-products"],
-    queryFn: () => api<Array<{ id: string; sku: string; name: string }>>("GET", "/api/v1/products"),
+    queryFn: async () => {
+      const res = await api<any>("GET", "/api/v1/products?limit=200");
+      return Array.isArray(res) ? res : res?.data || [];
+    },
   });
 
   // 4. Fetch Warehouses for release
   const warehousesQuery = useQuery({
     queryKey: ["bpa-warehouses"],
-    queryFn: () => api<Array<{ id: string; name: string; code: string }>>("GET", "/api/v1/wms-bins/warehouses"),
+    queryFn: async () => {
+      const res = await api<any>("GET", "/api/v1/wms-bins/warehouses");
+      return Array.isArray(res) ? res : res?.data || res?.warehouses || [];
+    },
   });
 
   // 5. Fetch BPA Detail
@@ -125,12 +135,12 @@ export default function BlanketPoPage() {
     enabled: !!selectedBpaId,
   });
 
-  const bpas = bpasQuery.data?.blanket_pos || [];
-  const vendors = vendorsQuery.data || [];
-  const products = productsQuery.data || [];
-  const warehouses = warehousesQuery.data || [];
+  const bpas = Array.isArray(bpasQuery.data?.blanket_pos) ? bpasQuery.data.blanket_pos : [];
+  const vendors: Array<{ id: string; display_name?: string; code?: string; legalName?: string; name?: string }> = Array.isArray(vendorsQuery.data) ? vendorsQuery.data : [];
+  const products: Array<{ id: string; sku: string; name?: string }> = Array.isArray(productsQuery.data) ? productsQuery.data : [];
+  const warehouses: Array<{ id: string; name: string; code: string }> = Array.isArray(warehousesQuery.data) ? warehousesQuery.data : [];
   const currentBpa = detailQuery.data?.bpa;
-  const currentLines = detailQuery.data?.lines || [];
+  const currentLines = Array.isArray(detailQuery.data?.lines) ? detailQuery.data.lines : [];
 
   // Summary Metrics
   const totalContractedVal = bpas.reduce((acc, b) => acc + b.target_amount, 0);
@@ -325,8 +335,15 @@ export default function BlanketPoPage() {
               })}
 
               {bpas.length === 0 && (
-                <div className="text-center py-8 text-sm text-slate-400">
-                  No blanket agreements found. Click "New Blanket Agreement" to establish one.
+                <div className="p-8 text-center border-2 border-dashed border-[var(--border)] rounded-xl w-full">
+                  <FileText className="w-10 h-10 mx-auto text-[var(--muted-foreground)] mb-2" />
+                  <h3 className="text-sm font-semibold text-[var(--foreground)]">No Blanket Purchase Agreements</h3>
+                  <p className="text-xs text-[var(--muted-foreground)] max-w-sm mx-auto mt-1 mb-4">
+                    Long-term rate contracts allow fixed negotiated pricing and rapid call-off purchase order releases.
+                  </p>
+                  <ActionButton size="sm" onClick={() => setShowCreateModal(true)}>
+                    Create Rate Agreement →
+                  </ActionButton>
                 </div>
               )}
             </div>
@@ -447,7 +464,7 @@ export default function BlanketPoPage() {
             >
               {vendors.map((v) => (
                 <option key={v.id} value={v.id}>
-                  {v.display_name} ({v.code})
+                  {v.display_name || v.legalName || v.name || v.code} ({v.code})
                 </option>
               ))}
             </select>

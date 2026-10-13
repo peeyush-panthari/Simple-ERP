@@ -321,7 +321,7 @@ export default function AvlGovernancePage() {
             type="button"
             className={`border-b-2 px-4 py-2 font-medium text-sm transition-colors ${
               activeTab === "avl"
-                ? "border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400"
+                ? "border-blue-700 text-blue-700 dark:border-blue-400 dark:text-blue-300 font-semibold"
                 : "border-transparent text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
             }`}
             onClick={() => setActiveTab("avl")}
@@ -332,7 +332,7 @@ export default function AvlGovernancePage() {
             type="button"
             className={`border-b-2 px-4 py-2 font-medium text-sm transition-colors ${
               activeTab === "certs"
-                ? "border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400"
+                ? "border-blue-700 text-blue-700 dark:border-blue-400 dark:text-blue-300 font-semibold"
                 : "border-transparent text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
             }`}
             onClick={() => setActiveTab("certs")}
@@ -343,7 +343,7 @@ export default function AvlGovernancePage() {
             type="button"
             className={`border-b-2 px-4 py-2 font-medium text-sm transition-colors ${
               activeTab === "checker"
-                ? "border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400"
+                ? "border-blue-700 text-blue-700 dark:border-blue-400 dark:text-blue-300 font-semibold"
                 : "border-transparent text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
             }`}
             onClick={() => setActiveTab("checker")}
@@ -359,8 +359,11 @@ export default function AvlGovernancePage() {
             aside={
               <div className="flex items-center gap-3">
                 <div className="relative">
+                  <label htmlFor="avl-search-input" className="sr-only">Search vendor, SKU, category</label>
                   <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-[var(--muted-foreground)]" />
                   <input
+                    id="avl-search-input"
+                    aria-label="Search vendor, SKU, category"
                     type="text"
                     placeholder="Search vendor, SKU, category..."
                     value={searchTerm}
@@ -368,10 +371,13 @@ export default function AvlGovernancePage() {
                     className="w-64 rounded-md border border-[var(--border)] bg-[var(--background)] py-1.5 pl-9 pr-3 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
                   />
                 </div>
+                <label htmlFor="avl-status-filter" className="sr-only">Filter by Qualification Status</label>
                 <select
+                  id="avl-status-filter"
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
                   className="rounded-md border border-[var(--border)] bg-[var(--background)] px-2.5 py-1.5 text-sm"
+                  aria-label="Filter by Qualification Status"
                 >
                   <option value="all">All Qualification Statuses</option>
                   <option value="approved">Approved</option>

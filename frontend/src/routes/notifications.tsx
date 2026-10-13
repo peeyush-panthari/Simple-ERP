@@ -43,7 +43,7 @@ function Content() {
       <PageHeader fit eyebrow="Platform" title="Notifications" />
       <InlineError message={actionError || error?.message} />
       <DesktopOnly className="w-full">
-        <DataTable columns={["When", "Outcome", "Provider", "Attempt", "Detail", "Actions"]} fit>
+        <DataTable columns={["When", "Outcome", "Channel", "Attempt", "Detail", "Actions"]} fit>
           {items.map((e) => (
             <tr key={e.id}>
               <td>{format.dateTime(e.createdAt)}</td>

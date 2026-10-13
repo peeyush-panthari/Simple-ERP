@@ -12,6 +12,7 @@ import { Shell } from "@/components/erp/shell";
 import {
   ActionButton,
   DataTable,
+  InfoTooltip,
   Modal,
   PageHeader,
   Panel,
@@ -236,7 +237,9 @@ export default function LandedCostPage() {
           </div>
 
           <div className="w-full sm:w-64">
+            <label htmlFor="landed-cost-search" className="sr-only">Search voucher, GRN, vendor</label>
             <TextInput
+              id="landed-cost-search"
               placeholder="Search voucher, GRN, vendor..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -256,7 +259,7 @@ export default function LandedCostPage() {
               "Status",
               "GRN Receipts",
               "Items",
-              "Total Apportioned",
+              <span key="apportioned" className="inline-flex items-center gap-1">Total Apportioned <InfoTooltip content="Apportionment formula: Freight & Customs duty allocated by Value-weighted (Duty/CIF allocation by line monetary value) or Weight-weighted (Freight allocation by physical kg)." /></span>,
               "Created By",
               "Actions",
             ]}

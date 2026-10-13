@@ -138,8 +138,10 @@ export default function WmsBinsPage() {
           <div className="flex items-center gap-3">
             <Warehouse className="text-blue-600" size={20} />
             <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold text-[var(--muted-foreground)]">Facility:</span>
+              <label htmlFor="wms-facility-select" className="text-xs font-semibold text-[var(--muted-foreground)]">Facility:</label>
               <select
+                id="wms-facility-select"
+                aria-label="Warehouse Facility"
                 value={activeWarehouseId}
                 onChange={(e) => setSelectedWarehouseId(e.target.value)}
                 className="px-3 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--background)] text-xs font-semibold"
@@ -153,8 +155,10 @@ export default function WmsBinsPage() {
             </div>
 
             <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold text-[var(--muted-foreground)]">Aisle:</span>
+              <label htmlFor="wms-aisle-select" className="text-xs font-semibold text-[var(--muted-foreground)]">Aisle:</label>
               <select
+                id="wms-aisle-select"
+                aria-label="Storage Aisle"
                 value={selectedAisle}
                 onChange={(e) => setSelectedAisle(e.target.value)}
                 className="px-3 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--background)] text-xs font-semibold"
@@ -170,7 +174,9 @@ export default function WmsBinsPage() {
           </div>
 
           <div className="flex items-center gap-3 w-full sm:w-auto">
+            <label htmlFor="wms-bins-search" className="sr-only">Find SKU or Bin Code</label>
             <TextInput
+              id="wms-bins-search"
               placeholder="Find SKU or Bin Code..."
               value={searchSku}
               onChange={(e) => setSearchSku(e.target.value)}

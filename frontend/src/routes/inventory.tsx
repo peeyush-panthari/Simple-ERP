@@ -11,7 +11,7 @@ import { ScanToJumpBox } from "@/components/erp/scan";
 import { Shell } from "@/components/erp/shell";
 import { Tabs } from "@/components/erp/tabs";
 import {
-  ActionButton, DataTable, DesktopOnly, Field, Forbidden, InlineError, MobileOnly, MobileRecordCard, MobileRecordRow, Modal, PageHeader, Pill, Segmented, SelectInput, StatCard, TextArea, TextInput,
+  ActionButton, DataTable, DesktopOnly, Field, Forbidden, InfoTooltip, InlineError, MobileOnly, MobileRecordCard, MobileRecordRow, Modal, PageHeader, Pill, Segmented, SelectInput, StatCard, TextArea, TextInput,
 } from "@/components/erp/ui";
 import { useAuth } from "@/lib/auth";
 import { ApiError, type Params } from "@/lib/api";
@@ -653,8 +653,8 @@ function Content() {
 
   const warehouseFilter = (
     <div className="flex items-center gap-2">
-      <span className="text-sm font-bold">Warehouse</span>
-      <select className="filter-select" style={{ width: "14rem" }} value={warehouseId} onChange={(e) => setWarehouseId(e.target.value)}>
+      <label htmlFor="inventory-warehouse-filter" className="text-sm font-bold">Warehouse</label>
+      <select id="inventory-warehouse-filter" className="filter-select" style={{ width: "14rem" }} value={warehouseId} aria-label="Filter by All warehouses" onChange={(e) => setWarehouseId(e.target.value)}>
         <option value="">All warehouses</option>
         {warehouseList.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
       </select>
@@ -700,13 +700,13 @@ function Content() {
         : balancesTable(["SKU Name", "UOM", "Rejected in QC"], (b) => [b.skuName, b.uom, b.quarantine], (b) => [["SKU Name", b.skuName], ["UOM", b.uom], ["Rejected in QC", b.quarantine]]);
 
   const locationFilter = (
-    <select className="filter-select" style={{ width: "12rem" }} value={locationId} onChange={(e) => setLocationId(e.target.value)}>
+    <select className="filter-select" style={{ width: "12rem" }} value={locationId} aria-label="Filter by All locations" onChange={(e) => setLocationId(e.target.value)}>
       <option value="">All locations</option>
       {locationOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
     </select>
   );
   const skuFilter = (
-    <select className="filter-select" style={{ width: "14rem" }} value={productId} onChange={(e) => setProductId(e.target.value)}>
+    <select className="filter-select" style={{ width: "14rem" }} value={productId} aria-label="Filter by All SKU Names" onChange={(e) => setProductId(e.target.value)}>
       <option value="">All SKU Names</option>
       {skuFilterOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
     </select>
@@ -742,7 +742,7 @@ function Content() {
       <>
         <div className="flex flex-wrap items-center gap-2">
           {actionButtons}
-          <select className="filter-select" style={{ width: "11rem" }} value={fgStatus} onChange={(e) => setFgStatus(e.target.value)}>
+          <select className="filter-select" style={{ width: "11rem" }} value={fgStatus} aria-label="Filter by All Status" onChange={(e) => setFgStatus(e.target.value)}>
             <option value="">All Status</option>
             {fgStatusOptions.map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
@@ -777,14 +777,14 @@ function Content() {
       <>
         <div className="flex flex-wrap items-center gap-2">
           {actionButtons}
-          <select className="filter-select" value={rmStatus} onChange={(e) => setRmStatus(e.target.value)}>
+          <select className="filter-select" value={rmStatus} aria-label="Filter by Raw Material Status" onChange={(e) => setRmStatus(e.target.value)}>
             {RM_STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
           {locationFilter}
           {skuFilter}
         </div>
         <DesktopOnly className="w-full">
-          <DataTable columns={["Inventory ID", "SKU Name", "UOM", "Qty", "Status", "Location", "Vendor Inventory ID"]} fit>
+          <DataTable columns={["Inventory ID", "SKU Name", "UOM", <span className="inline-flex items-center">Qty <InfoTooltip content="Available balance tracked under First-In-First-Out (FIFO) consumption rules." /></span>, "Status", "Location", "Vendor Inventory ID"]} fit>
             {items.map((i) => (
               <tr key={i.id}>
                 <td>{idLink(i)}</td><td>{i.skuName}</td><td>{i.uom}</td><td>{i.qty}</td><td><Pill>{i.statusLabel}</Pill></td><td>{dash(i.locationCode)}</td><td>{dash(i.vendorInventoryId)}</td>

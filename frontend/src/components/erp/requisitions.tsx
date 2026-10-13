@@ -462,11 +462,11 @@ export function RequisitionsTab({ onCreatePo, onStartSourcing, onOpenRfq, openId
       )}
       <div className="flex w-full flex-wrap items-center gap-3 md:flex-nowrap">
         <input className="search-input" style={{ width: "20rem" }} placeholder="Search number, item or requester…" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} />
-        <select className="filter-select" style={{ width: "12rem" }} value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }}>
+        <select className="filter-select" style={{ width: "12rem" }} value={status} aria-label="Filter by All Status" onChange={(e) => { setStatus(e.target.value); setPage(1); }}>
           <option value="">All Status</option>
           {STATUSES.map((s) => <option key={s} value={s}>{STATUS_LABEL[s] ?? humanise(s)}</option>)}
         </select>
-        <select className="filter-select" style={{ width: "10rem" }} value={priority} onChange={(e) => { setPriority(e.target.value); setPage(1); }}>
+        <select className="filter-select" style={{ width: "10rem" }} value={priority} aria-label="Filter by All priorities" onChange={(e) => { setPriority(e.target.value); setPage(1); }}>
           <option value="">All priorities</option>
           {PRIORITIES.map((p) => <option key={p} value={p}>{humanise(p)}</option>)}
         </select>

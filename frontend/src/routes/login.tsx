@@ -1,4 +1,4 @@
-import { TriangleAlert } from "lucide-react";
+import { HelpCircle, TriangleAlert } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { Navigate, useNavigate, useLocation, Link, type Location } from "react-router-dom";
 import { Logo } from "@/components/erp/logo";
@@ -54,7 +54,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4 py-10" style={{ background: "var(--background)" }}>
+    <main id="main-content" role="main" aria-label="Sign in" className="flex min-h-screen items-center justify-center px-4 py-10" style={{ background: "var(--background)" }}>
       <div className="w-full max-w-sm">
         <div className="mb-7">
           <Logo markClass="h-14 w-auto" textClass="font-display tracking-tight text-[var(--foreground)] font-semibold text-2xl" />
@@ -63,11 +63,11 @@ export default function LoginPage() {
           <h1 className="text-lg font-semibold text-[var(--foreground)]">Sign in</h1>
           <p className="mt-1 text-sm text-[var(--muted-foreground)]">Your role determines which modules and actions are available.</p>
           <form onSubmit={submit} className="mt-5 flex flex-col gap-4">
-            <Field label="Email">
-              <TextInput name="email" type="email" required placeholder="you@company.com" autoComplete="username" />
+            <Field label="Email" htmlFor="login-email">
+              <TextInput id="login-email" name="email" type="email" required placeholder="you@company.com" autoComplete="username" />
             </Field>
-            <Field label="Password">
-              <TextInput name="password" type="password" required placeholder="••••••••••••" autoComplete="current-password" />
+            <Field label="Password" htmlFor="login-password">
+              <TextInput id="login-password" name="password" type="password" required placeholder="••••••••••••" autoComplete="current-password" />
             </Field>
             <div className="-mt-2 text-right">
               <Link to="/forgot-password" className="text-xs text-[var(--primary)] hover:underline">
@@ -77,12 +77,12 @@ export default function LoginPage() {
             {mfaRequired && (
               <>
                 {!useRecoveryCode ? (
-                  <Field label="Authentication code" hint="From your authenticator app">
-                    <TextInput name="mfaCode" maxLength={6} required placeholder="000000" className="numeric tracking-[0.3em]" />
+                  <Field label="Authentication code" hint="From your authenticator app" htmlFor="login-mfa-code">
+                    <TextInput id="login-mfa-code" name="mfaCode" maxLength={6} required placeholder="000000" className="numeric tracking-[0.3em]" />
                   </Field>
                 ) : (
-                  <Field label="Emergency recovery code" hint="e.g. ABCD-EFGH">
-                    <TextInput name="mfaRecoveryCode" required placeholder="XXXX-XXXX" className="uppercase font-mono" />
+                  <Field label="Emergency recovery code" hint="e.g. ABCD-EFGH" htmlFor="login-recovery-code">
+                    <TextInput id="login-recovery-code" name="mfaRecoveryCode" required placeholder="XXXX-XXXX" className="uppercase font-mono" />
                   </Field>
                 )}
                 <div className="-mt-2 text-right">
@@ -118,7 +118,17 @@ export default function LoginPage() {
           </form>
         </div>
         <p className="mt-4 text-center text-[11px] text-[var(--muted-foreground)]">Sessions use short-lived access tokens with rotating refresh tokens.</p>
+        <div className="mt-3 flex justify-center">
+          <button
+            type="button"
+            aria-label="Help and training documentation"
+            onClick={() => navigate("/training")}
+            className="inline-flex items-center gap-1.5 text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+          >
+            <HelpCircle className="w-3.5 h-3.5" /> Help &amp; Interactive Training
+          </button>
+        </div>
       </div>
-    </div>
+    </main>
   );
 }

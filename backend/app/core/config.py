@@ -49,12 +49,12 @@ class Settings(BaseSettings):
     access_token_ttl: int = 900
     refresh_token_ttl: int = 2592000
 
-    mfa_issuer: str = "Axon ERP"
+    mfa_issuer: str = "Simple ERP"
     bootstrap_admin_email: str = "admin@axon-erp.local"
     bootstrap_admin_password: str = ""
 
     default_tenant_id: str = "00000000-0000-4000-8000-000000000001"
-    default_tenant_name: str = "Axon Demo Tenant"
+    default_tenant_name: str = "Simple ERP Demo Tenant"
     default_tenant_slug: str = "axon-demo"
 
     cors_allowed_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
@@ -147,7 +147,7 @@ class Settings(BaseSettings):
     gotenberg_url: str = ""
     document_local_dir: str = "/tmp/axon-documents"
     presigned_url_ttl_seconds: int = 900
-    company_name: str = "Axon Industries"
+    company_name: str = "Simple ERP Industries"
     company_address: str = "Plot 22, Hinjawadi Phase II, Pune 411057, India"
     company_gstin: str = "27AAPFU0939F1ZV"
     s3_bucket: str = ""
@@ -164,7 +164,7 @@ class Settings(BaseSettings):
     smtp_password: str = ""
     smtp_secure: bool = False  # implicit TLS (port 465)
     smtp_starttls: bool = False  # upgrade a plain connection with STARTTLS (port 587)
-    smtp_from: str = "Axon ERP <no-reply@axon-erp.dev>"
+    smtp_from: str = "Simple ERP <no-reply@simple-erp.dev>"
     max_delivery_attempts: int = 5
     retry_base_seconds: int = 30
     twilio_account_sid: str = ""

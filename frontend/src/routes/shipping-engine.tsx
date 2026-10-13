@@ -304,7 +304,7 @@ export default function ShippingEnginePage() {
             type="button"
             className={`border-b-2 px-4 py-2 font-medium text-sm transition-colors ${
               activeTab === "rate_shop"
-                ? "border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400"
+                ? "border-blue-700 text-blue-700 dark:border-blue-400 dark:text-blue-300 font-semibold"
                 : "border-transparent text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
             }`}
             onClick={() => setActiveTab("rate_shop")}
@@ -315,7 +315,7 @@ export default function ShippingEnginePage() {
             type="button"
             className={`border-b-2 px-4 py-2 font-medium text-sm transition-colors ${
               activeTab === "shipments"
-                ? "border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400"
+                ? "border-blue-700 text-blue-700 dark:border-blue-400 dark:text-blue-300 font-semibold"
                 : "border-transparent text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
             }`}
             onClick={() => setActiveTab("shipments")}
@@ -326,7 +326,7 @@ export default function ShippingEnginePage() {
             type="button"
             className={`border-b-2 px-4 py-2 font-medium text-sm transition-colors ${
               activeTab === "rate_cards"
-                ? "border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400"
+                ? "border-blue-700 text-blue-700 dark:border-blue-400 dark:text-blue-300 font-semibold"
                 : "border-transparent text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
             }`}
             onClick={() => setActiveTab("rate_cards")}

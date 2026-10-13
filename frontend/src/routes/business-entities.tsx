@@ -9,7 +9,7 @@ import { useState, type FormEvent } from "react";
 import { BulkUploadButton, BulkUploadDialog } from "@/components/erp/bulk-upload";
 import { CheckRow } from "@/components/erp/extras";
 import { Shell } from "@/components/erp/shell";
-import { ActionButton, DataTable, DesktopOnly, Forbidden, InlineError, MobileOnly, MobileRecordCard, MobileRecordRow, Modal, PageHeader, Pill, SelectInput, TextInput } from "@/components/erp/ui";
+import { ActionButton, DataTable, DesktopOnly, Field, Forbidden, InlineError, MobileOnly, MobileRecordCard, MobileRecordRow, Modal, PageHeader, Pill, SelectInput, TextInput } from "@/components/erp/ui";
 import { useAuth } from "@/lib/auth";
 import { useApiQuery, useAsyncAction, type ListResponse } from "@/lib/hooks";
 import { COUNTRY_OPTIONS, INDIAN_STATE_NAMES, INDIAN_STATE_OPTIONS } from "@/lib/reference";
@@ -93,32 +93,82 @@ function EntityDialog({ entity, onClose, onSaved }: { entity: Entity | null; onC
     <Modal open onClose={onClose} title={entity ? "Edit business entity" : "New business entity"}>
       <form onSubmit={submit} className="flex flex-col gap-3">
         <InlineError message={error} />
-        <TextInput name="name" placeholder="Name, e.g. Battery Vertical Pvt Ltd" defaultValue={e.name ?? ""} required />
-        <TextInput name="addressLine1" placeholder="Address line 1" defaultValue={e.addressLine1 ?? ""} />
-        <TextInput name="addressLine2" placeholder="Address line 2 (optional)" defaultValue={e.addressLine2 ?? ""} />
+        <Field label="Legal Entity Name" required>
+          <TextInput name="name" placeholder="Name, e.g. Battery Vertical Pvt Ltd" defaultValue={e.name ?? ""} required />
+        </Field>
+        <Field label="Address Line 1">
+          <TextInput name="addressLine1" placeholder="Address line 1" defaultValue={e.addressLine1 ?? ""} />
+        </Field>
+        <Field label="Address Line 2">
+          <TextInput name="addressLine2" placeholder="Address line 2 (optional)" defaultValue={e.addressLine2 ?? ""} />
+        </Field>
         <div className="flex gap-2">
-          <TextInput name="city" placeholder="City" defaultValue={e.city ?? ""} />
-          <TextInput name="postalCode" placeholder="Postal code" defaultValue={e.postalCode ?? ""} />
+          <div className="flex-1">
+            <Field label="City">
+              <TextInput name="city" placeholder="City" defaultValue={e.city ?? ""} />
+            </Field>
+          </div>
+          <div className="flex-1">
+            <Field label="Postal Code">
+              <TextInput name="postalCode" placeholder="Postal code" defaultValue={e.postalCode ?? ""} />
+            </Field>
+          </div>
         </div>
-        <SelectInput name="stateCode" placeholder="State" defaultValue={e.stateCode ?? ""} options={INDIAN_STATE_OPTIONS.map((o) => ({ value: o.value, label: `${o.value} — ${o.label}` }))} />
-        <SelectInput name="country" placeholder="Country" defaultValue="IN" options={COUNTRY_OPTIONS} />
+        <Field label="State">
+          <SelectInput name="stateCode" placeholder="State" defaultValue={e.stateCode ?? ""} options={INDIAN_STATE_OPTIONS.map((o) => ({ value: o.value, label: `${o.value} — ${o.label}` }))} />
+        </Field>
+        <Field label="Country">
+          <SelectInput name="country" placeholder="Country" defaultValue="IN" options={COUNTRY_OPTIONS} />
+        </Field>
         <div className="flex gap-2">
-          <TextInput name="taxId" placeholder="Tax ID / GSTIN (optional)" defaultValue={e.taxId ?? ""} />
-          <TextInput name="pan" placeholder="Company PAN (optional)" defaultValue={e.pan ?? ""} />
+          <div className="flex-1">
+            <Field label="Tax ID / GSTIN" hint="15-digit GSTIN (e.g. 22AAAAA0000A1Z5)" htmlFor="entity-tax-id">
+              <TextInput id="entity-tax-id" name="taxId" placeholder="22AAAAA0000A1Z5" defaultValue={e.taxId ?? ""} />
+            </Field>
+          </div>
+          <div className="flex-1">
+            <Field label="Company PAN" hint="10-digit PAN (e.g. AAAAA0000A)" htmlFor="entity-pan">
+              <TextInput id="entity-pan" name="pan" placeholder="AAAAA0000A" defaultValue={e.pan ?? ""} />
+            </Field>
+          </div>
         </div>
         <div className="flex gap-2">
-          <TextInput name="contactEmail" placeholder="Contact email (optional)" defaultValue={e.contactEmail ?? ""} />
-          <TextInput name="contactPhone" placeholder="Contact phone (optional)" defaultValue={e.contactPhone ?? ""} />
+          <div className="flex-1">
+            <Field label="Contact Email">
+              <TextInput name="contactEmail" placeholder="Contact email (optional)" defaultValue={e.contactEmail ?? ""} />
+            </Field>
+          </div>
+          <div className="flex-1">
+            <Field label="Contact Phone">
+              <TextInput name="contactPhone" placeholder="Contact phone (optional)" defaultValue={e.contactPhone ?? ""} />
+            </Field>
+          </div>
         </div>
         <hr className="border-[var(--border)]" />
         <p className="text-sm font-bold text-[var(--muted-foreground)]">Bank details</p>
         <div className="flex gap-2">
-          <TextInput name="bankName" placeholder="Bank name (optional)" defaultValue={e.bankName ?? ""} />
-          <TextInput name="bankBranch" placeholder="Branch (optional)" defaultValue={e.bankBranch ?? ""} />
+          <div className="flex-1">
+            <Field label="Bank Name">
+              <TextInput name="bankName" placeholder="Bank name (optional)" defaultValue={e.bankName ?? ""} />
+            </Field>
+          </div>
+          <div className="flex-1">
+            <Field label="Branch">
+              <TextInput name="bankBranch" placeholder="Branch (optional)" defaultValue={e.bankBranch ?? ""} />
+            </Field>
+          </div>
         </div>
         <div className="flex gap-2">
-          <TextInput name="bankAccountNumber" placeholder="Account number (optional)" defaultValue={e.bankAccountNumber ?? ""} />
-          <TextInput name="bankIfsc" placeholder="IFSC code (optional)" defaultValue={e.bankIfsc ?? ""} />
+          <div className="flex-1">
+            <Field label="Account Number">
+              <TextInput name="bankAccountNumber" placeholder="Account number (optional)" defaultValue={e.bankAccountNumber ?? ""} />
+            </Field>
+          </div>
+          <div className="flex-1">
+            <Field label="IFSC Code">
+              <TextInput name="bankIfsc" placeholder="IFSC code (optional)" defaultValue={e.bankIfsc ?? ""} />
+            </Field>
+          </div>
         </div>
         <CheckRow label="Default entity for new POs/invoices" checked={isDefault} onChange={setIsDefault} />
         <div className="flex justify-end gap-2">
@@ -181,7 +231,7 @@ function Content() {
       />
       <InlineError message={actionError || list.error?.message} />
       <DesktopOnly className="w-full">
-        <DataTable columns={["Code", "Name", "Location", "Tax ID", "Bank", "Default", "Status", ""]} fit>
+        <DataTable columns={["Code", "Name", "Location", "Tax Reference", "Bank", "Default", "Status", ""]} fit>
           {entities.map((e) => (
             <tr key={e.id}>
               <td>{e.code}</td>
@@ -202,7 +252,7 @@ function Content() {
             <MobileRecordRow label="Code" value={e.code} />
             <MobileRecordRow label="Name" value={e.name} />
             <MobileRecordRow label="Location" value={location(e)} />
-            <MobileRecordRow label="Tax ID" value={dash(e.taxId)} />
+            <MobileRecordRow label="Tax Reference" value={dash(e.taxId)} />
             <MobileRecordRow label="Bank" value={dash(bankSummary(e))} />
             <MobileRecordRow label="Default" value={isDefault(e)} />
             <MobileRecordRow label="Status" value={<Pill>{e.status}</Pill>} />

@@ -4,7 +4,7 @@ import { useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { BulkUploadButton, BulkUploadDialog } from "@/components/erp/bulk-upload";
 import { Shell } from "@/components/erp/shell";
-import { ActionButton, DataTable, DesktopOnly, Forbidden, InlineError, MobileOnly, MobileRecordCard, MobileRecordRow, Modal, PageHeader, Pagination, Pill, SelectInput, TextInput } from "@/components/erp/ui";
+import { ActionButton, DataTable, DesktopOnly, Field, Forbidden, InlineError, MobileOnly, MobileRecordCard, MobileRecordRow, Modal, PageHeader, Pagination, Pill, SelectInput, TextInput } from "@/components/erp/ui";
 import { useAuth } from "@/lib/auth";
 import * as format from "@/lib/format";
 import { useApiQuery, useAsyncAction, useDebounced, type ListResponse } from "@/lib/hooks";
@@ -105,7 +105,9 @@ function CreatePartyDialog({ open, onClose, types, onCreated }: { open: boolean;
         <p className="text-sm font-bold">Core details</p>
         <TextInput name="legalName" placeholder="Legal name" required />
         <SelectInput value={subtype} onChange={(e) => setSubtype(e.target.value)} placeholder="Party label" options={types.filter((t) => t.status === "active").map((t) => ({ value: t.code, label: t.label }))} />
-        <TextInput name="taxId" placeholder="Tax ID / GSTIN (optional)" />
+        <Field label="Tax Identification (GSTIN / PAN)" hint="15-digit state GSTIN (e.g. 22AAAAA0000A1Z5) or 10-digit PAN (e.g. AAAAA0000A)" htmlFor="party-tax-id">
+          <TextInput id="party-tax-id" name="taxId" placeholder="22AAAAA0000A1Z5" />
+        </Field>
         <TextInput name="paymentTerms" placeholder="Payment terms, e.g. NET30" />
         <div className="flex gap-2">
           <TextInput name="currency" placeholder="Currency, e.g. INR" />
@@ -192,12 +194,15 @@ function Content() {
     <div className="flex w-full flex-col items-start gap-4">
       <PageHeader eyebrow={null} title="Party Master" />
       <div className="flex w-full flex-wrap items-center gap-3 md:flex-nowrap">
-        <input className="search-input" style={{ width: "20rem" }} placeholder="Search code, name, tax ID…" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} />
-        <select className="filter-select" style={{ width: "11rem" }} value={type} onChange={(e) => { setType(e.target.value); setPage(1); }}>
+        <label htmlFor="party-search-input" className="sr-only">Search code, name, tax ID</label>
+        <input id="party-search-input" className="search-input" style={{ width: "20rem" }} placeholder="Search code, name, tax ID…" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} />
+        <label htmlFor="party-type-filter" className="sr-only">Filter by party type</label>
+        <select id="party-type-filter" className="filter-select" style={{ width: "11rem" }} value={type} aria-label="Filter by All Type" onChange={(e) => { setType(e.target.value); setPage(1); }}>
           <option value="">All Type</option>
           {TYPE_FILTER.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
-        <select className="filter-select" style={{ width: "11rem" }} value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }}>
+        <label htmlFor="party-status-filter" className="sr-only">Filter by status</label>
+        <select id="party-status-filter" className="filter-select" style={{ width: "11rem" }} value={status} aria-label="Filter by All Status" onChange={(e) => { setStatus(e.target.value); setPage(1); }}>
           <option value="">All Status</option>
           {STATUS_FILTER.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>

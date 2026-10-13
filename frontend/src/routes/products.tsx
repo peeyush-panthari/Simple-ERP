@@ -5,7 +5,7 @@ import { BulkUploadButton, BulkUploadDialog } from "@/components/erp/bulk-upload
 import { Shell } from "@/components/erp/shell";
 import { Tabs } from "@/components/erp/tabs";
 import {
-  ActionButton, DataTable, DesktopOnly, Forbidden, InlineError, MobileOnly, MobileRecordCard, MobileRecordRow, Modal, Pagination, Pill, SearchInput, SelectInput, TextInput,
+  ActionButton, DataTable, DesktopOnly, Forbidden, InlineError, MobileOnly, MobileRecordCard, MobileRecordRow, Modal, PageHeader, Pagination, Pill, SearchInput, SelectInput, TextInput,
 } from "@/components/erp/ui";
 import { useAuth } from "@/lib/auth";
 import * as format from "@/lib/format";
@@ -219,21 +219,26 @@ function ProductsTab() {
   return (
     <div className="flex w-full flex-col items-start gap-4">
       <div className="flex w-full flex-wrap items-center gap-3 md:flex-nowrap">
+        <label htmlFor="products-search-input" className="sr-only">Search SKU Code or SKU Name</label>
         <input
+          id="products-search-input"
+          aria-label="Search SKU Code or SKU Name"
           className="search-input"
           style={{ width: "20rem" }}
-          placeholder="Search SKU ID or SKU Name…"
+          placeholder="Search SKU Code or SKU Name…"
           value={search}
           onChange={(e) => {
             setSearch(e.target.value);
             setPage(1);
           }}
         />
-        <select className="filter-select" style={{ width: "11rem" }} value={type} onChange={(e) => { setType(e.target.value); setPage(1); }}>
+        <label htmlFor="products-type-filter" className="sr-only">Filter by All Types</label>
+        <select id="products-type-filter" className="filter-select" style={{ width: "11rem" }} value={type} aria-label="Filter by All Types" onChange={(e) => { setType(e.target.value); setPage(1); }}>
           <option value="">All Types</option>
           {PRODUCT_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
         </select>
-        <select className="filter-select" style={{ width: "11rem" }} value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }}>
+        <label htmlFor="products-status-filter" className="sr-only">Filter by All Status</label>
+        <select id="products-status-filter" className="filter-select" style={{ width: "11rem" }} value={status} aria-label="Filter by All Status" onChange={(e) => { setStatus(e.target.value); setPage(1); }}>
           <option value="">All Status</option>
           {["draft", "active", "deprecated"].map((s) => <option key={s} value={s}>{s}</option>)}
         </select>
@@ -243,7 +248,7 @@ function ProductsTab() {
       </div>
       <InlineError message={list.error?.message} />
       <DesktopOnly className="w-full">
-        <DataTable columns={["SKU ID", "SKU Name", "Make", "Model Number", "Product Category", "Product Type", "UOM", "Status", ""]} fit>
+        <DataTable columns={["SKU Code", "SKU Name", "Make", "Model Number", "Product Category", "Product Type", "UOM", "Status", ""]} fit>
           {products.map((p) => (
             <tr key={p.id}>
               <td>{p.sku}</td>
@@ -262,7 +267,7 @@ function ProductsTab() {
       <MobileOnly className="w-full">
         {products.map((p) => (
           <MobileRecordCard key={p.id} actions={edit(p, "w-full justify-center")}>
-            <MobileRecordRow label="SKU ID" value={p.sku} />
+            <MobileRecordRow label="SKU Code" value={p.sku} />
             <MobileRecordRow label="SKU Name" value={p.name} />
             <MobileRecordRow label="Make" value={p.make} />
             <MobileRecordRow label="Model Number" value={dash(p.modelNumber)} />
@@ -606,6 +611,7 @@ export default function ProductsPage() {
     <Shell>
       {can("product:read") ? (
         <div className="flex w-full flex-col gap-4">
+          <PageHeader eyebrow="Master Data" title="Products & BOM" description="Catalog master data and multi-tier bills of materials" />
           <Tabs
             tabs={[
               { value: "products", label: "Products", content: <ProductsTab /> },

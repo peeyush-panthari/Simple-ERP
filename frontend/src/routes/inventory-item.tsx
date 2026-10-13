@@ -4,7 +4,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ScanToAddButton } from "@/components/erp/scan";
 import { Shell } from "@/components/erp/shell";
-import { ActionButton, DataTable, DesktopOnly, Field, Forbidden, InlineError, MobileOnly, MobileRecordCard, MobileRecordRow, PageHeader, Panel, Pill, SelectInput, TextInput } from "@/components/erp/ui";
+import { ActionButton, DataTable, DesktopOnly, Field, Forbidden, InlineError, MobileOnly, MobileRecordCard, MobileRecordRow, PageHeader, Panel, Pill, RecordNotFound, SelectInput, TextInput } from "@/components/erp/ui";
 import { useAuth } from "@/lib/auth";
 import { ApiError } from "@/lib/api";
 import * as format from "@/lib/format";
@@ -229,12 +229,23 @@ function Content({ itemId }: { itemId: string }) {
   const toggle = (a: string) => setAction(action === a ? "" : a);
   const i = item;
 
+  if (itemQ.error instanceof ApiError && itemQ.error.status === 404) {
+    return <RecordNotFound entity="Inventory Item" id={itemId} backUrl="/inventory" backLabel="← Back to inventory" />;
+  }
+
   return (
     <div className="flex w-full flex-col items-start gap-4">
-      <Link to="/inventory" className="rx-link">← Back to inventory</Link>
+      <Link to="/inventory" className="rx-link font-medium">← Back to inventory</Link>
       <InlineError message={itemQ.error?.message} />
       {!i ? (
-        <p className="text-sm text-[var(--muted-foreground)]">Loading…</p>
+        itemQ.isError ? (
+          <RecordNotFound entity="Inventory Item" id={itemId} backUrl="/inventory" backLabel="← Back to inventory" />
+        ) : (
+          <div>
+            <h1 className="text-xl font-bold mb-2">Inventory Item</h1>
+            <p className="text-sm text-[var(--muted-foreground)]">Loading…</p>
+          </div>
+        )
       ) : (
         <>
           <PageHeader fit eyebrow="Inventory" title={i.inventoryId} titleSuffix={<Pill>{rawItemStatusLabel(i as never)}</Pill>} />

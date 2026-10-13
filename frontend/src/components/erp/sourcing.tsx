@@ -761,7 +761,7 @@ export function SourcingTab({ openId, onOpen, onOpenRequisition }: { openId: str
       <Note>An approved requisition goes out for quotation from its own page (<b>Start sourcing</b>). Record each vendor&apos;s reply here, compare the offers, award, and raise the purchase orders.</Note>
       <div className="flex w-full flex-wrap items-center gap-3 md:flex-nowrap">
         <input className="search-input" style={{ width: "20rem" }} placeholder="Search RFQ, requisition, item or vendor…" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} />
-        <select className="filter-select" style={{ width: "11rem" }} value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }}>
+        <select className="filter-select" style={{ width: "11rem" }} value={status} aria-label="Filter by All Status" onChange={(e) => { setStatus(e.target.value); setPage(1); }}>
           <option value="">All Status</option>
           {Object.entries(STATUS_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
         </select>
