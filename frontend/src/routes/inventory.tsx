@@ -11,7 +11,7 @@ import { ScanToJumpBox } from "@/components/erp/scan";
 import { Shell } from "@/components/erp/shell";
 import { Tabs } from "@/components/erp/tabs";
 import {
-  ActionButton, DataTable, DesktopOnly, Field, Forbidden, InfoTooltip, InlineError, MobileOnly, MobileRecordCard, MobileRecordRow, Modal, PageHeader, Pill, Segmented, SelectInput, StatCard, TextArea, TextInput,
+  ActionButton, DataTable, DesktopOnly, EmptyState, Field, Forbidden, InfoTooltip, InlineError, MobileOnly, MobileRecordCard, MobileRecordRow, Modal, PageHeader, Pill, Segmented, SelectInput, StatCard, TextArea, TextInput,
 } from "@/components/erp/ui";
 import { useAuth } from "@/lib/auth";
 import { ApiError, type Params } from "@/lib/api";
@@ -319,7 +319,7 @@ function PendingTransfersDialog({ onClose, onDone }: { onClose: () => void; onDo
       <div className="flex flex-col gap-3">
         <InlineError message={error || list.error?.message} />
         {rows.length === 0 ? (
-          <p className="text-sm text-[var(--muted-foreground)]">No transfers in transit.</p>
+          <EmptyState title="No transfers in transit" hint="All inventory stock transfers have been received and completed." />
         ) : (
           <>
             <DesktopOnly className="w-full">
@@ -670,18 +670,22 @@ function Content() {
   );
 
   const balancesTable = (columns: string[], render: (b: (typeof balanceRows)[number]) => ReactNode[], cards: (b: (typeof balanceRows)[number]) => [string, ReactNode][]) => (
-    <>
-      <DesktopOnly className="w-full">
-        <DataTable columns={columns} fit>
-          {balanceRows.map((b) => <tr key={b.sku}>{render(b).map((c, i) => <td key={i}>{c}</td>)}</tr>)}
-        </DataTable>
-      </DesktopOnly>
-      <MobileOnly className="w-full">
-        {balanceRows.map((b) => (
-          <MobileRecordCard key={b.sku}>{cards(b).map(([l, v]) => <MobileRecordRow key={l} label={l} value={v} />)}</MobileRecordCard>
-        ))}
-      </MobileOnly>
-    </>
+    balanceRows.length === 0 ? (
+      <EmptyState title="No inventory balances found" hint="Try adjusting your warehouse, category, or search filters." />
+    ) : (
+      <>
+        <DesktopOnly className="w-full">
+          <DataTable columns={columns} fit>
+            {balanceRows.map((b) => <tr key={b.sku}>{render(b).map((c, i) => <td key={i}>{c}</td>)}</tr>)}
+          </DataTable>
+        </DesktopOnly>
+        <MobileOnly className="w-full">
+          {balanceRows.map((b) => (
+            <MobileRecordCard key={b.sku}>{cards(b).map(([l, v]) => <MobileRecordRow key={l} label={l} value={v} />)}</MobileRecordCard>
+          ))}
+        </MobileOnly>
+      </>
+    )
   );
 
   const balancesView =
@@ -749,29 +753,35 @@ function Content() {
           {locationFilter}
           {skuFilter}
         </div>
-        <DesktopOnly className="w-full">
-          <DataTable columns={["FG-ID", "SKU Name", "UOM", "Status", "Qty", "Allocated", "Available", "Location"]} fit>
-            {fgFiltered.map((i) => (
-              <tr key={`${i.source}-${i.id}`}>
-                <td>{fgIdLink(i)}</td><td>{i.skuName}</td><td>{i.uom}</td><td><Pill>{i.statusLabel}</Pill></td><td>{i.qty}</td><td>{i.allocated}</td><td>{i.avail}</td><td>{dash(i.locationCode)}</td>
-              </tr>
-            ))}
-          </DataTable>
-        </DesktopOnly>
-        <MobileOnly className="w-full">
-          {fgFiltered.map((i) => (
-            <MobileRecordCard key={`${i.source}-${i.id}`}>
-              <MobileRecordRow label="FG-ID" value={fgIdLink(i)} />
-              <MobileRecordRow label="SKU Name" value={i.skuName} />
-              <MobileRecordRow label="UOM" value={i.uom} />
-              <MobileRecordRow label="Status" value={<Pill>{i.statusLabel}</Pill>} />
-              <MobileRecordRow label="Qty" value={i.qty} />
-              <MobileRecordRow label="Allocated" value={i.allocated} />
-              <MobileRecordRow label="Available" value={i.avail} />
-              <MobileRecordRow label="Location" value={dash(i.locationCode)} />
-            </MobileRecordCard>
-          ))}
-        </MobileOnly>
+        {fgFiltered.length === 0 ? (
+          <EmptyState title="No finished goods found" hint="Try adjusting your status, warehouse, or SKU filters." />
+        ) : (
+          <>
+            <DesktopOnly className="w-full">
+              <DataTable columns={["FG-ID", "SKU Name", "UOM", "Status", "Qty", "Allocated", "Available", "Location"]} fit>
+                {fgFiltered.map((i) => (
+                  <tr key={`${i.source}-${i.id}`}>
+                    <td>{fgIdLink(i)}</td><td>{i.skuName}</td><td>{i.uom}</td><td><Pill>{i.statusLabel}</Pill></td><td>{i.qty}</td><td>{i.allocated}</td><td>{i.avail}</td><td>{dash(i.locationCode)}</td>
+                  </tr>
+                ))}
+              </DataTable>
+            </DesktopOnly>
+            <MobileOnly className="w-full">
+              {fgFiltered.map((i) => (
+                <MobileRecordCard key={`${i.source}-${i.id}`}>
+                  <MobileRecordRow label="FG-ID" value={fgIdLink(i)} />
+                  <MobileRecordRow label="SKU Name" value={i.skuName} />
+                  <MobileRecordRow label="UOM" value={i.uom} />
+                  <MobileRecordRow label="Status" value={<Pill>{i.statusLabel}</Pill>} />
+                  <MobileRecordRow label="Qty" value={i.qty} />
+                  <MobileRecordRow label="Allocated" value={i.allocated} />
+                  <MobileRecordRow label="Available" value={i.avail} />
+                  <MobileRecordRow label="Location" value={dash(i.locationCode)} />
+                </MobileRecordCard>
+              ))}
+            </MobileOnly>
+          </>
+        )}
       </>
     ) : tab === "raw" ? (
       <>
@@ -783,28 +793,34 @@ function Content() {
           {locationFilter}
           {skuFilter}
         </div>
-        <DesktopOnly className="w-full">
-          <DataTable columns={["Inventory ID", "SKU Name", "UOM", <span className="inline-flex items-center">Qty <InfoTooltip content="Available balance tracked under First-In-First-Out (FIFO) consumption rules." /></span>, "Status", "Location", "Vendor Inventory ID"]} fit>
-            {items.map((i) => (
-              <tr key={i.id}>
-                <td>{idLink(i)}</td><td>{i.skuName}</td><td>{i.uom}</td><td>{i.qty}</td><td><Pill>{i.statusLabel}</Pill></td><td>{dash(i.locationCode)}</td><td>{dash(i.vendorInventoryId)}</td>
-              </tr>
-            ))}
-          </DataTable>
-        </DesktopOnly>
-        <MobileOnly className="w-full">
-          {items.map((i) => (
-            <MobileRecordCard key={i.id}>
-              <MobileRecordRow label="Inventory ID" value={idLink(i)} />
-              <MobileRecordRow label="SKU Name" value={i.skuName} />
-              <MobileRecordRow label="UOM" value={i.uom} />
-              <MobileRecordRow label="Qty" value={i.qty} />
-              <MobileRecordRow label="Status" value={<Pill>{i.statusLabel}</Pill>} />
-              <MobileRecordRow label="Location" value={dash(i.locationCode)} />
-              <MobileRecordRow label="Vendor Inventory ID" value={dash(i.vendorInventoryId)} />
-            </MobileRecordCard>
-          ))}
-        </MobileOnly>
+        {items.length === 0 ? (
+          <EmptyState title="No raw material inventory items found" hint="Try adjusting your status or location filters." />
+        ) : (
+          <>
+            <DesktopOnly className="w-full">
+              <DataTable columns={["Inventory ID", "SKU Name", "UOM", <span className="inline-flex items-center">Qty <InfoTooltip content="Available balance tracked under First-In-First-Out (FIFO) consumption rules." /></span>, "Status", "Location", "Vendor Inventory ID"]} fit>
+                {items.map((i) => (
+                  <tr key={i.id}>
+                    <td>{idLink(i)}</td><td>{i.skuName}</td><td>{i.uom}</td><td>{i.qty}</td><td><Pill>{i.statusLabel}</Pill></td><td>{dash(i.locationCode)}</td><td>{dash(i.vendorInventoryId)}</td>
+                  </tr>
+                ))}
+              </DataTable>
+            </DesktopOnly>
+            <MobileOnly className="w-full">
+              {items.map((i) => (
+                <MobileRecordCard key={i.id}>
+                  <MobileRecordRow label="Inventory ID" value={idLink(i)} />
+                  <MobileRecordRow label="SKU Name" value={i.skuName} />
+                  <MobileRecordRow label="UOM" value={i.uom} />
+                  <MobileRecordRow label="Qty" value={i.qty} />
+                  <MobileRecordRow label="Status" value={<Pill>{i.statusLabel}</Pill>} />
+                  <MobileRecordRow label="Location" value={dash(i.locationCode)} />
+                  <MobileRecordRow label="Vendor Inventory ID" value={dash(i.vendorInventoryId)} />
+                </MobileRecordCard>
+              ))}
+            </MobileOnly>
+          </>
+        )}
       </>
     ) : (
       <>
@@ -813,27 +829,33 @@ function Content() {
           {locationFilter}
           {skuFilter}
         </div>
-        <DesktopOnly className="w-full">
-          <DataTable columns={["Inventory ID", "SKU Name", "UOM", "Status", "Rejected in QC", "Location", ""]} fit>
-            {items.map((i) => (
-              <tr key={i.id}>
-                <td>{idLink(i)}</td><td>{i.skuName}</td><td>{i.uom}</td><td><Pill>{i.statusLabel}</Pill></td><td>{i.rejected}</td><td>{dash(i.locationCode)}</td><td>{disposeButtons(i)}</td>
-              </tr>
-            ))}
-          </DataTable>
-        </DesktopOnly>
-        <MobileOnly className="w-full">
-          {items.map((i) => (
-            <MobileRecordCard key={i.id} actions={disposeButtons(i) || undefined}>
-              <MobileRecordRow label="Inventory ID" value={idLink(i)} />
-              <MobileRecordRow label="SKU Name" value={i.skuName} />
-              <MobileRecordRow label="UOM" value={i.uom} />
-              <MobileRecordRow label="Status" value={<Pill>{i.statusLabel}</Pill>} />
-              <MobileRecordRow label="Rejected in QC" value={i.rejected} />
-              <MobileRecordRow label="Location" value={dash(i.locationCode)} />
-            </MobileRecordCard>
-          ))}
-        </MobileOnly>
+        {items.length === 0 ? (
+          <EmptyState title="No quarantine or rejected items" hint="No items currently require QC inspection or disposal." />
+        ) : (
+          <>
+            <DesktopOnly className="w-full">
+              <DataTable columns={["Inventory ID", "SKU Name", "UOM", "Status", "Rejected in QC", "Location", ""]} fit>
+                {items.map((i) => (
+                  <tr key={i.id}>
+                    <td>{idLink(i)}</td><td>{i.skuName}</td><td>{i.uom}</td><td><Pill>{i.statusLabel}</Pill></td><td>{i.rejected}</td><td>{dash(i.locationCode)}</td><td>{disposeButtons(i)}</td>
+                  </tr>
+                ))}
+              </DataTable>
+            </DesktopOnly>
+            <MobileOnly className="w-full">
+              {items.map((i) => (
+                <MobileRecordCard key={i.id} actions={disposeButtons(i) || undefined}>
+                  <MobileRecordRow label="Inventory ID" value={idLink(i)} />
+                  <MobileRecordRow label="SKU Name" value={i.skuName} />
+                  <MobileRecordRow label="UOM" value={i.uom} />
+                  <MobileRecordRow label="Status" value={<Pill>{i.statusLabel}</Pill>} />
+                  <MobileRecordRow label="Rejected in QC" value={i.rejected} />
+                  <MobileRecordRow label="Location" value={dash(i.locationCode)} />
+                </MobileRecordCard>
+              ))}
+            </MobileOnly>
+          </>
+        )}
       </>
     );
 

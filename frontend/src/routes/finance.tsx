@@ -5,7 +5,7 @@ import { ReasonDialog } from "@/components/erp/dialogs";
 import { Shell } from "@/components/erp/shell";
 import { Tabs } from "@/components/erp/tabs";
 import {
-  ActionButton, DataTable, DesktopOnly, Forbidden, InlineError, MobileOnly, MobileRecordCard, MobileRecordRow, Modal, Note, PageHeader, Panel, Pagination, Pill, SelectInput, StatCard, TextArea, TextInput,
+  ActionButton, DataTable, DesktopOnly, EmptyState, Forbidden, InlineError, MobileOnly, MobileRecordCard, MobileRecordRow, Modal, Note, PageHeader, Panel, Pagination, Pill, SelectInput, StatCard, TextArea, TextInput,
 } from "@/components/erp/ui";
 import { useAuth } from "@/lib/auth";
 import { ApiError } from "@/lib/api";
@@ -242,24 +242,30 @@ function PayablesTab() {
       {can("invoice:post") && <div className="flex w-full justify-end"><ActionButton onClick={() => setPostOpen(true)}>Post vendor invoice</ActionButton></div>}
       <StatusFilter value={status} onChange={(v) => { setStatus(v); setPage(1); }} options={AP_STATUSES} />
       <InlineError message={list.error?.message} />
-      <DesktopOnly className="w-full">
-        <DataTable columns={["Invoice", "Vendor", "Amount", "Outstanding", "Due", "Status", "Match"]} fit>
-          {rows.map((p) => <tr key={p.id}><td>{link(p)}</td><td>{p.vendorName}</td><td>{format.money(p.amount, cur(p.currency))}</td><td>{format.money(p.outstanding, cur(p.currency))}</td><td>{format.date(p.dueDate)}</td><td><Pill>{p.status}</Pill></td><td><Pill>{p.matchStatus ?? ""}</Pill></td></tr>)}
-        </DataTable>
-      </DesktopOnly>
-      <MobileOnly className="w-full">
-        {rows.map((p) => (
-          <MobileRecordCard key={p.id}>
-            <MobileRecordRow label="Invoice" value={link(p)} />
-            <MobileRecordRow label="Vendor" value={p.vendorName} />
-            <MobileRecordRow label="Amount" value={format.money(p.amount, cur(p.currency))} />
-            <MobileRecordRow label="Outstanding" value={format.money(p.outstanding, cur(p.currency))} />
-            <MobileRecordRow label="Due" value={format.date(p.dueDate)} />
-            <MobileRecordRow label="Status" value={<Pill>{p.status}</Pill>} />
-            <MobileRecordRow label="Match" value={<Pill>{p.matchStatus ?? ""}</Pill>} />
-          </MobileRecordCard>
-        ))}
-      </MobileOnly>
+      {rows.length === 0 ? (
+        <EmptyState title="No vendor invoices found" hint="Try adjusting your status filter or post a new invoice." />
+      ) : (
+        <>
+          <DesktopOnly className="w-full">
+            <DataTable columns={["Invoice", "Vendor", "Amount", "Outstanding", "Due", "Status", "Match"]} fit>
+              {rows.map((p) => <tr key={p.id}><td>{link(p)}</td><td>{p.vendorName}</td><td>{format.money(p.amount, cur(p.currency))}</td><td>{format.money(p.outstanding, cur(p.currency))}</td><td>{format.date(p.dueDate)}</td><td><Pill>{p.status}</Pill></td><td><Pill>{p.matchStatus ?? ""}</Pill></td></tr>)}
+            </DataTable>
+          </DesktopOnly>
+          <MobileOnly className="w-full">
+            {rows.map((p) => (
+              <MobileRecordCard key={p.id}>
+                <MobileRecordRow label="Invoice" value={link(p)} />
+                <MobileRecordRow label="Vendor" value={p.vendorName} />
+                <MobileRecordRow label="Amount" value={format.money(p.amount, cur(p.currency))} />
+                <MobileRecordRow label="Outstanding" value={format.money(p.outstanding, cur(p.currency))} />
+                <MobileRecordRow label="Due" value={format.date(p.dueDate)} />
+                <MobileRecordRow label="Status" value={<Pill>{p.status}</Pill>} />
+                <MobileRecordRow label="Match" value={<Pill>{p.matchStatus ?? ""}</Pill>} />
+              </MobileRecordCard>
+            ))}
+          </MobileOnly>
+        </>
+      )}
       <div className="w-full"><Pagination meta={list.data?.meta} onPage={setPage} /></div>
       {postOpen && <PostApDialog onClose={() => { setPostOpen(false); void refresh(); }} onPosted={refresh} />}
       {openId && <InvoiceDetail kind="ap" id={openId} onClose={() => setOpenId("")} onChanged={refresh} />}
@@ -283,24 +289,30 @@ function ReceivablesTab() {
       <p className="text-xs text-[var(--muted-foreground)]">Receivables are only ever created automatically when a sales order is invoiced - there is no manual entry form here, matching Node exactly.</p>
       <StatusFilter value={status} onChange={(v) => { setStatus(v); setPage(1); }} options={AR_STATUSES} />
       <InlineError message={list.error?.message} />
-      <DesktopOnly className="w-full">
-        <DataTable columns={["Invoice", "Customer", "Order", "Amount", "Outstanding", "Due", "Status"]} fit>
-          {rows.map((p) => <tr key={p.id}><td>{link(p)}</td><td>{p.customerName}</td><td>{p.orderNumber}</td><td>{format.money(p.amount, cur(p.currency))}</td><td>{format.money(p.outstanding, cur(p.currency))}</td><td>{format.date(p.dueDate)}</td><td><Pill>{p.status}</Pill></td></tr>)}
-        </DataTable>
-      </DesktopOnly>
-      <MobileOnly className="w-full">
-        {rows.map((p) => (
-          <MobileRecordCard key={p.id}>
-            <MobileRecordRow label="Invoice" value={link(p)} />
-            <MobileRecordRow label="Customer" value={p.customerName} />
-            <MobileRecordRow label="Order" value={p.orderNumber} />
-            <MobileRecordRow label="Amount" value={format.money(p.amount, cur(p.currency))} />
-            <MobileRecordRow label="Outstanding" value={format.money(p.outstanding, cur(p.currency))} />
-            <MobileRecordRow label="Due" value={format.date(p.dueDate)} />
-            <MobileRecordRow label="Status" value={<Pill>{p.status}</Pill>} />
-          </MobileRecordCard>
-        ))}
-      </MobileOnly>
+      {rows.length === 0 ? (
+        <EmptyState title="No customer invoices found" hint="Invoices are created automatically when sales orders are invoiced." />
+      ) : (
+        <>
+          <DesktopOnly className="w-full">
+            <DataTable columns={["Invoice", "Customer", "Order", "Amount", "Outstanding", "Due", "Status"]} fit>
+              {rows.map((p) => <tr key={p.id}><td>{link(p)}</td><td>{p.customerName}</td><td>{p.orderNumber}</td><td>{format.money(p.amount, cur(p.currency))}</td><td>{format.money(p.outstanding, cur(p.currency))}</td><td>{format.date(p.dueDate)}</td><td><Pill>{p.status}</Pill></td></tr>)}
+            </DataTable>
+          </DesktopOnly>
+          <MobileOnly className="w-full">
+            {rows.map((p) => (
+              <MobileRecordCard key={p.id}>
+                <MobileRecordRow label="Invoice" value={link(p)} />
+                <MobileRecordRow label="Customer" value={p.customerName} />
+                <MobileRecordRow label="Order" value={p.orderNumber} />
+                <MobileRecordRow label="Amount" value={format.money(p.amount, cur(p.currency))} />
+                <MobileRecordRow label="Outstanding" value={format.money(p.outstanding, cur(p.currency))} />
+                <MobileRecordRow label="Due" value={format.date(p.dueDate)} />
+                <MobileRecordRow label="Status" value={<Pill>{p.status}</Pill>} />
+              </MobileRecordCard>
+            ))}
+          </MobileOnly>
+        </>
+      )}
       <div className="w-full"><Pagination meta={list.data?.meta} onPage={setPage} /></div>
       {openId && <InvoiceDetail kind="ar" id={openId} onClose={() => setOpenId("")} onChanged={refresh} />}
     </div>
@@ -392,23 +404,29 @@ function PaymentsTab() {
       </select>
       <InlineError message={list.error?.message} />
       <InlineError message={approveError} />
-      <DesktopOnly className="w-full">
-        <DataTable columns={["Payment", "Direction", "Party", "Amount", "Date", "Status", ""]} fit>
-          {rows.map((p) => <tr key={p.id}><td>{p.number}</td><td><Pill>{p.direction ?? ""}</Pill></td><td>{p.partyName}</td><td>{format.money(p.amount, cur(p.currency))}</td><td>{format.date(p.paymentDate)}</td><td><Pill>{p.status}</Pill></td><td>{actions(p)}</td></tr>)}
-        </DataTable>
-      </DesktopOnly>
-      <MobileOnly className="w-full">
-        {rows.map((p) => (
-          <MobileRecordCard key={p.id} actions={actions(p, "w-full justify-center")}>
-            <MobileRecordRow label="Payment" value={p.number} />
-            <MobileRecordRow label="Direction" value={<Pill>{p.direction ?? ""}</Pill>} />
-            <MobileRecordRow label="Party" value={p.partyName} />
-            <MobileRecordRow label="Amount" value={format.money(p.amount, cur(p.currency))} />
-            <MobileRecordRow label="Date" value={format.date(p.paymentDate)} />
-            <MobileRecordRow label="Status" value={<Pill>{p.status}</Pill>} />
-          </MobileRecordCard>
-        ))}
-      </MobileOnly>
+      {rows.length === 0 ? (
+        <EmptyState title="No payments found" hint="No incoming or outgoing payments recorded." />
+      ) : (
+        <>
+          <DesktopOnly className="w-full">
+            <DataTable columns={["Payment", "Direction", "Party", "Amount", "Date", "Status", ""]} fit>
+              {rows.map((p) => <tr key={p.id}><td>{p.number}</td><td><Pill>{p.direction ?? ""}</Pill></td><td>{p.partyName}</td><td>{format.money(p.amount, cur(p.currency))}</td><td>{format.date(p.paymentDate)}</td><td><Pill>{p.status}</Pill></td><td>{actions(p)}</td></tr>)}
+            </DataTable>
+          </DesktopOnly>
+          <MobileOnly className="w-full">
+            {rows.map((p) => (
+              <MobileRecordCard key={p.id} actions={actions(p, "w-full justify-center")}>
+                <MobileRecordRow label="Payment" value={p.number} />
+                <MobileRecordRow label="Direction" value={<Pill>{p.direction ?? ""}</Pill>} />
+                <MobileRecordRow label="Party" value={p.partyName} />
+                <MobileRecordRow label="Amount" value={format.money(p.amount, cur(p.currency))} />
+                <MobileRecordRow label="Date" value={format.date(p.paymentDate)} />
+                <MobileRecordRow label="Status" value={<Pill>{p.status}</Pill>} />
+              </MobileRecordCard>
+            ))}
+          </MobileOnly>
+        </>
+      )}
       <div className="w-full"><Pagination meta={list.data?.meta} onPage={setPage} /></div>
       {record && <RecordPaymentDialog direction={record} onClose={() => setRecord("")} onDone={refresh} />}
       {reverseId && (
@@ -505,22 +523,28 @@ function InvoicesTab() {
         <TextInput style={{ width: "12rem" }} placeholder="Customer" value={customer} onChange={(e) => setCustomer(e.target.value)} />
         <TextInput style={{ width: "16rem" }} placeholder="Search order ID / invoice ID" value={search} onChange={(e) => setSearch(e.target.value)} />
       </div>
-      <DesktopOnly className="w-full">
-        <DataTable columns={["Order", "Customer", "Date", "Total", "Status", ""]} fit>
-          {rows.map((o) => <tr key={o.id}><td>{o.number}</td><td>{o.customerName}</td><td>{format.date(o.orderDate)}</td><td>{format.money(o.total, cur(o.currency))}</td><td>{statusCell(o)}</td><td>{buttons(o)}</td></tr>)}
-        </DataTable>
-      </DesktopOnly>
-      <MobileOnly className="w-full">
-        {rows.map((o) => (
-          <MobileRecordCard key={o.id} actions={buttons(o, "w-full justify-center")}>
-            <MobileRecordRow label="Order" value={o.number} />
-            <MobileRecordRow label="Customer" value={o.customerName} />
-            <MobileRecordRow label="Date" value={format.date(o.orderDate)} />
-            <MobileRecordRow label="Total" value={format.money(o.total, cur(o.currency))} />
-            <MobileRecordRow label="Status" value={statusCell(o)} />
-          </MobileRecordCard>
-        ))}
-      </MobileOnly>
+      {rows.length === 0 ? (
+        <EmptyState title="No orders to invoice" hint="Try adjusting your status, invoiced, or search filters." />
+      ) : (
+        <>
+          <DesktopOnly className="w-full">
+            <DataTable columns={["Order", "Customer", "Date", "Total", "Status", ""]} fit>
+              {rows.map((o) => <tr key={o.id}><td>{o.number}</td><td>{o.customerName}</td><td>{format.date(o.orderDate)}</td><td>{format.money(o.total, cur(o.currency))}</td><td>{statusCell(o)}</td><td>{buttons(o)}</td></tr>)}
+            </DataTable>
+          </DesktopOnly>
+          <MobileOnly className="w-full">
+            {rows.map((o) => (
+              <MobileRecordCard key={o.id} actions={buttons(o, "w-full justify-center")}>
+                <MobileRecordRow label="Order" value={o.number} />
+                <MobileRecordRow label="Customer" value={o.customerName} />
+                <MobileRecordRow label="Date" value={format.date(o.orderDate)} />
+                <MobileRecordRow label="Total" value={format.money(o.total, cur(o.currency))} />
+                <MobileRecordRow label="Status" value={statusCell(o)} />
+              </MobileRecordCard>
+            ))}
+          </MobileOnly>
+        </>
+      )}
     </div>
   );
 }

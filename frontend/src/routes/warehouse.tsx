@@ -10,7 +10,7 @@ import { ScanToJumpBox } from "@/components/erp/scan";
 import { Shell } from "@/components/erp/shell";
 import { Tabs } from "@/components/erp/tabs";
 import {
-  ActionButton, DataTable, DesktopOnly, Field, Forbidden, InlineError, MobileOnly, MobileRecordCard, MobileRecordRow, Modal, PageHeader, Pill, SelectInput, TextInput,
+  ActionButton, DataTable, DesktopOnly, EmptyState, Field, Forbidden, InlineError, MobileOnly, MobileRecordCard, MobileRecordRow, Modal, PageHeader, Pill, SelectInput, TextInput,
 } from "@/components/erp/ui";
 import { useAuth } from "@/lib/auth";
 import * as format from "@/lib/format";
@@ -520,34 +520,40 @@ function GrnTab({ grns, filters, setFilters, vendors, warehouses, error, onRefre
         </select>
       </div>
       <InlineError message={error} />
-      <DesktopOnly className="w-full">
-        <DataTable columns={["GRN", "PO", "Vendor", "Warehouse", "Received Goods value", "Status", "Received"]} fit>
-          {grns.map((g) => (
-            <tr key={g.id}>
-              <td>{link(g)}</td>
-              <td>{g.poNumber}</td>
-              <td>{g.vendorName}</td>
-              <td>{g.warehouseName}</td>
-              <td>{format.money(g.receivedGoodsValue)}</td>
-              <td><GrnStatusPill status={g.status} /></td>
-              <td>{format.date(g.receivedDate)}</td>
-            </tr>
-          ))}
-        </DataTable>
-      </DesktopOnly>
-      <MobileOnly className="w-full">
-        {grns.map((g) => (
-          <MobileRecordCard key={g.id}>
-            <MobileRecordRow label="GRN" value={link(g)} />
-            <MobileRecordRow label="PO" value={g.poNumber} />
-            <MobileRecordRow label="Vendor" value={g.vendorName} />
-            <MobileRecordRow label="Warehouse" value={g.warehouseName} />
-            <MobileRecordRow label="Value" value={format.money(g.receivedGoodsValue)} />
-            <MobileRecordRow label="Status" value={<GrnStatusPill status={g.status} />} />
-            <MobileRecordRow label="Received" value={format.date(g.receivedDate)} />
-          </MobileRecordCard>
-        ))}
-      </MobileOnly>
+      {grns.length === 0 ? (
+        <EmptyState title="No goods receipts found" hint="Try adjusting your warehouse, status, or search filters." />
+      ) : (
+        <>
+          <DesktopOnly className="w-full">
+            <DataTable columns={["GRN", "PO", "Vendor", "Warehouse", "Received Goods value", "Status", "Received"]} fit>
+              {grns.map((g) => (
+                <tr key={g.id}>
+                  <td>{link(g)}</td>
+                  <td>{g.poNumber}</td>
+                  <td>{g.vendorName}</td>
+                  <td>{g.warehouseName}</td>
+                  <td>{format.money(g.receivedGoodsValue)}</td>
+                  <td><GrnStatusPill status={g.status} /></td>
+                  <td>{format.date(g.receivedDate)}</td>
+                </tr>
+              ))}
+            </DataTable>
+          </DesktopOnly>
+          <MobileOnly className="w-full">
+            {grns.map((g) => (
+              <MobileRecordCard key={g.id}>
+                <MobileRecordRow label="GRN" value={link(g)} />
+                <MobileRecordRow label="PO" value={g.poNumber} />
+                <MobileRecordRow label="Vendor" value={g.vendorName} />
+                <MobileRecordRow label="Warehouse" value={g.warehouseName} />
+                <MobileRecordRow label="Value" value={format.money(g.receivedGoodsValue)} />
+                <MobileRecordRow label="Status" value={<GrnStatusPill status={g.status} />} />
+                <MobileRecordRow label="Received" value={format.date(g.receivedDate)} />
+              </MobileRecordCard>
+            ))}
+          </MobileOnly>
+        </>
+      )}
       {receiveOpen && <ReceiveDialog onClose={() => setReceiveOpen(false)} onCreated={onRefresh} />}
       {openId && <DetailDialog grnId={openId} onClose={() => setOpenId("")} onChanged={onRefresh} />}
       <BulkUploadDialog
@@ -583,27 +589,33 @@ function QcTab({ grns, onRefresh }: { grns: Grn[]; onRefresh: () => void }) {
         <div className="flex-1" />
         {canWrite && <BulkUploadButton onClick={() => setBulkOpen(true)} />}
       </div>
-      <DesktopOnly className="w-full">
-        <DataTable columns={["GRN", "PO", "Vendor", ""]} fit>
-          {grns.map((g) => (
-            <tr key={g.id}>
-              <td>{g.number}</td>
-              <td>{g.poNumber}</td>
-              <td>{g.vendorName}</td>
-              <td>{qcLink(g)}</td>
-            </tr>
-          ))}
-        </DataTable>
-      </DesktopOnly>
-      <MobileOnly className="w-full">
-        {grns.map((g) => (
-          <MobileRecordCard key={g.id} actions={qcLink(g, "w-full justify-center")}>
-            <MobileRecordRow label="GRN" value={g.number} />
-            <MobileRecordRow label="PO" value={g.poNumber} />
-            <MobileRecordRow label="Vendor" value={g.vendorName} />
-          </MobileRecordCard>
-        ))}
-      </MobileOnly>
+      {grns.length === 0 ? (
+        <EmptyState title="No goods under QC" hint="There are currently no receipts pending inspection." />
+      ) : (
+        <>
+          <DesktopOnly className="w-full">
+            <DataTable columns={["GRN", "PO", "Vendor", ""]} fit>
+              {grns.map((g) => (
+                <tr key={g.id}>
+                  <td>{g.number}</td>
+                  <td>{g.poNumber}</td>
+                  <td>{g.vendorName}</td>
+                  <td>{qcLink(g)}</td>
+                </tr>
+              ))}
+            </DataTable>
+          </DesktopOnly>
+          <MobileOnly className="w-full">
+            {grns.map((g) => (
+              <MobileRecordCard key={g.id} actions={qcLink(g, "w-full justify-center")}>
+                <MobileRecordRow label="GRN" value={g.number} />
+                <MobileRecordRow label="PO" value={g.poNumber} />
+                <MobileRecordRow label="Vendor" value={g.vendorName} />
+              </MobileRecordCard>
+            ))}
+          </MobileOnly>
+        </>
+      )}
       <BulkUploadDialog
         open={bulkOpen}
         onClose={() => setBulkOpen(false)}

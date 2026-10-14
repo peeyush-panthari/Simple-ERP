@@ -3,7 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
 import { Shell } from "@/components/erp/shell";
 import {
-  ActionButton, DataTable, DesktopOnly, Forbidden, InlineError, MobileOnly, MobileRecordCard, MobileRecordRow, Modal, Note, PageHeader, Pagination, Pill, StatCard, TextArea, TextInput,
+  ActionButton, DataTable, DesktopOnly, EmptyState, Forbidden, InlineError, MobileOnly, MobileRecordCard, MobileRecordRow, Modal, Note, PageHeader, Pagination, Pill, StatCard, TextArea, TextInput,
 } from "@/components/erp/ui";
 import { useAuth } from "@/lib/auth";
 import { ApiError } from "@/lib/api";
@@ -287,26 +287,32 @@ function Content() {
         {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
       </select>
       <InlineError message={list.error?.message} />
-      <DesktopOnly className="w-full">
-        <DataTable columns={["Request", "Lane", "Order", "Status", "RFQs", "Best quote", "Awarded"]} fit>
-          {requests.map((r) => (
-            <tr key={r.id}><td>{link(r)}</td><td>{r.lane}</td><td>{r.orderNumber}</td><td><Pill>{r.status}</Pill></td><td>{r.rfqCount}</td><td>{format.money(r.bestQuote)}</td><td>{r.awardedCarrier}</td></tr>
-          ))}
-        </DataTable>
-      </DesktopOnly>
-      <MobileOnly className="w-full">
-        {requests.map((r) => (
-          <MobileRecordCard key={r.id}>
-            <MobileRecordRow label="Request" value={link(r)} />
-            <MobileRecordRow label="Lane" value={r.lane} />
-            <MobileRecordRow label="Order" value={r.orderNumber} />
-            <MobileRecordRow label="Status" value={<Pill>{r.status}</Pill>} />
-            <MobileRecordRow label="RFQs" value={r.rfqCount} />
-            <MobileRecordRow label="Best quote" value={format.money(r.bestQuote)} />
-            <MobileRecordRow label="Awarded" value={r.awardedCarrier} />
-          </MobileRecordCard>
-        ))}
-      </MobileOnly>
+      {requests.length === 0 ? (
+        <EmptyState title="No logistics transport requests" hint="Try adjusting your status filter or creating a new transport request." />
+      ) : (
+        <>
+          <DesktopOnly className="w-full">
+            <DataTable columns={["Request", "Lane", "Order", "Status", "RFQs", "Best quote", "Awarded"]} fit>
+              {requests.map((r) => (
+                <tr key={r.id}><td>{link(r)}</td><td>{r.lane}</td><td>{r.orderNumber}</td><td><Pill>{r.status}</Pill></td><td>{r.rfqCount}</td><td>{format.money(r.bestQuote)}</td><td>{r.awardedCarrier}</td></tr>
+              ))}
+            </DataTable>
+          </DesktopOnly>
+          <MobileOnly className="w-full">
+            {requests.map((r) => (
+              <MobileRecordCard key={r.id}>
+                <MobileRecordRow label="Request" value={link(r)} />
+                <MobileRecordRow label="Lane" value={r.lane} />
+                <MobileRecordRow label="Order" value={r.orderNumber} />
+                <MobileRecordRow label="Status" value={<Pill>{r.status}</Pill>} />
+                <MobileRecordRow label="RFQs" value={r.rfqCount} />
+                <MobileRecordRow label="Best quote" value={format.money(r.bestQuote)} />
+                <MobileRecordRow label="Awarded" value={r.awardedCarrier} />
+              </MobileRecordCard>
+            ))}
+          </MobileOnly>
+        </>
+      )}
       <div className="w-full"><Pagination meta={list.data?.meta} onPage={setPage} /></div>
       {openId && <DetailDialog requestId={openId} onClose={() => setOpenId("")} onChanged={refresh} />}
     </div>

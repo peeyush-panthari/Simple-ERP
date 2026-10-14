@@ -1,11 +1,12 @@
 /** Users & Roles admin screen: users, roles and the permission matrix. */
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { CheckRow, ConfirmDialog, MultiSelect, toggleIn, useToast } from "@/components/erp/extras";
 import { Shell } from "@/components/erp/shell";
 import { Tabs } from "@/components/erp/tabs";
-import { ActionButton, DataTable, DesktopOnly, Field, FilterSelect, Forbidden, InlineError, MobileOnly, MobileRecordCard, MobileRecordRow, Modal, Note, PageHeader, Pagination, Pill, SearchInput, SelectInput, TextArea, TextInput } from "@/components/erp/ui";
+import { ActionButton, DataTable, DesktopOnly, EmptyState, Field, FilterSelect, Forbidden, InlineError, MobileOnly, MobileRecordCard, MobileRecordRow, Modal, Note, PageHeader, Pagination, Pill, SearchInput, SelectInput, TextArea, TextInput } from "@/components/erp/ui";
 import { useAuth } from "@/lib/auth";
+import { ApiError } from "@/lib/api";
 import { useApiQuery, useAsyncAction, useDebounced, type ListResponse } from "@/lib/hooks";
 
 interface UserRow {
@@ -198,11 +199,17 @@ function UsersTab({ roles, warehouses, factories }: { roles: RoleRow[]; warehous
   const [manageFac, setManageFac] = useState<string[]>([]);
   const [manageManager, setManageManager] = useState("");
   const [userSessions, setUserSessions] = useState<Array<{ id: string; device: string; ip: string | null; issuedAt: string | null }>>([]);
+  const [openingManageId, setOpeningManageId] = useState<string | null>(null);
+  const openingManageRef = useRef<string | null>(null);
   const manage = useAsyncAction();
   const openManage = async (id: string) => {
+    if (openingManageRef.current) return;
+    openingManageRef.current = id;
+    setOpeningManageId(id);
     setPageError("");
     try {
       const detail = await api<UserDetail>("GET", `/api/v1/users/${id}`);
+      if (openingManageRef.current !== id) return;
       const assignments = detail.roleAssignments ?? [];
       setManageId(id);
       setManageManager(detail.managerId ?? "");
@@ -213,13 +220,22 @@ function UsersTab({ roles, warehouses, factories }: { roles: RoleRow[]; warehous
       setManageFac([...new Set(assignments.flatMap((a) => a.factoryIds ?? []))].sort());
       try {
         const sessRes = await api<{ sessions: Array<{ id: string; device: string; ip: string | null; issuedAt: string | null }> }>("GET", `/api/v1/users/${id}/sessions`);
-        setUserSessions(sessRes.sessions ?? []);
+        if (openingManageRef.current === id) {
+          setUserSessions(sessRes.sessions ?? []);
+        }
       } catch {
-        setUserSessions([]);
+        if (openingManageRef.current === id) {
+          setUserSessions([]);
+        }
       }
       manage.setError("");
     } catch (exc) {
-      setPageError(exc instanceof Error ? exc.message : String(exc));
+      setPageError(exc instanceof ApiError ? exc.detail : exc instanceof Error ? exc.message : String(exc));
+    } finally {
+      if (openingManageRef.current === id) {
+        openingManageRef.current = null;
+        setOpeningManageId(null);
+      }
     }
   };
   const revokeUserSessions = async () => {
@@ -234,7 +250,12 @@ function UsersTab({ roles, warehouses, factories }: { roles: RoleRow[]; warehous
   const saveManage = async () => {
     const ok = await manage.run(async () => {
       await api("PATCH", `/api/v1/users/${manageId}/roles`, { json: { roles: manageRoles.map((roleId) => ({ roleId, scopes: [], warehouseIds: manageWh, factoryIds: manageFac })), mode: "replace" } });
-      await api("PATCH", `/api/v1/users/${manageId}`, { json: { managerId: manageManager || null } });
+      try {
+        await api("PATCH", `/api/v1/users/${manageId}`, { json: { managerId: manageManager || null } });
+      } catch (exc) {
+        const detail = exc instanceof ApiError ? exc.detail : exc instanceof Error ? exc.message : String(exc);
+        throw new Error(`Roles updated, but assigning manager failed: ${detail}. Please retry manager selection.`);
+      }
       return true;
     });
     if (ok) {
@@ -272,52 +293,58 @@ function UsersTab({ roles, warehouses, factories }: { roles: RoleRow[]; warehous
         <div className="flex-1" />
         <ActionButton onClick={openInvite}>Invite user</ActionButton>
       </div>
-      <DesktopOnly className="w-full">
-        <DataTable columns={["Name", "Email", "Status", "Roles", "Reports to", "MFA", ""]} minWidth={640} fit>
-          {users.map((u) => (
-            <tr key={u.id}>
-              <td>{u.displayName}</td>
-              <td>{u.email}</td>
-              <td><Pill>{u.status}</Pill></td>
-              <td>{u.roles.join(", ")}</td>
-              <td>{u.managerName || "—"}</td>
-              <td>{mfa(u)}</td>
-              <td>
-                <div className="flex gap-2">
-                  <ActionButton size="sm" onClick={() => openManage(u.id)}>Manage roles</ActionButton>
-                  {u.status === "invited" && (
-                    <ActionButton size="sm" tone="ghost" onClick={() => resendInvite(u.id, u.email)}>Resend invite</ActionButton>
-                  )}
-                  {statusButton(u)}
-                </div>
-              </td>
-            </tr>
-          ))}
-        </DataTable>
-      </DesktopOnly>
-      <MobileOnly className="w-full">
-        {users.map((u) => (
-          <MobileRecordCard
-            key={u.id}
-            actions={
-              <>
-                <ActionButton size="sm" className="w-full justify-center" onClick={() => openManage(u.id)}>Manage roles</ActionButton>
-                {u.status === "invited" && (
-                  <ActionButton size="sm" tone="ghost" className="w-full justify-center" onClick={() => resendInvite(u.id, u.email)}>Resend invite</ActionButton>
-                )}
-                {statusButton(u, "w-full justify-center")}
-              </>
-            }
-          >
-            <MobileRecordRow label="Name" value={u.displayName} />
-            <MobileRecordRow label="Email" value={u.email} />
-            <MobileRecordRow label="Status" value={<Pill>{u.status}</Pill>} />
-            <MobileRecordRow label="Roles" value={u.roles.join(", ")} />
-            <MobileRecordRow label="Reports to" value={u.managerName || "—"} />
-            <MobileRecordRow label="MFA" value={mfa(u)} />
-          </MobileRecordCard>
-        ))}
-      </MobileOnly>
+      {users.length === 0 ? (
+        <EmptyState title="No users found" hint="Try adjusting your search query, status, or role filter." />
+      ) : (
+        <>
+          <DesktopOnly className="w-full">
+            <DataTable columns={["Name", "Email", "Status", "Roles", "Reports to", "MFA", ""]} minWidth={640} fit>
+              {users.map((u) => (
+                <tr key={u.id}>
+                  <td>{u.displayName}</td>
+                  <td>{u.email}</td>
+                  <td><Pill>{u.status}</Pill></td>
+                  <td>{u.roles.join(", ")}</td>
+                  <td>{u.managerName || "—"}</td>
+                  <td>{mfa(u)}</td>
+                  <td>
+                    <div className="flex gap-2">
+                      <ActionButton size="sm" loading={openingManageId === u.id} onClick={() => openManage(u.id)}>Manage roles</ActionButton>
+                      {u.status === "invited" && (
+                        <ActionButton size="sm" tone="ghost" onClick={() => resendInvite(u.id, u.email)}>Resend invite</ActionButton>
+                      )}
+                      {statusButton(u)}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </DataTable>
+          </DesktopOnly>
+          <MobileOnly className="w-full">
+            {users.map((u) => (
+              <MobileRecordCard
+                key={u.id}
+                actions={
+                  <>
+                    <ActionButton size="sm" className="w-full justify-center" loading={openingManageId === u.id} onClick={() => openManage(u.id)}>Manage roles</ActionButton>
+                    {u.status === "invited" && (
+                      <ActionButton size="sm" tone="ghost" className="w-full justify-center" onClick={() => resendInvite(u.id, u.email)}>Resend invite</ActionButton>
+                    )}
+                    {statusButton(u, "w-full justify-center")}
+                  </>
+                }
+              >
+                <MobileRecordRow label="Name" value={u.displayName} />
+                <MobileRecordRow label="Email" value={u.email} />
+                <MobileRecordRow label="Status" value={<Pill>{u.status}</Pill>} />
+                <MobileRecordRow label="Roles" value={u.roles.join(", ")} />
+                <MobileRecordRow label="Reports to" value={u.managerName || "—"} />
+                <MobileRecordRow label="MFA" value={mfa(u)} />
+              </MobileRecordCard>
+            ))}
+          </MobileOnly>
+        </>
+      )}
       <div className="w-full">
         <Pagination meta={usersQuery.data?.meta} onPage={setPage} />
       </div>
