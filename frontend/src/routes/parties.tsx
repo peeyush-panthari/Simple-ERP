@@ -8,7 +8,8 @@ import { ActionButton, DataTable, DesktopOnly, Field, Forbidden, InlineError, Mo
 import { useAuth } from "@/lib/auth";
 import * as format from "@/lib/format";
 import { useApiQuery, useAsyncAction, useDebounced, type ListResponse } from "@/lib/hooks";
-import { INDIAN_STATE_OPTIONS } from "@/lib/reference";
+import { indianStateSelectOptions } from "@/lib/reference";
+import { errMsg } from "@/lib/utils";
 
 export interface PartyType {
   code: string;
@@ -54,7 +55,7 @@ const STATUS_FILTER = [
   { value: "inactive", label: "Inactive" },
 ];
 
-const stateSelect = (name: string) => <SelectInput name={name} placeholder="State" options={INDIAN_STATE_OPTIONS.map((o) => ({ value: o.value, label: `${o.value} — ${o.label}` }))} />;
+const stateSelect = (name: string) => <SelectInput name={name} placeholder="State" options={indianStateSelectOptions()} />;
 
 function CreatePartyDialog({ open, onClose, types, onCreated }: { open: boolean; onClose: () => void; types: PartyType[]; onCreated: () => void }) {
   const { api } = useAuth();
@@ -178,7 +179,7 @@ function Content() {
       await api("POST", `/api/v1/parties/${id}/activate`);
       await refresh();
     } catch (exc) {
-      setActionError(exc instanceof Error ? exc.message : String(exc));
+      setActionError(errMsg(exc));
     }
   };
   const actions = (p: Party, cls?: string) => (

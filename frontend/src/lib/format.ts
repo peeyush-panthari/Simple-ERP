@@ -141,3 +141,11 @@ export function todayIso(): string {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
+
+/** Human-readable display name for an item or row, preferring product/item name with fallback to SKU. */
+export function lineDisplayName(line: { productName?: string | null; name?: string | null; sku?: string | null; itemName?: string | null } | null | undefined): string {
+  if (!line) return "—";
+  return line.productName || line.name || line.itemName || line.sku || "—";
+}
+
+export const lineName = lineDisplayName;

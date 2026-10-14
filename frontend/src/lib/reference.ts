@@ -65,10 +65,23 @@ export const INDIAN_STATE_OPTIONS: Option[] = [
 
 export const INDIAN_STATE_NAMES: Record<string, string> = Object.fromEntries(INDIAN_STATE_OPTIONS.map((o) => [o.value, o.label]));
 
+/** Form-ready option list mapping GST State codes to "Code — Name" labels. */
+export const INDIAN_STATE_SELECT_OPTIONS: Option[] = INDIAN_STATE_OPTIONS.map((o) => ({ value: o.value, label: `${o.value} — ${o.label}` }));
+export const indianStateSelectOptions = (): Option[] => INDIAN_STATE_SELECT_OPTIONS;
+
+/** Key-value lookup mapping tax codes like GST18 to their human rate label (18%). */
+export const GST_LABELS: Record<string, string> = Object.fromEntries(GST_RATE_OPTIONS.map((o) => [o.value, o.label]));
+export const gstLabel = (code: string | null | undefined): string => (code ? (GST_LABELS[code] ?? code) : "");
+
 /** Units of measure a product can be created with; the stored code stays raw ("UNIT"), only the label differs. */
-export const UOMS = ["KG", "G", "UNIT", "M", "MM", "L", "BOX"];
+export const UOMS = ["UNIT", "KG", "G", "M", "MM", "L", "BOX"];
 const UOM_LABELS: Record<string, string> = { UNIT: "Unit" };
 export const uomLabel = (code: string | null | undefined): string => (code ? (UOM_LABELS[code] ?? code) : "");
 export const UOM_OPTIONS: Option[] = UOMS.map((u) => ({ value: u, label: uomLabel(u) }));
 
 export const PRODUCT_TYPES = ["raw_material", "finished_good", "consumable", "service"];
+
+export const ACTIVE_STATUS_OPTIONS: Option[] = [
+  { value: "active", label: "Active" },
+  { value: "suspended", label: "Suspended" },
+];

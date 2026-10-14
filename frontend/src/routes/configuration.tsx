@@ -7,9 +7,8 @@ import { ActionButton, DataTable, DesktopOnly, Field, Forbidden, InlineError, Mo
 import { useAuth } from "@/lib/auth";
 import { useApiQuery, useAsyncAction, type ListResponse } from "@/lib/hooks";
 import { STICKER_PAGE_SIZES, stickerFitIssue, stickerTotal, type StickerLayout } from "@/lib/sticker";
-import { cn } from "@/lib/utils";
-
-const PRODUCT_TYPES = ["raw_material", "finished_good", "consumable", "service"];
+import { cn, errMsg } from "@/lib/utils";
+import { PRODUCT_TYPES } from "@/lib/reference";
 
 interface Category { id: string; code: string; productCategory: string; productTypes?: string[]; productCount?: number; status: string }
 interface PartyTypeRow { code: string; label: string; baseType: string; status: string }
@@ -220,7 +219,7 @@ function StickerSizesTab({ canWrite }: { canWrite: boolean }) {
       await fn();
       await refresh();
     } catch (exc) {
-      setActionError(exc instanceof Error ? exc.message : String(exc));
+      setActionError(errMsg(exc));
     }
   };
   const actions = (s: StickerSize, extra = "") =>

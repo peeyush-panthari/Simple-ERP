@@ -12,7 +12,8 @@ import { Shell } from "@/components/erp/shell";
 import { ActionButton, DataTable, DesktopOnly, Field, Forbidden, InlineError, MobileOnly, MobileRecordCard, MobileRecordRow, Modal, PageHeader, Pill, SelectInput, TextInput } from "@/components/erp/ui";
 import { useAuth } from "@/lib/auth";
 import { useApiQuery, useAsyncAction, type ListResponse } from "@/lib/hooks";
-import { COUNTRY_OPTIONS, INDIAN_STATE_NAMES, INDIAN_STATE_OPTIONS } from "@/lib/reference";
+import { COUNTRY_OPTIONS, INDIAN_STATE_NAMES, indianStateSelectOptions } from "@/lib/reference";
+import { errMsg } from "@/lib/utils";
 
 interface Entity {
   id: string;
@@ -115,7 +116,7 @@ function EntityDialog({ entity, onClose, onSaved }: { entity: Entity | null; onC
           </div>
         </div>
         <Field label="State">
-          <SelectInput name="stateCode" placeholder="State" defaultValue={e.stateCode ?? ""} options={INDIAN_STATE_OPTIONS.map((o) => ({ value: o.value, label: `${o.value} — ${o.label}` }))} />
+          <SelectInput name="stateCode" placeholder="State" defaultValue={e.stateCode ?? ""} options={indianStateSelectOptions()} />
         </Field>
         <Field label="Country">
           <SelectInput name="country" placeholder="Country" defaultValue="IN" options={COUNTRY_OPTIONS} />
@@ -197,7 +198,7 @@ function Content() {
       await api("PATCH", `/api/v1/business-entities/${id}`, { json: { status } });
       await refresh();
     } catch (exc) {
-      setActionError(exc instanceof Error ? exc.message : String(exc));
+      setActionError(errMsg(exc));
     }
   };
   const actions = (e: Entity, cls?: string) => (

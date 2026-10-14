@@ -107,7 +107,7 @@ function Content({ grnId }: { grnId: string }) {
     .map((i) => ({ ...i, statusLabel: rawItemStatusLabel(i as never) }));
   const serialLineIds = [...new Set(filtered.filter((i) => i.kind === "piece").map((i) => i.grnLineId))];
   const pieceLineIds = new Set(allItems.filter((i) => i.kind === "piece").map((i) => i.grnLineId));
-  const lotLines = (grn?.lines ?? []).filter((l) => !pieceLineIds.has(l.id)).map((l) => ({ ...l, skuName: l.productName || l.sku, received: format.qty(l.receivedQty, l.uom) }));
+  const lotLines = (grn?.lines ?? []).filter((l) => !pieceLineIds.has(l.id)).map((l) => ({ ...l, skuName: format.lineDisplayName(l), received: format.qty(l.receivedQty, l.uom) }));
 
   const refreshAfterQc = async (updated: QcGrn) => {
     qc.setQueryData([grnPath, {}], updated);

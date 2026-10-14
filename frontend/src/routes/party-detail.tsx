@@ -9,7 +9,8 @@ import { useAuth } from "@/lib/auth";
 import { ApiError } from "@/lib/api";
 import * as format from "@/lib/format";
 import { useApiQuery, useAsyncAction } from "@/lib/hooks";
-import { INDIAN_STATE_NAMES, INDIAN_STATE_OPTIONS } from "@/lib/reference";
+import { INDIAN_STATE_NAMES, indianStateSelectOptions } from "@/lib/reference";
+import { errMsg } from "@/lib/utils";
 
 interface Address { id: string; type: string; label?: string | null; line1: string; city: string; stateCode?: string | null; postalCode?: string | null; isDefault?: boolean }
 interface Contact { id: string; name: string; email?: string | null; phone?: string | null; isPrimary?: boolean }
@@ -162,7 +163,7 @@ function Content({ id }: { id: string }) {
       await fn();
       await refresh();
     } catch (exc) {
-      setPageError(exc instanceof Error ? exc.message : String(exc));
+      setPageError(errMsg(exc));
     }
   };
   const submitBlock = async (e: FormEvent<HTMLFormElement>) => {
@@ -309,7 +310,7 @@ function Content({ id }: { id: string }) {
                 <TextInput name="city" placeholder="City" required />
               </Field>
               <Field label="State">
-                <SelectInput name="stateCode" placeholder="State" options={INDIAN_STATE_OPTIONS.map((o) => ({ value: o.value, label: `${o.value} — ${o.label}` }))} />
+                <SelectInput name="stateCode" placeholder="State" options={indianStateSelectOptions()} />
               </Field>
               <Field label="Postal Code">
                 <TextInput name="postalCode" placeholder="Postal code" />

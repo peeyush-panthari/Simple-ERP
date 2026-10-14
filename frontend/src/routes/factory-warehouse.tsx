@@ -11,7 +11,7 @@ import { Tabs } from "@/components/erp/tabs";
 import { ActionButton, DataTable, DesktopOnly, Forbidden, InlineError, MobileOnly, MobileRecordCard, MobileRecordRow, Modal, PageHeader, Pill, SelectInput, TextInput } from "@/components/erp/ui";
 import { useAuth } from "@/lib/auth";
 import { useApiQuery, useAsyncAction, type ListResponse } from "@/lib/hooks";
-import { COUNTRY_OPTIONS, INDIAN_STATE_NAMES, INDIAN_STATE_OPTIONS } from "@/lib/reference";
+import { COUNTRY_OPTIONS, INDIAN_STATE_NAMES, INDIAN_STATE_SELECT_OPTIONS } from "@/lib/reference";
 
 interface Factory {
   id: string;
@@ -48,7 +48,7 @@ const WAREHOUSE_SAMPLE =
   ",Chennai Warehouse,active,,finished_good,88 Factory Rd,,Chennai,33,600001,IN,,,,\n";
 
 const WAREHOUSE_STATUSES = ["active", "constrained", "inactive"].map((v) => ({ value: v, label: v }));
-const stateOptions = INDIAN_STATE_OPTIONS.map((o) => ({ value: o.value, label: `${o.value} — ${o.label}` }));
+const stateOptions = INDIAN_STATE_SELECT_OPTIONS;
 const stateLabel = (code?: string | null) => (code && INDIAN_STATE_NAMES[code] ? `${code} — ${INDIAN_STATE_NAMES[code]}` : code);
 
 function FactoryDialog({ factory, onClose, onSaved }: { factory: Factory | null; onClose: () => void; onSaved: () => void }) {

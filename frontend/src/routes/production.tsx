@@ -191,7 +191,7 @@ function RunsTab() {
         <DataTable columns={["Production Run #", "SKU Name", "Warehouse", "Pack #", "Qty", "Status", "Production Date", ""]} fit>
           {runs.map((r) => (
             <tr key={r.id}>
-              <td>{numberLink(r)}</td><td>{r.productName || r.sku}</td><td>{dash(r.warehouseName)}</td><td>{dash(r.packId)}</td><td>{format.qty(r.quantity)}</td>
+              <td>{numberLink(r)}</td><td>{format.lineDisplayName(r)}</td><td>{dash(r.warehouseName)}</td><td>{dash(r.packId)}</td><td>{format.qty(r.quantity)}</td>
               <td><Pill>{r.status}</Pill></td><td>{format.date(r.productionDate)}</td><td>{complete(r)}</td>
             </tr>
           ))}
@@ -201,7 +201,7 @@ function RunsTab() {
         {runs.map((r) => (
           <MobileRecordCard key={r.id} actions={complete(r, "w-full justify-center") ? complete(r, "w-full justify-center") : undefined}>
             <MobileRecordRow label="Production Run #" value={numberLink(r)} />
-            <MobileRecordRow label="SKU Name" value={r.productName || r.sku} />
+            <MobileRecordRow label="SKU Name" value={format.lineDisplayName(r)} />
             <MobileRecordRow label="Warehouse" value={dash(r.warehouseName)} />
             <MobileRecordRow label="Pack #" value={dash(r.packId)} />
             <MobileRecordRow label="Qty" value={format.qty(r.quantity)} />
@@ -271,7 +271,7 @@ export function shippingRows(orders?: ShippingOrder[] | null): ShipRow[] {
         lineId: l.id,
         orderNumber: o?.number ?? "",
         customerName: o?.customerName ?? "",
-        skuName: l.productName || l.sku || "",
+        skuName: format.lineDisplayName(l),
         qty: format.qty(String(allocated), l.uom),
         status,
         inventoryIds: ids.length ? ids.join(", ") : l.allocation?.batchNo || "—",

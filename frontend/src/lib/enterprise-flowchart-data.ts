@@ -14,7 +14,7 @@ export interface DownlineConnect {
   isTrigger: boolean;
 }
 
-export interface MasterWorkflowValidation {
+interface MasterWorkflowValidation {
   name: string;
   rule: string;
   errorCode?: string;
@@ -1930,23 +1930,4 @@ export const ENTERPRISE_MASTER_FLOWCHART: EnterpriseWorkflowNode[] = [
 // Helper functions for graph navigation
 export function getNodeById(id: string): EnterpriseWorkflowNode | undefined {
   return ENTERPRISE_MASTER_FLOWCHART.find((n) => n.id === id);
-}
-
-export function getNodesByStream(stream: EnterpriseStream | "All"): EnterpriseWorkflowNode[] {
-  if (stream === "All") return ENTERPRISE_MASTER_FLOWCHART;
-  return ENTERPRISE_MASTER_FLOWCHART.filter((n) => n.stream === stream);
-}
-
-export function getUpperlineNodes(nodeId: string): EnterpriseWorkflowNode[] {
-  const current = getNodeById(nodeId);
-  if (!current) return [];
-  const upperIds = current.upperlineConnects.map((u) => u.nodeId);
-  return ENTERPRISE_MASTER_FLOWCHART.filter((n) => upperIds.includes(n.id));
-}
-
-export function getDownlineNodes(nodeId: string): EnterpriseWorkflowNode[] {
-  const current = getNodeById(nodeId);
-  if (!current) return [];
-  const downIds = current.downlineConnects.map((d) => d.nodeId);
-  return ENTERPRISE_MASTER_FLOWCHART.filter((n) => downIds.includes(n.id));
 }

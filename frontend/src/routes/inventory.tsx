@@ -14,7 +14,8 @@ import {
   ActionButton, DataTable, DesktopOnly, EmptyState, Field, Forbidden, InfoTooltip, InlineError, MobileOnly, MobileRecordCard, MobileRecordRow, Modal, PageHeader, Pill, Segmented, SelectInput, StatCard, TextArea, TextInput,
 } from "@/components/erp/ui";
 import { useAuth } from "@/lib/auth";
-import { ApiError, type Params } from "@/lib/api";
+import { type Params } from "@/lib/api";
+import { errText } from "@/lib/utils";
 import * as format from "@/lib/format";
 import { useApiQuery, type ListResponse } from "@/lib/hooks";
 import { UOMS } from "@/lib/reference";
@@ -115,7 +116,6 @@ const CATEGORY_TABS: { value: Category; label: string }[] = [
 
 const num = (v: unknown) => Number(v ?? 0) || 0;
 const dash = (v: string | null | undefined) => v || "—";
-const errText = (exc: unknown) => (exc instanceof ApiError ? exc.detail : exc instanceof Error ? exc.message : String(exc));
 
 // ---- movement dialogs (adjustment / move-quarantine / transfer share one shape) ------------------
 
@@ -304,7 +304,7 @@ function PendingTransfersDialog({ onClose, onDone }: { onClose: () => void; onDo
   const qc = useQueryClient();
   const [error, setError] = useState("");
   const list = useApiQuery<ListResponse<Transfer>>("/api/v1/inventory/transfers", { status: "in_transit", limit: 100 });
-  const rows = (list.data?.data ?? []).map((t) => ({ ...t, qty: `${format.qty(t.quantity)} ${t.uom}`, when: format.dateTime(t.dispatchedAt), name: t.productName || t.sku }));
+  const rows = (list.data?.data ?? []).map((t) => ({ ...t, qty: `${format.qty(t.quantity)} ${t.uom}`, when: format.dateTime(t.dispatchedAt), name: format.lineDisplayName(t) }));
   const complete = async (id: string) => {
     try {
       await api("POST", `/api/v1/inventory/transfers/${id}/complete`, { json: {} });

@@ -1,5 +1,5 @@
 import { keepPreviousData, useQuery, type UseQueryOptions } from "@tanstack/react-query";
-import { useCallback, useEffect, useState, useRef } from "react";
+import { useCallback, useEffect, useState, useRef, type Dispatch, type SetStateAction } from "react";
 import { useAuth } from "@/lib/auth";
 import { ApiError, type Params } from "@/lib/api";
 
@@ -78,4 +78,86 @@ export function useAsyncAction() {
     }
   }, []);
   return { run, busy, error, setError };
+}
+
+export type PaginationState = [number, Dispatch<SetStateAction<number>>, () => void] & {
+  page: number;
+  setPage: Dispatch<SetStateAction<number>>;
+  resetPage: () => void;
+};
+
+/** Standard pagination state helper for list tables, usable as [page, setPage, resetPage] or { page, setPage, resetPage }. */
+export function usePagination(initialPage = 1): PaginationState {
+  const [page, setPage] = useState(initialPage);
+  const resetPage = useCallback(() => setPage(1), []);
+  const res = [page, setPage, resetPage] as unknown as PaginationState;
+  res.page = page;
+  res.setPage = setPage;
+  res.resetPage = resetPage;
+  return res;
+}
+
+export interface ReferenceWarehouse {
+  id: string;
+  code: string;
+  name: string;
+  status?: string;
+  type?: string;
+  [k: string]: unknown;
+}
+
+export interface ReferenceVendor {
+  id: string;
+  code?: string;
+  legalName?: string;
+  displayName?: string;
+  name?: string;
+  type?: string;
+  status?: string;
+  [k: string]: unknown;
+}
+
+export interface ReferenceProduct {
+  id: string;
+  sku: string;
+  name?: string | null;
+  uom: string;
+  type?: string;
+  status?: string;
+  [k: string]: unknown;
+}
+
+/** Canonical shared query hook for active warehouses, deduplicated across routes. */
+export function useActiveWarehouses(options?: { limit?: number; enabled?: boolean }) {
+  const limit = options?.limit ?? 100;
+  return useApiQuery<ListResponse<ReferenceWarehouse>>(
+    "/api/v1/warehouses",
+    { status: "active", limit },
+    { enabled: options?.enabled }
+  );
+}
+
+/** Canonical shared query hook for vendor parties, deduplicated across routes. */
+export function useVendors(options?: { limit?: number; enabled?: boolean }) {
+  const limit = options?.limit ?? 100;
+  return useApiQuery<ListResponse<ReferenceVendor>>(
+    "/api/v1/parties",
+    { type: "vendor", limit },
+    { enabled: options?.enabled }
+  );
+}
+
+/** Canonical shared query hook for products, deduplicated across routes. */
+export function useActiveProducts(options?: { type?: string; purchasable?: string; limit?: number; enabled?: boolean }) {
+  const params: Params = {
+    status: "active",
+    limit: options?.limit ?? 200,
+    ...(options?.type ? { type: options.type } : {}),
+    ...(options?.purchasable ? { purchasable: options.purchasable } : {}),
+  };
+  return useApiQuery<ListResponse<ReferenceProduct>>(
+    "/api/v1/products",
+    params,
+    { enabled: options?.enabled }
+  );
 }

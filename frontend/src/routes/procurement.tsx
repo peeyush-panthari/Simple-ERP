@@ -15,8 +15,8 @@ import {
 import { ScreenTourButton } from "@/components/erp/screen-tour";
 import { useAuth } from "@/lib/auth";
 import * as format from "@/lib/format";
-import { downloadBlob, useApiQuery, useAsyncAction, useDebounced, type ListResponse } from "@/lib/hooks";
-import { GST_RATE_OPTIONS } from "@/lib/reference";
+import { downloadBlob, useActiveWarehouses, useVendors, useApiQuery, useAsyncAction, useDebounced, usePagination, type ListResponse } from "@/lib/hooks";
+import { GST_LABELS, GST_RATE_OPTIONS } from "@/lib/reference";
 
 interface Po {
   id: string;
@@ -55,7 +55,8 @@ interface PoLine {
 }
 interface Vendor {
   id: string;
-  displayName: string;
+  displayName?: string;
+  legalName?: string;
 }
 interface Named {
   id: string;
@@ -87,8 +88,6 @@ const BULK_SAMPLE =
   "PO1,PTY-0001,,WH-AA01,NET30,Bank Transfer,2026-09-20,SKU-002,50,NOS,80.00,GST18\n" +
   "PO2,PTY-0002,,WH-AA01,NET45,Cheque,2026-09-25,SKU-003,10,NOS,1200.00,GST5\n";
 
-const GST_LABELS = Object.fromEntries(GST_RATE_OPTIONS.map((o) => [o.value, o.label]));
-
 /** Fetches a PO's document and saves it - a PDF, or the HTML fallback when the PDF engine is off. */
 function usePdfDownload() {
   const { apiBlob } = useAuth();
@@ -117,7 +116,7 @@ function CreateDialog({ vendors, onClose, onCreated, fromRequisition }: { vendor
   const [taxCode, setTaxCode] = useState("GST0");
 
   // Three independent lookups, fetched in parallel by react-query.
-  const warehouses = useApiQuery<ListResponse<Named>>("/api/v1/warehouses", { status: "active", limit: 100 });
+  const warehouses = useActiveWarehouses();
   const entities = useApiQuery<ListResponse<Named>>("/api/v1/business-entities", { status: "active", limit: 100 });
   const products = useApiQuery<ListResponse<Product>>("/api/v1/products", { purchasable: "true", status: "active", limit: 200 });
   const productList = products.data?.data ?? [];
@@ -178,7 +177,7 @@ function CreateDialog({ vendors, onClose, onCreated, fromRequisition }: { vendor
       <div className="flex flex-col gap-3">
         <InlineError message={error} />
         <form id="po-details-form" onSubmit={submit} className="flex flex-col gap-3">
-          <SelectInput name="vendorId" defaultValue="" placeholder="Vendor" options={vendors.map((v) => ({ value: v.id, label: v.displayName }))} />
+          <SelectInput name="vendorId" defaultValue="" placeholder="Vendor" options={vendors.map((v) => ({ value: v.id, label: v.displayName || v.legalName || "" }))} />
           <SelectInput name="businessEntityId" defaultValue="" placeholder="Invoice to (business entity)" options={(entities.data?.data ?? []).map((v) => ({ value: v.id, label: v.name }))} />
           <SelectInput key={warehouses.data ? "loaded" : "loading"} name="warehouseId" defaultValue={fromRequisition?.warehouseId ?? ""} placeholder="Ship to (warehouse)" options={(warehouses.data?.data ?? []).map((v) => ({ value: v.id, label: v.name }))} />
           <TextInput name="paymentTerms" placeholder="Terms of Payment (e.g. Net 30)" />
@@ -236,7 +235,7 @@ function DetailDialog({ poId, onClose, onChanged }: { poId: string; onClose: () 
 
   const lines = (po?.lines ?? []).map((l) => ({
     ...l,
-    skuName: l.productName || l.sku,
+    skuName: format.lineDisplayName(l),
     ordered: format.qty(l.quantity, l.uom),
     received: format.qty(l.receivedQty),
     rejected: format.qty(l.rejectedQty),
@@ -362,14 +361,14 @@ function PurchaseOrdersView() {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
   const [vendor, setVendor] = useState("");
-  const [page, setPage] = useState(1);
+  const [page, setPage] = usePagination();
   const debounced = useDebounced(search);
   const [createOpen, setCreateOpen] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
   const [openId, setOpenId] = useState("");
   const { run, error: actionError } = useAsyncAction();
 
-  const vendors = useApiQuery<ListResponse<Vendor>>("/api/v1/parties", { type: "vendor", limit: 100 });
+  const vendors = useVendors();
   const list = useApiQuery<ListResponse<Po>>("/api/v1/purchase-orders", { page, limit: 20, q: debounced, status, vendorId: vendor });
   const pos = list.data?.data ?? [];
   const refresh = () => qc.invalidateQueries({ queryKey: ["/api/v1/purchase-orders"] });
@@ -384,7 +383,7 @@ function PurchaseOrdersView() {
         <label htmlFor="po-vendor-filter" className="sr-only">Filter by vendor</label>
         <select id="po-vendor-filter" className="filter-select" style={{ width: "12rem" }} value={vendor} aria-label="Filter by All vendors" onChange={(e) => { setVendor(e.target.value); setPage(1); }}>
           <option value="">All vendors</option>
-          {(vendors.data?.data ?? []).map((v) => <option key={v.id} value={v.id}>{v.displayName}</option>)}
+          {(vendors.data?.data ?? []).map((v) => <option key={v.id} value={v.id}>{v.displayName || v.legalName}</option>)}
         </select>
         <label htmlFor="po-status-filter" className="sr-only">Filter by status</label>
         <select id="po-status-filter" className="filter-select" style={{ width: "11rem" }} value={status} aria-label="Filter by All Status" onChange={(e) => { setStatus(e.target.value); setPage(1); }}>
@@ -468,7 +467,7 @@ function RequisitionPoDialog({ requisition, onClose }: { requisition: Requisitio
   const { api } = useAuth();
   const qc = useQueryClient();
   const refreshRequisitions = useRefreshRequisitions();
-  const vendors = useApiQuery<ListResponse<Vendor>>("/api/v1/parties", { type: "vendor", limit: 100 });
+  const vendors = useVendors();
   return (
     <CreateDialog
       vendors={vendors.data?.data ?? []}

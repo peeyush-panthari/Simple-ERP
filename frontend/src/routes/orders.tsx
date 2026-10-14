@@ -12,8 +12,8 @@ import {
 import { useAuth } from "@/lib/auth";
 import { ApiError } from "@/lib/api";
 import * as format from "@/lib/format";
-import { downloadBlob, useApiQuery, type ListResponse } from "@/lib/hooks";
-import { GST_RATE_OPTIONS } from "@/lib/reference";
+import { downloadBlob, useApiQuery, usePagination, type ListResponse } from "@/lib/hooks";
+import { GST_LABELS, GST_RATE_OPTIONS, UOMS } from "@/lib/reference";
 import { humanise } from "@/lib/status";
 import { readBase64, MAX_UPLOAD_BYTES } from "@/lib/production";
 
@@ -70,10 +70,8 @@ interface StagedLine {
   taxCode: string;
 }
 
-const UOMS = ["UNIT", "KG", "G", "M", "MM", "L", "BOX"];
 const STATUSES = ["confirmed", "allocated", "partially_allocated", "shipped", "partially_shipped", "invoiced", "fulfilled", "partially_fulfilled", "cancelled"];
 const LOGISTICS_COST_OPTIONS = ["Simple", "Client", "Equally shared"];
-const GST_LABELS = Object.fromEntries(GST_RATE_OPTIONS.map((o) => [o.value, o.label]));
 
 // Mirrors the backend's BULK_UPLOAD_ALL_COLUMNS in the orders route: one row per SO line, grouped by soRef.
 const BULK_COLUMNS = ["soRef", "customerCode", "customerRef", "promisedDate", "paymentTerms", "deliveryLine1", "deliveryCity", "deliveryStateCode", "deliveryPostalCode", "productSku", "quantity", "uom", "unitPrice", "taxCode"];
@@ -311,7 +309,7 @@ function DetailDialog({ orderId, onClose, onChanged }: { orderId: string; onClos
     const a = l.allocation;
     return {
       ...l,
-      name: l.productName || l.sku,
+      name: format.lineDisplayName(l),
       qty: format.qty(l.quantity, l.uom),
       price: format.money(l.unitPrice),
       gross: format.money(l.grossAmount),
@@ -409,7 +407,7 @@ function SalesBook() {
   const qc = useQueryClient();
   const canWrite = can("order:write");
   const [status, setStatus] = useState("");
-  const [page, setPage] = useState(1);
+  const [page, setPage] = usePagination();
   const [createOpen, setCreateOpen] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
   const [openId, setOpenId] = useState("");

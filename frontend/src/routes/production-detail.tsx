@@ -12,6 +12,7 @@ import * as format from "@/lib/format";
 import { downloadBlob, useApiQuery, type ListResponse } from "@/lib/hooks";
 import { gFormat, INT_FIELDS, MAX_UPLOAD_BYTES, PACK_FIELDS, readBase64 } from "@/lib/production";
 import { bucketLabel } from "@/lib/status";
+import { errMsg } from "@/lib/utils";
 
 interface Stage {
   stageKey: string;
@@ -74,7 +75,7 @@ interface ScannedItem {
   availableQty: string;
 }
 
-const errText = (exc: unknown) => (exc instanceof ApiError ? exc.detail : exc instanceof Error ? exc.message : String(exc));
+const errText = errMsg;
 const dash = (v: unknown) => (v === null || v === undefined || v === "" ? "—" : String(v));
 const EDIT_TEXT_KEYS = ["packId", "shift", ...PACK_FIELDS.map(([k]) => k)];
 
@@ -297,7 +298,7 @@ function Content({ runId }: { runId: string }) {
     }
   };
 
-  const consumed = (run?.consumed ?? []).map((c) => ({ ...c, skuName: c.productName || c.sku, qty: format.qty(c.quantity, c.uom), cost: format.money(c.unitCost) }));
+  const consumed = (run?.consumed ?? []).map((c) => ({ ...c, skuName: format.lineDisplayName(c), qty: format.qty(c.quantity, c.uom), cost: format.money(c.unitCost) }));
   const additional = consumed.filter((c) => c.isAdditional);
   const fgs = (run?.finishedGoods ?? []).map((f) => ({ ...f, qty: format.qty(f.quantity, f.uom), avail: format.qty(f.availableQty, f.uom), statusLabel: bucketLabel(f.status) }));
   const canEdit = can("inventory:produce") && run?.status !== "reversed";
@@ -328,7 +329,7 @@ function Content({ runId }: { runId: string }) {
         </>
       ) : (
         <>
-          <PageHeader eyebrow="Production" title={run.number} description={run.productName || run.sku} />
+          <PageHeader eyebrow="Production" title={run.number} description={format.lineDisplayName(run)} />
           <InlineError message={error} />
           <p className="text-sm">Quantity: {format.qty(run.quantity, run.uom)}</p>
 

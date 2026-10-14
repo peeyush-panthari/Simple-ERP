@@ -14,7 +14,7 @@ import {
 } from "@/components/erp/ui";
 import { useAuth } from "@/lib/auth";
 import * as format from "@/lib/format";
-import { useApiQuery, useAsyncAction, useDebounced, type ListResponse } from "@/lib/hooks";
+import { useActiveWarehouses, useVendors, useApiQuery, useAsyncAction, useDebounced, type ListResponse } from "@/lib/hooks";
 import { humanise, rawItemStatusLabel } from "@/lib/status";
 
 interface Grn {
@@ -91,7 +91,7 @@ const QC_BULK_SAMPLE =
   "GRN-8801,SKU-001,98,2,DAMAGED,2 units damaged in transit\n" +
   "GRN-8801,SKU-002,50,0,,\n";
 
-const lineName = (l: { productName?: string | null; sku?: string }) => l.productName || l.sku || "";
+const lineName = format.lineDisplayName;
 
 // ---- receive goods -------------------------------------------------------------------------
 
@@ -115,7 +115,7 @@ function ReceiveDialog({ onClose, onCreated }: { onClose: () => void; onCreated:
   const [vendorQr, setVendorQr] = useState(false);
 
   const pos = useApiQuery<ListResponse<PoSummary>>("/api/v1/purchase-orders", { status: "issued,partially_received", limit: 100 });
-  const warehouses = useApiQuery<ListResponse<Named>>("/api/v1/warehouses", { status: "active", limit: 100 });
+  const warehouses = useActiveWarehouses();
   const canSticker = can("sticker_size:read");
   const stickers = useApiQuery<ListResponse<Named>>("/api/v1/sticker-sizes", { status: "active" }, { enabled: canSticker });
 
@@ -478,8 +478,8 @@ function GrnTab({ grns, filters, setFilters, vendors, warehouses, error, onRefre
   grns: Grn[];
   filters: { search: string; vendor: string; warehouse: string; status: string };
   setFilters: (f: { search: string; vendor: string; warehouse: string; status: string }) => void;
-  vendors: { id: string; displayName: string }[];
-  warehouses: Named[];
+  vendors: { id: string; displayName?: string; legalName?: string }[];
+  warehouses: { id: string; name: string }[];
   error?: string;
   onRefresh: () => void;
 }) {
@@ -506,7 +506,7 @@ function GrnTab({ grns, filters, setFilters, vendors, warehouses, error, onRefre
         <label htmlFor="grn-vendor-filter" className="sr-only">Filter by vendor</label>
         <select id="grn-vendor-filter" className="filter-select" style={{ width: "12rem" }} value={filters.vendor} aria-label="Filter by All vendors" onChange={(e) => set({ vendor: e.target.value })}>
           <option value="">All vendors</option>
-          {vendors.map((v) => <option key={v.id} value={v.id}>{v.displayName}</option>)}
+          {vendors.map((v) => <option key={v.id} value={v.id}>{v.displayName || v.legalName}</option>)}
         </select>
         <label htmlFor="grn-warehouse-filter" className="sr-only">Filter by warehouse</label>
         <select id="grn-warehouse-filter" className="filter-select" style={{ width: "12rem" }} value={filters.warehouse} aria-label="Filter by All warehouses" onChange={(e) => set({ warehouse: e.target.value })}>
@@ -645,8 +645,8 @@ function Content() {
   const canGrn = can("grn:read");
   const [filters, setFilters] = useState({ search: "", vendor: "", warehouse: "", status: "" });
   const debounced = useDebounced(filters.search);
-  const vendors = useApiQuery<ListResponse<{ id: string; displayName: string }>>("/api/v1/parties", { type: "vendor", limit: 100 }, { enabled: canGrn });
-  const warehouses = useApiQuery<ListResponse<Named>>("/api/v1/warehouses", { status: "active", limit: 100 }, { enabled: canGrn });
+  const vendors = useVendors({ enabled: canGrn });
+  const warehouses = useActiveWarehouses({ enabled: canGrn });
   const list = useApiQuery<ListResponse<Grn>>("/api/v1/grns", { limit: 50, q: debounced, vendorId: filters.vendor, warehouseId: filters.warehouse, status: filters.status }, { enabled: canGrn });
   const grns = list.data?.data ?? [];
   const underQc = grns.filter((g) => g.status === "under_qc");
