@@ -619,3 +619,5 @@ export function Segmented({ value, onChange, options }: { value: string; onChang
     </div>
   );
 }
+
+export { VirtualDataTable, type VirtualDataTableProps } from "@/components/erp/virtual-table";

@@ -100,19 +100,23 @@ function SearchPicker<T extends { id: string }>({
   const { api } = useAuth();
   const [text, setText] = useState("");
   const [results, setResults] = useState<T[]>([]);
+  const [total, setTotal] = useState<number | null>(null);
   const search = async (value: string) => {
     setText(value);
     try {
-      setResults((await api<ListResponse<T>>("GET", path, { params: { ...params, ...(value.trim() ? { q: value } : {}) } })).data);
+      const res = await api<ListResponse<T>>("GET", path, { params: { ...params, ...(value.trim() ? { q: value } : {}) } });
+      setResults(res.data);
+      setTotal(res.meta?.total ?? null);
     } catch {
       setResults([]);
+      setTotal(null);
     }
   };
   if (chosen) {
     return (
       <div className="flex gap-2" style={{ width }}>
         <TextInput value={choiceLabel} readOnly />
-        <ActionButton size="sm" tone="ghost" onClick={() => { setText(""); setResults([]); onClear(); }}>{width ? "×" : "Change"}</ActionButton>
+        <ActionButton size="sm" tone="ghost" onClick={() => { setText(""); setResults([]); setTotal(null); onClear(); }}>{width ? "×" : "Change"}</ActionButton>
       </div>
     );
   }
@@ -122,8 +126,13 @@ function SearchPicker<T extends { id: string }>({
       {results.length > 0 && (
         <div className="absolute z-10 mt-1 max-h-56 w-full overflow-y-auto rounded border border-[var(--border)] bg-[var(--card)] shadow-md">
           {results.map((r) => (
-            <div key={r.id} className="cursor-pointer px-2.5 py-1.5 hover:bg-[var(--muted)]" onClick={() => { onChoose(r); setResults([]); }}>{render(r)}</div>
+            <div key={r.id} className="cursor-pointer px-2.5 py-1.5 hover:bg-[var(--muted)]" onClick={() => { onChoose(r); setResults([]); setTotal(null); }}>{render(r)}</div>
           ))}
+          {total !== null && total > results.length && (
+            <div className="border-t border-[var(--border)] bg-[var(--muted)]/50 px-2.5 py-1.5 text-xs text-[var(--muted-foreground)]">
+              Showing first {results.length} of {total} records — type to narrow search
+            </div>
+          )}
         </div>
       )}
     </div>
