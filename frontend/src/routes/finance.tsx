@@ -2,6 +2,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent, type ReactNode } from "react";
 import { ReasonDialog } from "@/components/erp/dialogs";
+import { GuidedFieldWalkthrough } from "@/components/erp/guided-field-walkthrough";
 import { Shell } from "@/components/erp/shell";
 import { Tabs } from "@/components/erp/tabs";
 import {
@@ -9,8 +10,10 @@ import {
 } from "@/components/erp/ui";
 import { useAuth } from "@/lib/auth";
 import { ApiError } from "@/lib/api";
+import { useDemoTour } from "@/lib/demo-flow-context";
 import * as format from "@/lib/format";
 import { downloadBlob, useApiQuery, useAsyncAction, type ListResponse } from "@/lib/hooks";
+import { cn } from "@/lib/utils";
 
 const AP_STATUSES = ["draft", "open", "partially_paid", "settled", "cancelled", "disputed"];
 const AR_STATUSES = ["open", "partially_paid", "settled", "written_off", "cancelled"];
@@ -323,37 +326,161 @@ function ReceivablesTab() {
 
 function RecordPaymentDialog({ direction, onClose, onDone }: { direction: "inbound" | "outbound"; onClose: () => void; onDone: () => void }) {
   const { api } = useAuth();
+  const { isTourActive, activeJourneyId, currentJourneyStepIndex } = useDemoTour();
+  const isTourPaymentModal = isTourActive && (
+    (direction === "outbound" && activeJourneyId === "procure-to-pay" && currentJourneyStepIndex === 5) ||
+    (direction === "inbound" && activeJourneyId === "order-to-cash" && currentJourneyStepIndex === 4)
+  );
+
   const [allocs, setAllocs] = useState<{ invoiceId: string; amount: string }[]>([]);
   const [inv, setInv] = useState("");
   const [amt, setAmt] = useState("");
+  const [partyId, setPartyId] = useState("");
+  const [totalAmount, setTotalAmount] = useState("");
+  const [method, setMethod] = useState("bank_transfer");
+  const [activeStepKey, setActiveStepKey] = useState("partyId");
+
+  const parties = useApiQuery<ListResponse<{ id: string; legalName: string; type: string }>>("/api/v1/parties", { limit: 100 });
+  const openInvoices = useApiQuery<ListResponse<Invoice>>(direction === "inbound" ? "/api/v1/ar" : "/api/v1/ap", { limit: 20 });
   const { run, busy, error, setError } = useAsyncAction();
+
+  const walkthroughFields = [
+    {
+      key: "partyId",
+      label: direction === "inbound" ? "Customer Master Account" : "Supplier / Vendor Account",
+      useCase: direction === "inbound"
+        ? "Binds customer payment remittance to the registered debtor corporate profile."
+        : "Directs disbursement funds to verified supplier treasury and bank records.",
+      guideline: "Party must be an active trading partner registered in Master Data with open account balances.",
+      isFilled: !!partyId.trim(),
+      onAutofill: () => {
+        const found = parties.data?.data?.find((p) => direction === "inbound" ? p.type !== "vendor" : p.type !== "customer") || parties.data?.data?.[0];
+        setPartyId(found ? found.id : "DEMO-PARTY-001");
+      },
+    },
+    {
+      key: "amount",
+      label: "Voucher Settlement Amount",
+      useCase: "Gross remittance value cleared via banking rail or corporate payment gateway.",
+      guideline: "Must equal the sum total of all invoice settlement line allocations.",
+      isFilled: !!totalAmount.trim(),
+      onAutofill: () => setTotalAmount("15000"),
+    },
+    {
+      key: "allocations",
+      label: "Open Invoice Allocation",
+      useCase: "Matches and credits or clears against an open receivable/payable invoice document.",
+      guideline: "At least one target invoice allocation is required before posting payment ledger entries.",
+      isFilled: allocs.length > 0,
+      onAutofill: () => {
+        const firstInv = openInvoices.data?.data?.[0];
+        const invoiceId = firstInv ? firstInv.id : "INV-DEMO-2026";
+        setAllocs([{ invoiceId, amount: totalAmount || "15000" }]);
+      },
+    },
+    {
+      key: "method",
+      label: "Payment Channel / Rail",
+      useCase: "Specifies banking rail (RTGS/NEFT/Cheque/UPI) for general ledger bank reconciliation.",
+      guideline: "Bank Transfer is standard for B2B supplier and corporate accounts receivable reconciliation.",
+      isFilled: !!method,
+      onAutofill: () => setMethod("bank_transfer"),
+    },
+  ];
+
+  const handleAutofillAll = () => {
+    const found = parties.data?.data?.find((p) => direction === "inbound" ? p.type !== "vendor" : p.type !== "customer") || parties.data?.data?.[0];
+    setPartyId(found ? found.id : "DEMO-PARTY-001");
+    setTotalAmount("15000");
+    const firstInv = openInvoices.data?.data?.[0];
+    const invoiceId = firstInv ? firstInv.id : "INV-DEMO-2026";
+    setAllocs([{ invoiceId, amount: "15000" }]);
+    setMethod("bank_transfer");
+  };
+
   const submit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!allocs.length) return setError("Add at least one allocation");
-    const f = new FormData(e.currentTarget);
     const ok = await run(async () => {
-      await api("POST", direction === "inbound" ? "/api/v1/ar/payments" : "/api/v1/ap/payments", { json: { partyId: String(f.get("partyId") ?? ""), amount: String(f.get("amount") ?? ""), method: String(f.get("method") || "bank_transfer"), allocations: allocs } });
+      await api("POST", direction === "inbound" ? "/api/v1/ar/payments" : "/api/v1/ap/payments", {
+        json: {
+          partyId,
+          amount: totalAmount,
+          method,
+          allocations: allocs,
+        },
+      });
       return true;
     });
     if (ok) { onClose(); onDone(); }
   };
+
   return (
     <Modal open onClose={onClose} title={direction === "inbound" ? "Record customer receipt" : "Record vendor payment"}>
       <div className="flex flex-col gap-3">
+        {isTourPaymentModal && (
+          <GuidedFieldWalkthrough
+            fields={walkthroughFields}
+            activeKey={activeStepKey}
+            onSelectKey={setActiveStepKey}
+            onAutofillAll={handleAutofillAll}
+          />
+        )}
         <InlineError message={error} />
-        <DataTable columns={["Invoice ID", "Amount", ""]} minWidth={0} fit>
-          {allocs.map((a, i) => <tr key={i}><td>{a.invoiceId}</td><td>{format.money(a.amount)}</td><td><ActionButton size="sm" tone="danger" onClick={() => setAllocs(allocs.filter((_, j) => j !== i))}>Remove</ActionButton></td></tr>)}
-        </DataTable>
-        <div className="flex gap-2">
-          <TextInput placeholder="Invoice ID" value={inv} onChange={(e) => setInv(e.target.value)} />
-          <TextInput style={{ width: "8rem" }} placeholder="Amount" value={amt} onChange={(e) => setAmt(e.target.value)} />
-          <ActionButton size="sm" onClick={() => { if (inv && amt) { setAllocs([...allocs, { invoiceId: inv, amount: amt }]); setInv(""); setAmt(""); } }}>Add allocation</ActionButton>
+        <div className={cn("p-1 rounded transition-colors", isTourPaymentModal && activeStepKey === "allocations" && "ring-2 ring-teal-500 bg-teal-500/5")}>
+          <DataTable columns={["Invoice ID", "Amount", ""]} minWidth={0} fit>
+            {allocs.map((a, i) => <tr key={i}><td>{a.invoiceId}</td><td>{format.money(a.amount)}</td><td><ActionButton size="sm" tone="danger" onClick={() => setAllocs(allocs.filter((_, j) => j !== i))}>Remove</ActionButton></td></tr>)}
+          </DataTable>
+          <div className="flex gap-2 mt-2">
+            <TextInput placeholder="Invoice ID" value={inv} onChange={(e) => setInv(e.target.value)} />
+            <TextInput style={{ width: "8rem" }} placeholder="Amount" value={amt} onChange={(e) => setAmt(e.target.value)} />
+            <ActionButton size="sm" onClick={() => { if (inv && amt) { setAllocs([...allocs, { invoiceId: inv, amount: amt }]); setInv(""); setAmt(""); } }}>Add allocation</ActionButton>
+          </div>
         </div>
         <form onSubmit={submit} className="mt-2 flex flex-col gap-3">
-          <TextInput name="partyId" placeholder="Party (vendor/customer) ID" required />
-          <TextInput name="amount" placeholder="Total payment amount" required />
-          <SelectInput name="method" defaultValue="bank_transfer" options={PAYMENT_METHODS.map((m) => ({ value: m, label: m }))} />
-          <div className="flex justify-end gap-2"><ActionButton tone="ghost" onClick={onClose}>Cancel</ActionButton><ActionButton type="submit" loading={busy}>Record payment</ActionButton></div>
+          <div className={cn("p-1 rounded transition-colors", isTourPaymentModal && activeStepKey === "partyId" && "ring-2 ring-teal-500 bg-teal-500/5")}>
+            <TextInput
+              name="partyId"
+              placeholder="Party (vendor/customer) ID"
+              value={partyId}
+              onChange={(e) => setPartyId(e.target.value)}
+              required
+            />
+          </div>
+          <div className={cn("p-1 rounded transition-colors", isTourPaymentModal && activeStepKey === "amount" && "ring-2 ring-teal-500 bg-teal-500/5")}>
+            <TextInput
+              name="amount"
+              placeholder="Total payment amount"
+              value={totalAmount}
+              onChange={(e) => setTotalAmount(e.target.value)}
+              required
+            />
+          </div>
+          <div className={cn("p-1 rounded transition-colors", isTourPaymentModal && activeStepKey === "method" && "ring-2 ring-teal-500 bg-teal-500/5")}>
+            <SelectInput
+              name="method"
+              value={method}
+              onChange={(e) => setMethod(e.target.value)}
+              options={PAYMENT_METHODS.map((m) => ({ value: m, label: m }))}
+            />
+          </div>
+          <div className="flex justify-end gap-2">
+            <ActionButton tone="ghost" onClick={onClose}>Cancel</ActionButton>
+            <div className="relative inline-block">
+              <ActionButton
+                type="submit"
+                loading={busy}
+                className={cn(isTourPaymentModal && "ring-2 ring-teal-500 animate-pulse")}
+              >
+                Record payment
+              </ActionButton>
+              {isTourPaymentModal && (
+                <span className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-teal-500 text-white font-bold text-[10px] shadow animate-bounce">
+                  3
+                </span>
+              )}
+            </div>
+          </div>
         </form>
       </div>
     </Modal>
@@ -362,6 +489,10 @@ function RecordPaymentDialog({ direction, onClose, onDone }: { direction: "inbou
 
 function PaymentsTab() {
   const { api, can } = useAuth();
+  const { isTourActive, activeJourneyId, currentJourneyStepIndex } = useDemoTour();
+  const isTourApPaymentStep = isTourActive && activeJourneyId === "procure-to-pay" && currentJourneyStepIndex === 5;
+  const isTourArPaymentStep = isTourActive && activeJourneyId === "order-to-cash" && currentJourneyStepIndex === 4;
+
   const qc = useQueryClient();
   const [direction, setDirection] = useState("");
   const [page, setPage] = useState(1);
@@ -395,8 +526,33 @@ function PaymentsTab() {
     <div className="flex w-full flex-col items-start gap-3 pt-4">
       {can("payment:write") && (
         <div className="flex w-full justify-end gap-2">
-          <ActionButton tone="ghost" onClick={() => setRecord("outbound")}>Record AP payment</ActionButton>
-          <ActionButton onClick={() => setRecord("inbound")}>Record AR payment</ActionButton>
+          <div className="relative inline-block">
+            <ActionButton
+              tone="ghost"
+              className={cn(isTourApPaymentStep && "ring-2 ring-teal-500 ring-offset-2 animate-pulse")}
+              onClick={() => setRecord("outbound")}
+            >
+              Record AP payment
+            </ActionButton>
+            {isTourApPaymentStep && (
+              <span className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-teal-500 text-white font-bold text-[10px] shadow animate-bounce">
+                1
+              </span>
+            )}
+          </div>
+          <div className="relative inline-block">
+            <ActionButton
+              className={cn(isTourArPaymentStep && "ring-2 ring-teal-500 ring-offset-2 animate-pulse")}
+              onClick={() => setRecord("inbound")}
+            >
+              Record AR payment
+            </ActionButton>
+            {isTourArPaymentStep && (
+              <span className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-teal-500 text-white font-bold text-[10px] shadow animate-bounce">
+                1
+              </span>
+            )}
+          </div>
         </div>
       )}
       <select className="filter-select" value={direction} aria-label="Filter by all" onChange={(e) => { setDirection(e.target.value); setPage(1); }}>
@@ -704,12 +860,20 @@ function CommittedTab() {
 
 export default function FinancePage() {
   const { can } = useAuth();
+  const { isTourActive, activeJourneyId, currentJourneyStepIndex } = useDemoTour();
+  const isFinanceTourStep = isTourActive && (
+    (activeJourneyId === "procure-to-pay" && currentJourneyStepIndex === 5) ||
+    (activeJourneyId === "order-to-cash" && currentJourneyStepIndex === 4)
+  );
+
   return (
     <Shell>
       {can("finance:read") ? (
         <div className="flex w-full flex-col items-start gap-4">
           <PageHeader eyebrow="Demand" title="Finance" />
           <Tabs
+            defaultValue={isFinanceTourStep ? "payments" : "committed"}
+            key={isFinanceTourStep ? "finance-tour-payments" : "finance-normal"}
             tabs={[
               { value: "committed", label: "Committed AR/AP", content: <CommittedTab /> },
               { value: "ap", label: "Account Payables", content: <PayablesTab /> },

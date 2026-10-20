@@ -9,13 +9,16 @@ import { GrnStatusPill, grnStatusLabel, useQrDownloads } from "@/components/erp/
 import { ScanToJumpBox } from "@/components/erp/scan";
 import { Shell } from "@/components/erp/shell";
 import { Tabs } from "@/components/erp/tabs";
+import { GuidedFieldWalkthrough } from "@/components/erp/guided-field-walkthrough";
 import {
   ActionButton, DataTable, DesktopOnly, EmptyState, Field, Forbidden, InlineError, MobileOnly, MobileRecordCard, MobileRecordRow, Modal, PageHeader, Pill, SelectInput, TextInput,
 } from "@/components/erp/ui";
 import { useAuth } from "@/lib/auth";
+import { useDemoTour } from "@/lib/demo-flow-context";
 import * as format from "@/lib/format";
 import { useActiveWarehouses, useVendors, useApiQuery, useAsyncAction, useDebounced, type ListResponse } from "@/lib/hooks";
 import { humanise, rawItemStatusLabel } from "@/lib/status";
+import { cn } from "@/lib/utils";
 
 interface Grn {
   id: string;
@@ -107,12 +110,21 @@ interface ReceiveLine {
 
 function ReceiveDialog({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
   const { api, can } = useAuth();
+  const { isTourActive, activeJourneyId, currentJourneyStepIndex } = useDemoTour();
+  const isTourReceiveStep = isTourActive && (
+    (activeJourneyId === "procure-to-pay" && currentJourneyStepIndex === 3) ||
+    (activeJourneyId === "inventory-management" && currentJourneyStepIndex === 1)
+  );
+
   const { run, busy, error, setError } = useAsyncAction();
   const [poId, setPoId] = useState("");
   const [warehouseId, setWarehouseId] = useState("");
   const [lines, setLines] = useState<ReceiveLine[]>([]);
   const [stickerSizeId, setStickerSizeId] = useState("");
   const [vendorQr, setVendorQr] = useState(false);
+  const [invoiceNumber, setInvoiceNumber] = useState("");
+  const [vehicleNumber, setVehicleNumber] = useState("");
+  const [activeStepKey, setActiveStepKey] = useState("poId");
 
   const pos = useApiQuery<ListResponse<PoSummary>>("/api/v1/purchase-orders", { status: "issued,partially_received", limit: 100 });
   const warehouses = useActiveWarehouses();
@@ -136,24 +148,119 @@ function ReceiveDialog({ onClose, onCreated }: { onClose: () => void; onCreated:
   };
   const patch = (i: number, p: Partial<ReceiveLine>) => setLines(lines.map((l, j) => (j === i ? { ...l, ...p } : l)));
 
+  const walkthroughFields = [
+    {
+      key: "poId",
+      label: "Purchase Order Reference",
+      useCase: "Binds inbound delivery to an approved purchase contract and vendor order line items.",
+      guideline: "Only purchase orders in 'issued' or 'partially_received' status can have goods receipt notes raised against them.",
+      isFilled: !!poId,
+      onAutofill: () => {
+        const firstPo = pos.data?.data?.[0];
+        if (firstPo) {
+          void pickPo(firstPo.id);
+        } else {
+          setPoId("PO-DEMO-SAMPLE");
+        }
+      },
+    },
+    {
+      key: "invoiceNumber",
+      label: "Vendor Invoice / DC Number",
+      useCase: "Vendor billing or Delivery Challan document number required for three-way invoice matching in Accounts Payable.",
+      guideline: "Must match the physical or digital challan accompanying the delivery transport.",
+      isFilled: !!invoiceNumber.trim(),
+      onAutofill: () => setInvoiceNumber("INV-2026-9901"),
+    },
+    {
+      key: "vehicleNumber",
+      label: "Gate Entry & Transport Vehicle",
+      useCase: "Records the carrier truck or container license plate entering factory security gates.",
+      guideline: "Optional but recommended for audited gatepass security and transport freight reconciliation.",
+      isFilled: !!vehicleNumber.trim(),
+      onAutofill: () => setVehicleNumber("MH-12-AB-4455"),
+    },
+    {
+      key: "lines",
+      label: "Received Quantities & Batch Allocations",
+      useCase: "Physical headcount of received goods and batch/lot numbers for traceability and QC quarantine.",
+      guideline: "Received quantity cannot exceed open PO balance. Batch tracking required for lot-controlled SKUs.",
+      isFilled: lines.length > 0 && lines.some((l) => !!l.receivedQty),
+      onAutofill: () => {
+        if (lines.length > 0) {
+          setLines(lines.map((l) => ({
+            ...l,
+            receivedQty: l.ordered || "50",
+            batchNo: l.batchTracked ? "BATCH-2026-01" : l.batchNo,
+          })));
+        } else {
+          setLines([
+            {
+              poLineId: "demo-line-1",
+              sku: "SKU-DEMO-01",
+              skuName: "Industrial Widget Component",
+              ordered: "100",
+              receivedQty: "100",
+              batchNo: "BATCH-2026-01",
+              batchTracked: true,
+            },
+          ]);
+          if (!warehouseId && warehouses.data?.data?.length) {
+            setWarehouseId(warehouses.data.data[0].id);
+          }
+        }
+      },
+    },
+  ];
+
+  const handleAutofillAll = () => {
+    const firstPo = pos.data?.data?.[0];
+    if (firstPo) {
+      void pickPo(firstPo.id);
+    } else {
+      setPoId("PO-DEMO-SAMPLE");
+    }
+    setInvoiceNumber("INV-2026-9901");
+    setVehicleNumber("MH-12-AB-4455");
+    if (warehouses.data?.data?.length && !warehouseId) {
+      setWarehouseId(warehouses.data.data[0].id);
+    }
+    if (lines.length > 0) {
+      setLines(lines.map((l) => ({
+        ...l,
+        receivedQty: l.ordered || "50",
+        batchNo: l.batchTracked ? "BATCH-2026-01" : l.batchNo,
+      })));
+    } else {
+      setLines([
+        {
+          poLineId: "demo-line-1",
+          sku: "SKU-DEMO-01",
+          skuName: "Industrial Widget Component",
+          ordered: "100",
+          receivedQty: "100",
+          batchNo: "BATCH-2026-01",
+          batchTracked: true,
+        },
+      ]);
+    }
+  };
+
   const submit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const f = new FormData(e.currentTarget);
-    const get = (k: string) => String(f.get(k) ?? "");
     const entered = lines.filter((l) => l.receivedQty);
     if (!entered.length) return setError("Enter a received quantity for at least one line");
     const missingBatch = entered.filter((l) => l.batchTracked && !l.batchNo.trim()).map((l) => l.sku);
     if (missingBatch.length) return setError(`Batch number is required for: ${missingBatch.join(", ")}`);
     if (!warehouseId) return setError("Select the warehouse the goods are being received into");
-    if (!get("invoiceNumber").trim()) return setError("Invoice number is required");
+    if (!invoiceNumber.trim()) return setError("Invoice number is required");
     const ok = await run(async () => {
       await api("POST", "/api/v1/grns", {
         json: {
           poId,
           warehouseId,
-          vehicleNumber: get("vehicleNumber") || null,
-          deliveryNote: get("deliveryNote") || null,
-          invoiceNumber: get("invoiceNumber"),
+          vehicleNumber: vehicleNumber || null,
+          invoiceNumber,
           stickerSizeId: stickerSizeId || null,
           vendorQrEnabled: vendorQr,
           lines: entered.map((l) => ({ poLineId: l.poLineId, receivedQty: l.receivedQty, batchNo: l.batchNo || null })),
@@ -186,13 +293,37 @@ function ReceiveDialog({ onClose, onCreated }: { onClose: () => void; onCreated:
       footer={
         <>
           <ActionButton tone="ghost" onClick={onClose}>Cancel</ActionButton>
-          <ActionButton type="submit" form="receive-form" loading={busy}>Create receipt</ActionButton>
+          <div className="relative inline-block">
+            <ActionButton
+              type="submit"
+              form="receive-form"
+              loading={busy}
+              className={cn(isTourReceiveStep && "ring-2 ring-teal-500 animate-pulse")}
+            >
+              Create receipt
+            </ActionButton>
+            {isTourReceiveStep && (
+              <span className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-teal-500 text-white font-bold text-[10px] shadow animate-bounce">
+                3
+              </span>
+            )}
+          </div>
         </>
       }
     >
       <div className="flex flex-col gap-3">
+        {isTourReceiveStep && (
+          <GuidedFieldWalkthrough
+            fields={walkthroughFields}
+            activeKey={activeStepKey}
+            onSelectKey={setActiveStepKey}
+            onAutofillAll={handleAutofillAll}
+          />
+        )}
         <InlineError message={error} />
-        <SelectInput className="ui-select-auto" value={poId} onChange={(e) => void pickPo(e.target.value)} placeholder="Purchase order" options={(pos.data?.data ?? []).map((p) => ({ value: p.id, label: `${p.number} — ${p.vendorName}` }))} />
+        <div className={cn("p-1 rounded transition-colors", isTourReceiveStep && activeStepKey === "poId" && "ring-2 ring-teal-500 bg-teal-500/5")}>
+          <SelectInput className="ui-select-auto" value={poId} onChange={(e) => void pickPo(e.target.value)} placeholder="Purchase order" options={(pos.data?.data ?? []).map((p) => ({ value: p.id, label: `${p.number} — ${p.vendorName}` }))} />
+        </div>
         {poId && <InboundShipments poId={poId} />}
         {poId && (
           <div className="flex flex-col gap-1">
@@ -201,7 +332,7 @@ function ReceiveDialog({ onClose, onCreated }: { onClose: () => void; onCreated:
           </div>
         )}
         {lines.length > 0 && (
-          <>
+          <div className={cn("p-1 rounded transition-colors", isTourReceiveStep && activeStepKey === "lines" && "ring-2 ring-teal-500 bg-teal-500/5")}>
             <DesktopOnly className="w-full">
               <DataTable columns={["SKU Name", "Ordered", "Received", "Batch"]} minWidth={0} fit>
                 {lines.map((l, i) => (
@@ -226,12 +357,27 @@ function ReceiveDialog({ onClose, onCreated }: { onClose: () => void; onCreated:
                 </MobileRecordCard>
               ))}
             </MobileOnly>
-          </>
+          </div>
         )}
         <form onSubmit={submit} id="receive-form" className="mt-2 flex flex-col gap-3">
-          <TextInput name="invoiceNumber" placeholder="Invoice number" required />
+          <div className={cn("p-1 rounded transition-colors", isTourReceiveStep && activeStepKey === "invoiceNumber" && "ring-2 ring-teal-500 bg-teal-500/5")}>
+            <TextInput
+              name="invoiceNumber"
+              placeholder="Invoice number"
+              value={invoiceNumber}
+              onChange={(e) => setInvoiceNumber(e.target.value)}
+              required
+            />
+          </div>
           <div className="flex gap-2">
-            <TextInput name="vehicleNumber" placeholder="Vehicle number (optional)" />
+            <div className={cn("flex-1 p-1 rounded transition-colors", isTourReceiveStep && activeStepKey === "vehicleNumber" && "ring-2 ring-teal-500 bg-teal-500/5")}>
+              <TextInput
+                name="vehicleNumber"
+                placeholder="Vehicle number (optional)"
+                value={vehicleNumber}
+                onChange={(e) => setVehicleNumber(e.target.value)}
+              />
+            </div>
             <TextInput name="deliveryNote" placeholder="Delivery note (optional)" />
           </div>
           {canSticker && (
@@ -484,6 +630,12 @@ function GrnTab({ grns, filters, setFilters, vendors, warehouses, error, onRefre
   onRefresh: () => void;
 }) {
   const { can } = useAuth();
+  const { isTourActive, activeJourneyId, currentJourneyStepIndex } = useDemoTour();
+  const isTourReceiveStep = isTourActive && (
+    (activeJourneyId === "procure-to-pay" && currentJourneyStepIndex === 3) ||
+    (activeJourneyId === "inventory-management" && currentJourneyStepIndex === 1)
+  );
+
   const canWrite = can("grn:write");
   const [receiveOpen, setReceiveOpen] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
@@ -497,7 +649,21 @@ function GrnTab({ grns, filters, setFilters, vendors, warehouses, error, onRefre
         <h2 className="rx-heading-6">Goods Received Notes</h2>
         <div className="flex-1" />
         {canWrite && <BulkUploadButton onClick={() => setBulkOpen(true)} />}
-        {canWrite && <ActionButton onClick={() => setReceiveOpen(true)}>Receive goods</ActionButton>}
+        {canWrite && (
+          <div className="relative inline-block">
+            <ActionButton
+              className={cn(isTourReceiveStep && "ring-2 ring-teal-500 ring-offset-2 animate-pulse")}
+              onClick={() => setReceiveOpen(true)}
+            >
+              Receive goods
+            </ActionButton>
+            {isTourReceiveStep && (
+              <span className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-teal-500 text-white font-bold text-[10px] shadow animate-bounce">
+                1
+              </span>
+            )}
+          </div>
+        )}
       </div>
       <ScanToJumpBox />
       <div className="flex w-full flex-wrap items-center gap-3 md:flex-nowrap">

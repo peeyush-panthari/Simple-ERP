@@ -1,15 +1,15 @@
 /**
- * App chrome: sticky header (logo, global search, notification bell, account
- * menu with Profile and Logout) + permission-filtered, grouped sidebar nav with a live
- * platform-status footer, and below lg a bottom tab bar whose "More" tab opens
- * the full nav as a drawer. Port of the Reflex app's components/shell.py.
+ * App chrome: full-height sidebar nav (logo, permission-filtered grouped navigation,
+ * and bottom user profile with help/notification icons) maximizing vertical screen
+ * space across all ERP pages. Below lg, a compact mobile header and bottom tab bar
+ * provide responsive access.
  */
 
 import * as Dialog from "@radix-ui/react-dialog";
 import * as Popover from "@radix-ui/react-popover";
 import { useQuery } from "@tanstack/react-query";
-import { Bell, ChevronDown, LogOut, Menu, Search, User, X } from "lucide-react";
-import { useMemo, useState, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
+import { Bell, ChevronDown, LogOut, Menu, User, X } from "lucide-react";
+import { useMemo, useState, type KeyboardEvent, type ReactNode } from "react";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { Logo } from "@/components/erp/logo";
 import { LoadingOverlay, Spinner, TopProgress } from "@/components/erp/ui";
@@ -17,43 +17,6 @@ import { GlobalHelpDrawer } from "@/components/erp/help-drawer";
 import { useAuth } from "@/lib/auth";
 import { groupedNav, mobileTabItems, resolveBreadcrumbs, type NavItem } from "@/lib/nav";
 import { cn } from "@/lib/utils";
-
-/** Routes a typed identifier to the module page whose prefix it matches (e.g. "PO-3005" -> /procurement). */
-const SEARCH_ROUTES: [RegExp, string][] = [
-  [/^po-/i, "/procurement"],
-  [/^so-/i, "/orders"],
-  [/^grn-/i, "/warehouse"],
-  [/^(inv|ap|ar)-/i, "/finance"],
-  [/^(lr|rfq|dsp)-/i, "/logistics"],
-  [/^pty-/i, "/parties"],
-];
-
-function GlobalSearch() {
-  const [value, setValue] = useState("");
-  const navigate = useNavigate();
-  const submit = (e: FormEvent) => {
-    e.preventDefault();
-    const q = value.trim();
-    if (!q) return;
-    const target = SEARCH_ROUTES.find(([re]) => re.test(q))?.[1] ?? "/products";
-    setValue("");
-    navigate(`${target}?q=${encodeURIComponent(q)}`);
-  };
-  return (
-    <form onSubmit={submit} className="global-search hidden md:flex" role="search">
-      <label htmlFor="global-search-input" className="sr-only">Search POs, SKUs, parties</label>
-      <Search size={16} className="shrink-0 text-[var(--sidebar-foreground)]/60" aria-hidden="true" />
-      <input
-        id="global-search-input"
-        aria-label="Search POs, SKUs, parties, or records"
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        placeholder="Search POs, SKUs, parties…"
-      />
-      <kbd aria-hidden="true">⏎</kbd>
-    </form>
-  );
-}
 
 interface SystemStatus {
   checks?: { database?: { healthy?: boolean } };
@@ -88,7 +51,7 @@ function NotificationBell({ degraded }: { degraded: boolean }) {
 }
 
 /** The signed-in user's menu: Profile (MFA, password) and Logout. */
-function ProfileMenu() {
+function ProfileMenu({ side = "top", align = "start" }: { side?: "top" | "bottom" | "left" | "right"; align?: "start" | "center" | "end" }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
@@ -121,20 +84,27 @@ function ProfileMenu() {
   };
 
   return (
-    <div className="ml-auto flex items-center gap-2">
+    <div className="flex items-center min-w-0">
       <Popover.Root open={open} onOpenChange={setOpen}>
         <Popover.Trigger asChild>
-          <button type="button" className="profile-pill" aria-haspopup="menu" aria-expanded={open} aria-label={`Account menu, ${name}`} title="Account">
-            <span className="profile-pill-avatar">{initials}</span>
-            <div className="hidden text-left leading-tight sm:block">
-              <p className="profile-pill-name">{name}</p>
-              <p className="profile-pill-role">{roles}</p>
+          <button
+            type="button"
+            className="profile-pill flex-1 min-w-0"
+            aria-haspopup="menu"
+            aria-expanded={open}
+            aria-label={`Account menu, ${name}`}
+            title="Account"
+          >
+            <span className="profile-pill-avatar shrink-0">{initials}</span>
+            <div className="min-w-0 flex-1 text-left leading-tight">
+              <p className="profile-pill-name truncate">{name}</p>
+              <p className="profile-pill-role truncate">{roles}</p>
             </div>
-            <ChevronDown size={14} className={cn("profile-pill-caret", open && "profile-pill-caret-open")} aria-hidden />
+            <ChevronDown size={14} className={cn("profile-pill-caret shrink-0 ml-1", open && "profile-pill-caret-open")} aria-hidden />
           </button>
         </Popover.Trigger>
         <Popover.Portal>
-          <Popover.Content align="end" sideOffset={8} className="profile-menu" role="menu" aria-label="Account menu" onKeyDown={onKeyDown}>
+          <Popover.Content side={side} align={align} sideOffset={8} className="profile-menu" role="menu" aria-label="Account menu" onKeyDown={onKeyDown}>
             <div className="profile-menu-head">
               <p className="profile-menu-name">{name}</p>
               <p className="profile-menu-email">{user?.email}</p>
@@ -154,22 +124,6 @@ function ProfileMenu() {
         </Popover.Portal>
       </Popover.Root>
     </div>
-  );
-}
-
-
-function Header({ degraded }: { degraded: boolean }) {
-  return (
-    <header className="app-header">
-      <Link to="/" className="shrink-0 hover:opacity-90" title="Simple ERP — home">
-        <Logo markClass="h-7 w-auto" textClass="app-header-logo-text" subClass="app-header-logo-sub" />
-      </Link>
-      <div className="app-header-divider hidden md:block" />
-      <GlobalSearch />
-      <GlobalHelpDrawer />
-      <NotificationBell degraded={degraded} />
-      <ProfileMenu />
-    </header>
   );
 }
 
@@ -202,44 +156,129 @@ function NavLinkItem({ item, onNavigate }: { item: NavItem; onNavigate?: () => v
   );
 }
 
-function NavGroups({ onNavigate }: { onNavigate?: () => void }) {
-  const { permissions } = useAuth();
-  const groups = useMemo(() => groupedNav(permissions), [permissions]);
+const STORAGE_KEY_NAV_COLLAPSED = "simple_erp_collapsed_nav_groups";
+
+function NavGroupSection({
+  group,
+  items,
+  isCollapsed,
+  onToggle,
+  onNavigate,
+  hasActiveChild,
+}: {
+  group: string;
+  items: NavItem[];
+  isCollapsed: boolean;
+  onToggle: () => void;
+  onNavigate?: () => void;
+  hasActiveChild: boolean;
+}) {
   return (
-    <>
-      {groups.map((g) => (
-        <div key={g.group} className="nav-group">
-          <p className="nav-group-label">{g.group}</p>
-          {g.items.map((item) => (
+    <div className="nav-group mb-2">
+      <button
+        type="button"
+        onClick={onToggle}
+        className={cn(
+          "w-full flex items-center justify-between px-2 py-2 rounded-md text-xs font-semibold tracking-wider uppercase transition-colors select-none",
+          "text-[var(--sidebar-foreground)]/85 hover:text-[var(--sidebar-foreground)] hover:bg-[var(--sidebar-accent)]/40 cursor-pointer",
+          hasActiveChild && "text-teal-600 dark:text-teal-400 font-bold"
+        )}
+        aria-expanded={!isCollapsed}
+        aria-label={`${group} section, ${isCollapsed ? "collapsed" : "expanded"}`}
+      >
+        <span className="flex items-center gap-2 truncate">
+          {hasActiveChild && isCollapsed && (
+            <span className="h-2 w-2 rounded-full bg-teal-500 shrink-0 shadow-xs" title="Active page inside" />
+          )}
+          <span className="truncate">{group}</span>
+        </span>
+        <ChevronDown
+          size={14}
+          className={cn(
+            "shrink-0 transition-transform duration-200 opacity-60 ml-2",
+            isCollapsed && "-rotate-90"
+          )}
+        />
+      </button>
+
+      {!isCollapsed && (
+        <div className="mt-1 space-y-0.5 pl-0.5 animate-in fade-in duration-150">
+          {items.map((item) => (
             <NavLinkItem key={item.path} item={item} onNavigate={onNavigate} />
           ))}
         </div>
-      ))}
-    </>
+      )}
+    </div>
   );
 }
 
-function SidebarFooter({ status }: { status: ReturnType<typeof usePlatformStatus> }) {
-  if (!status.enabled) {
-    return (
-      <div className="sidebar-footer">
-        <p>Simple ERP</p>
-      </div>
-    );
-  }
+function NavGroups({ onNavigate }: { onNavigate?: () => void }) {
+  const { permissions } = useAuth();
+  const { pathname } = useLocation();
+  const groups = useMemo(() => groupedNav(permissions), [permissions]);
+
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY_NAV_COLLAPSED);
+      return stored ? JSON.parse(stored) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  const toggleGroup = (group: string) => {
+    setCollapsed((prev) => {
+      const current = prev[group] !== undefined ? prev[group] : true;
+      const next = { ...prev, [group]: !current };
+      try {
+        localStorage.setItem(STORAGE_KEY_NAV_COLLAPSED, JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+  };
+
+  const allCollapsed = groups.length > 0 && groups.every((g) => (collapsed[g.group] !== undefined ? Boolean(collapsed[g.group]) : true));
+
+  const toggleAll = () => {
+    const nextState = !allCollapsed;
+    const next: Record<string, boolean> = {};
+    groups.forEach((g) => {
+      next[g.group] = nextState;
+    });
+    setCollapsed(next);
+    try {
+      localStorage.setItem(STORAGE_KEY_NAV_COLLAPSED, JSON.stringify(next));
+    } catch {}
+  };
+
   return (
-    <div className="sidebar-footer">
-      {status.isPending ? (
-        <p className="numeric">checking platform…</p>
-      ) : status.isError ? (
-        <p className="numeric text-[var(--destructive)]">platform unreachable</p>
-      ) : (
-        <p className="numeric flex items-center">
-          <span className={cn("sidebar-footer-dot", status.data?.checks?.database?.healthy ? "bg-[var(--success)]" : "bg-[var(--warning)]")} />
-          {status.data?.modulesDone ?? 0}/{status.data?.modulesTotal ?? 0} modules done
-        </p>
-      )}
-    </div>
+    <>
+      <div className="flex items-center justify-between px-2 pb-2 mb-1 border-b border-[var(--sidebar-border)]/40 text-[10px] text-[var(--sidebar-foreground)]/50">
+        <span className="font-semibold tracking-wider uppercase text-[9px]">Modules</span>
+        <button
+          type="button"
+          onClick={toggleAll}
+          className="hover:text-[var(--sidebar-foreground)] transition-colors hover:underline cursor-pointer"
+        >
+          {allCollapsed ? "Expand all" : "Collapse all"}
+        </button>
+      </div>
+      {groups.map((g) => {
+        const hasActiveChild = g.items.some((item) => item.path === pathname);
+        const isCollapsed = collapsed[g.group] !== undefined ? Boolean(collapsed[g.group]) : true;
+        return (
+          <NavGroupSection
+            key={g.group}
+            group={g.group}
+            items={g.items}
+            isCollapsed={isCollapsed}
+            onToggle={() => toggleGroup(g.group)}
+            onNavigate={onNavigate}
+            hasActiveChild={hasActiveChild}
+          />
+        );
+      })}
+    </>
   );
 }
 
@@ -318,26 +357,57 @@ export function Shell({ children, fullWidth = false }: { children: ReactNode; fu
   const status = usePlatformStatus();
   const degraded = status.enabled && !status.isPending && !status.isError && !status.data?.checks?.database?.healthy;
   return (
-    <div className="flex h-screen flex-col overflow-hidden">
+    <div className="flex h-screen w-screen overflow-hidden">
       <TopProgress />
       <LoadingOverlay />
-      <Header degraded={degraded} />
-      <div className="flex min-w-0 min-h-0 flex-1">
-        <aside className="app-sidebar">
-          <nav className="app-sidebar-nav">
-            <NavGroups />
-          </nav>
-          <SidebarFooter status={status} />
-        </aside>
-        <div className="flex min-w-0 min-h-0 flex-1 flex-col">
-          <main tabIndex={0} id="main-content" aria-label="Main content" className="main-content main-content-mobile-pad focus:outline-none">
-            <div className={cn("main-content-inner", fullWidth && "main-content-inner-wide")}>
-              <BreadcrumbTrail />
-              {children}
-            </div>
-          </main>
+
+      {/* Left Navigation Bar */}
+      <aside className="app-sidebar">
+        {/* Simple ERP Name and Logo */}
+        <div className="flex h-14 shrink-0 items-center px-4 border-b border-[var(--sidebar-border)]">
+          <Link to="/" className="flex items-center gap-2 hover:opacity-90 transition-opacity" title="Simple ERP — home">
+            <Logo markClass="h-7 w-auto" textClass="app-header-logo-text" subClass="app-header-logo-sub" />
+          </Link>
         </div>
+
+        {/* Navigation items */}
+        <nav className="app-sidebar-nav flex-1 overflow-y-auto">
+          <NavGroups />
+        </nav>
+
+        {/* User Account section at bottom with ? and notification icons */}
+        <div className="border-t border-[var(--sidebar-border)] p-3 shrink-0 flex flex-col gap-2 bg-[var(--sidebar)]">
+          <div className="flex items-center justify-between gap-1.5">
+            <div className="min-w-0 flex-1">
+              <ProfileMenu side="top" align="start" />
+            </div>
+            <div className="flex items-center gap-1 shrink-0">
+              <GlobalHelpDrawer />
+              <NotificationBell degraded={degraded} />
+            </div>
+          </div>
+          {status.enabled && (
+            <div className="px-1 text-[10px] text-[var(--sidebar-foreground)]/60 flex items-center justify-between">
+              <span className="flex items-center">
+                <span className={cn("sidebar-footer-dot inline-block h-1.5 w-1.5 rounded-full mr-1.5", status.data?.checks?.database?.healthy ? "bg-[var(--success)]" : "bg-[var(--warning)]")} />
+                {status.data?.modulesDone ?? 0}/{status.data?.modulesTotal ?? 0} modules
+              </span>
+              <span className="text-[9px] font-mono opacity-60">Simple ERP</span>
+            </div>
+          )}
+        </div>
+      </aside>
+
+      {/* Main content area */}
+      <div className="flex min-w-0 min-h-0 flex-1 flex-col">
+        <main tabIndex={0} id="main-content" aria-label="Main content" className="main-content main-content-mobile-pad focus:outline-none">
+          <div className={cn("main-content-inner", fullWidth && "main-content-inner-wide")}>
+            <BreadcrumbTrail />
+            {children}
+          </div>
+        </main>
       </div>
+
       <BottomTabBar />
     </div>
   );

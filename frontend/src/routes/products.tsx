@@ -2,15 +2,18 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
 import { BulkUploadButton, BulkUploadDialog } from "@/components/erp/bulk-upload";
+import { GuidedFieldWalkthrough } from "@/components/erp/guided-field-walkthrough";
 import { Shell } from "@/components/erp/shell";
 import { Tabs } from "@/components/erp/tabs";
 import {
   ActionButton, DataTable, DesktopOnly, Forbidden, InlineError, MobileOnly, MobileRecordCard, MobileRecordRow, Modal, PageHeader, Pagination, Pill, SearchInput, SelectInput, TextInput,
 } from "@/components/erp/ui";
 import { useAuth } from "@/lib/auth";
+import { useDemoTour } from "@/lib/demo-flow-context";
 import * as format from "@/lib/format";
 import { useApiQuery, useAsyncAction, useDebounced, type ListResponse } from "@/lib/hooks";
 import { PRODUCT_TYPES, UOM_OPTIONS, uomLabel } from "@/lib/reference";
+import { cn } from "@/lib/utils";
 
 interface Category {
   id: string;
@@ -96,27 +99,127 @@ const effective = (v: BomVersion) => `${v.effectiveFrom} → ${v.effectiveTo || 
 function CreateProductDialog({ categories, onClose, onCreated }: { categories: Category[]; onClose: () => void; onCreated: () => void }) {
   const { api } = useAuth();
   const { run, busy, error, setError } = useAsyncAction();
+  const { isTourActive, activeJourneyId, currentJourneyStepIndex } = useDemoTour();
+  const isTourStep3 = isTourActive && activeJourneyId === "administration" && currentJourneyStepIndex === 2;
+
+  const [activeWalkthroughField, setActiveWalkthroughField] = useState("sku");
+  const [sku, setSku] = useState("");
+  const [name, setName] = useState("");
+  const [make, setMake] = useState("");
+  const [modelNumber, setModelNumber] = useState("");
   const [type, setType] = useState("raw_material");
   const [categoryId, setCategoryId] = useState("");
+  const [uom, setUom] = useState("UNIT");
+  const [batchTracked, setBatchTracked] = useState(false);
+
   const typeCategories = categories.filter((c) => !c.productTypes?.length || c.productTypes.includes(type));
+  const fgCat = categories.find((c) => !c.productTypes?.length || c.productTypes.includes("finished_good")) || categories[0];
+
+  const autofillDemoProduct = () => {
+    setSku("SKU-MOT-500");
+    setName("500W High-Torque Brushless Motor");
+    setMake("Axon Powertrain");
+    setModelNumber("MOT-500-BLDC");
+    setType("finished_good");
+    if (fgCat) {
+      setCategoryId(fgCat.id);
+    }
+    setUom("UNIT");
+    setBatchTracked(true);
+  };
+
+  const walkthroughFields = [
+    {
+      id: "sku",
+      label: "SKU Code (Alphanumeric Identifier)",
+      shortLabel: "SKU ID",
+      useCase: "Permanent master catalog code used on production orders, bill of materials lines, stock ledger transactions, and dispatch barcodes.",
+      guideline: "Standardized uppercase code with department or family prefixes (e.g. SKU-MOT-500).",
+      restriction: "Must be unique and is strictly immutable once created. No special characters except hyphen.",
+      sampleValueText: "SKU-MOT-500",
+      isFilled: Boolean(sku),
+      onFill: () => setSku("SKU-MOT-500"),
+    },
+    {
+      id: "nameAndMake",
+      label: "SKU Title & Manufacturer Make",
+      shortLabel: "Name & Make",
+      useCase: "Customer-facing description and engineering manufacturer identification printed on work instructions, packing slips, and sales invoices.",
+      guideline: "Descriptive name including rating (500W BLDC) and manufacturer/brand (Axon Powertrain).",
+      restriction: "Both SKU Name and Make are required fields.",
+      sampleValueText: "500W High-Torque Brushless Motor (Axon Powertrain)",
+      isFilled: Boolean(name && make),
+      onFill: () => {
+        setName("500W High-Torque Brushless Motor");
+        setMake("Axon Powertrain");
+        setModelNumber("MOT-500-BLDC");
+      },
+    },
+    {
+      id: "type",
+      label: "Product Classification Type",
+      shortLabel: "Type",
+      useCase: "Controls core ERP workflow logic: finished_good can have a BOM and be sold; raw_material is procured from vendors; subassembly is assembled intermediate.",
+      guideline: "Select 'finished_good' for complete sellable product lines.",
+      restriction: "Governs BOM buildability, MRP demand netting, and sales order eligibility.",
+      sampleValueText: "finished_good",
+      isFilled: type === "finished_good",
+      onFill: () => setType("finished_good"),
+    },
+    {
+      id: "categoryAndUom",
+      label: "Product Category & Unit of Measure (UOM)",
+      shortLabel: "Category & UOM",
+      useCase: "Financial General Ledger grouping, inventory valuation pool, and fundamental counting unit for stock ledger, receipts, and BOM ratios.",
+      guideline: "Choose an active category mapped to finished goods and standard counting unit (UNIT).",
+      restriction: "Base UOM is locked permanently after creation to preserve stock history and conversion integrity.",
+      sampleValueText: fgCat ? `${fgCat.productCategory} (UNIT)` : "UNIT",
+      isFilled: Boolean(categoryId && uom),
+      onFill: () => {
+        if (fgCat) setCategoryId(fgCat.id);
+        setUom("UNIT");
+      },
+    },
+    {
+      id: "batchTracked",
+      label: "Batch & Quality Lot Traceability",
+      shortLabel: "Batch Tracked",
+      useCase: "Enforces lot/batch number tracking during production assembly and goods dispatch for end-to-end component genealogy and recall safety.",
+      guideline: "Always enable for electric motors, battery packs, and critical assemblies.",
+      restriction: "When enabled, requires batch allocation on all goods movement transactions.",
+      sampleValueText: "Enabled (checked)",
+      isFilled: batchTracked === true,
+      onFill: () => setBatchTracked(true),
+    },
+  ];
+
+  const allWalkthroughFilled = Boolean(sku && name && make && categoryId && uom);
 
   const submit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
     const get = (k: string) => String(f.get(k) ?? "");
-    if (!categoryId) return setError("Category is required");
-    if (!get("sku")) return setError("SKU ID is required");
+    const finalSku = sku || get("sku");
+    const finalName = name || get("name");
+    const finalMake = make || get("make");
+    const finalModel = modelNumber || get("modelNumber") || null;
+    const finalCat = categoryId || get("categoryId");
+    const finalUom = uom || get("uom") || "UNIT";
+
+    if (!finalCat) return setError("Category is required");
+    if (!finalSku) return setError("SKU ID is required");
+
     const ok = await run(async () => {
       await api("POST", "/api/v1/products", {
         json: {
-          sku: get("sku"),
-          name: get("name"),
-          make: get("make"),
-          modelNumber: get("modelNumber") || null,
+          sku: finalSku,
+          name: finalName,
+          make: finalMake,
+          modelNumber: finalModel,
           type,
-          categoryId,
-          uom: get("uom") || "UNIT",
-          batchTracked: f.get("batchTracked") !== null,
+          categoryId: finalCat,
+          uom: finalUom,
+          batchTracked: batchTracked || f.get("batchTracked") !== null,
           expiryTracked: f.get("expiryTracked") !== null,
           sellable: type === "finished_good",
         },
@@ -133,28 +236,117 @@ function CreateProductDialog({ categories, onClose, onCreated }: { categories: C
     <Modal open onClose={onClose} title="New product">
       <form onSubmit={submit} className="flex flex-col gap-3">
         <InlineError message={error} />
-        <TextInput name="sku" placeholder="SKU ID" required />
-        <TextInput name="name" placeholder="SKU Name" required />
-        <TextInput name="make" placeholder="Make" required />
-        <TextInput name="modelNumber" placeholder="Model number (optional)" />
-        <SelectInput
-          value={type}
-          onChange={(e) => {
-            setType(e.target.value);
-            setCategoryId("");
-          }}
-          placeholder="Product type"
-          options={PRODUCT_TYPES.map((t) => ({ value: t, label: t }))}
-        />
-        <SelectInput value={categoryId} onChange={(e) => setCategoryId(e.target.value)} placeholder="Category" options={typeCategories.map((c) => ({ value: c.id, label: c.productCategory }))} />
-        <SelectInput name="uom" defaultValue="UNIT" required options={UOM_OPTIONS} />
-        <label className="check-row">
-          <input type="checkbox" name="batchTracked" />
-          <span>Batch tracked</span>
-        </label>
-        <div className="flex justify-end gap-2">
+        {isTourStep3 && (
+          <GuidedFieldWalkthrough
+            dialogTitle="New product"
+            fields={walkthroughFields}
+            activeFieldId={activeWalkthroughField}
+            onSelectField={setActiveWalkthroughField}
+            onFillAll={autofillDemoProduct}
+            allFilled={allWalkthroughFilled}
+            submitButtonLabel="Create product"
+            stepBadgeNumber={2}
+            nextStepBadgeNumber={3}
+          />
+        )}
+        <div className={cn(isTourStep3 && activeWalkthroughField === "sku" && "rounded-lg p-1 ring-2 ring-teal-500 bg-teal-500/5 transition-all")}>
+          <TextInput
+            name="sku"
+            placeholder="SKU ID"
+            value={sku}
+            onFocus={() => setActiveWalkthroughField("sku")}
+            onChange={(e) => setSku(e.target.value)}
+            required
+          />
+        </div>
+        <div className={cn(isTourStep3 && activeWalkthroughField === "nameAndMake" && "rounded-lg p-1 ring-2 ring-teal-500 bg-teal-500/5 transition-all space-y-2")}>
+          <TextInput
+            name="name"
+            placeholder="SKU Name"
+            value={name}
+            onFocus={() => setActiveWalkthroughField("nameAndMake")}
+            onChange={(e) => setName(e.target.value)}
+            required
+          />
+          <div className="flex gap-2">
+            <TextInput
+              name="make"
+              placeholder="Make"
+              value={make}
+              onFocus={() => setActiveWalkthroughField("nameAndMake")}
+              onChange={(e) => setMake(e.target.value)}
+              required
+            />
+            <TextInput
+              name="modelNumber"
+              placeholder="Model number (optional)"
+              value={modelNumber}
+              onFocus={() => setActiveWalkthroughField("nameAndMake")}
+              onChange={(e) => setModelNumber(e.target.value)}
+            />
+          </div>
+        </div>
+        <div className={cn(isTourStep3 && activeWalkthroughField === "type" && "rounded-lg p-1 ring-2 ring-teal-500 bg-teal-500/5 transition-all")}>
+          <SelectInput
+            value={type}
+            onFocus={() => setActiveWalkthroughField("type")}
+            onChange={(e) => {
+              setType(e.target.value);
+              setCategoryId("");
+            }}
+            placeholder="Product type"
+            options={PRODUCT_TYPES.map((t) => ({ value: t, label: t }))}
+          />
+        </div>
+        <div className={cn(isTourStep3 && activeWalkthroughField === "categoryAndUom" && "rounded-lg p-1 ring-2 ring-teal-500 bg-teal-500/5 transition-all space-y-2")}>
+          <SelectInput
+            value={categoryId}
+            onFocus={() => setActiveWalkthroughField("categoryAndUom")}
+            onChange={(e) => setCategoryId(e.target.value)}
+            placeholder="Category"
+            options={typeCategories.map((c) => ({ value: c.id, label: c.productCategory }))}
+          />
+          <SelectInput
+            name="uom"
+            value={uom}
+            onFocus={() => setActiveWalkthroughField("categoryAndUom")}
+            onChange={(e) => setUom(e.target.value)}
+            required
+            options={UOM_OPTIONS}
+          />
+        </div>
+        <div className={cn(isTourStep3 && activeWalkthroughField === "batchTracked" && "rounded-lg p-1 ring-2 ring-teal-500 bg-teal-500/5 transition-all")}>
+          <label className="check-row">
+            <input
+              type="checkbox"
+              name="batchTracked"
+              checked={batchTracked}
+              onFocus={() => setActiveWalkthroughField("batchTracked")}
+              onChange={(e) => setBatchTracked(e.target.checked)}
+            />
+            <span>Batch tracked (lot genealogy enabled)</span>
+          </label>
+        </div>
+        <div className="flex justify-end gap-2 items-center">
           <ActionButton tone="ghost" onClick={onClose}>Cancel</ActionButton>
-          <ActionButton type="submit" loading={busy}>Create product</ActionButton>
+          <div className="relative">
+            {isTourStep3 && (
+              <span className="absolute -top-2 -right-2 flex h-5 w-5 z-10 pointer-events-none">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-5 w-5 bg-teal-500 text-[10px] font-bold text-white items-center justify-center shadow-md">
+                  3
+                </span>
+              </span>
+            )}
+            <ActionButton
+              type="submit"
+              tone={isTourStep3 ? "primary" : undefined}
+              loading={busy}
+              className={cn(isTourStep3 && allWalkthroughFilled && "ring-2 ring-teal-500 ring-offset-2 shadow-lg animate-pulse")}
+            >
+              Create product
+            </ActionButton>
+          </div>
         </div>
       </form>
     </Modal>
@@ -210,6 +402,9 @@ function ProductsTab() {
   const [bulkOpen, setBulkOpen] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
 
+  const { isTourActive, activeJourneyId, currentJourneyStepIndex } = useDemoTour();
+  const isTourStep3 = isTourActive && activeJourneyId === "administration" && currentJourneyStepIndex === 2;
+
   const categories = useApiQuery<ListResponse<Category>>("/api/v1/product-categories", { limit: 100 });
   const list = useApiQuery<ListResponse<Product>>("/api/v1/products", { page, limit: 15, q: debounced, type, status });
   const products = list.data?.data ?? [];
@@ -244,7 +439,25 @@ function ProductsTab() {
         </select>
         <div className="flex-1" />
         {canWrite && <BulkUploadButton onClick={() => setBulkOpen(true)} />}
-        {canWrite && <ActionButton onClick={() => setCreateOpen(true)}>New product</ActionButton>}
+        {canWrite && (
+          <div className="relative">
+            {isTourStep3 && (
+              <span className="absolute -top-2 -right-2 flex h-5 w-5 z-10 pointer-events-none">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-5 w-5 bg-teal-500 text-[10px] font-bold text-white items-center justify-center shadow-md">
+                  3
+                </span>
+              </span>
+            )}
+            <ActionButton
+              onClick={() => setCreateOpen(true)}
+              tone={isTourStep3 ? "primary" : undefined}
+              className={cn(isTourStep3 && "ring-2 ring-teal-500 ring-offset-2 shadow-lg animate-pulse")}
+            >
+              New product
+            </ActionButton>
+          </div>
+        )}
       </div>
       <InlineError message={list.error?.message} />
       <DesktopOnly className="w-full">

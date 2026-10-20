@@ -7,6 +7,7 @@ import {
   RefreshCw,
   Wrench,
 } from "lucide-react";
+import { GuidedFieldWalkthrough } from "@/components/erp/guided-field-walkthrough";
 import { Shell } from "@/components/erp/shell";
 import {
   ActionButton,
@@ -21,7 +22,9 @@ import {
   TextInput,
 } from "@/components/erp/ui";
 import { useAuth } from "@/lib/auth";
+import { useDemoTour } from "@/lib/demo-flow-context";
 import { date as formatDate, qty } from "@/lib/format";
+import { cn } from "@/lib/utils";
 
 interface IpqcRecord {
   id: string;
@@ -88,6 +91,8 @@ interface CoaPrintSlip {
 export default function QualityIpqcPage() {
   const { api } = useAuth();
   const qc = useQueryClient();
+  const { isTourActive, activeJourneyId, currentJourneyStepIndex } = useDemoTour();
+  const isTourIpqcStep = isTourActive && activeJourneyId === "plan-to-production" && currentJourneyStepIndex === 3;
 
   const [activeTab, setActiveTab] = useState<"ipqc" | "coa">("ipqc");
   const [showIpqcModal, setShowIpqcModal] = useState(false);
@@ -103,6 +108,63 @@ export default function QualityIpqcPage() {
   const [paramMeasured, setParamMeasured] = useState("12.4");
   const [ipqcStatus, setIpqcStatus] = useState("passed");
   const [nonConformance, setNonConformance] = useState("");
+  const [activeStepKey, setActiveStepKey] = useState("selectedRunId");
+
+  const walkthroughFields = [
+    {
+      key: "selectedRunId",
+      label: "Target Production Run",
+      useCase: "Binds inspection gate to the active shop floor batch work order.",
+      guideline: "Must be a work order currently released or in progress on the floor.",
+      isFilled: !!selectedRunId,
+      onAutofill: () => {
+        if (pendingRuns.length > 0) setSelectedRunId(pendingRuns[0].id);
+        else setSelectedRunId("run-demo-01");
+      },
+    },
+    {
+      key: "stageName",
+      label: "Assembly Station Gate",
+      useCase: "Physical manufacturing checkpoint (SMT Solder, Ultrasonic Welding, Final Assembly).",
+      guideline: "Inspection stage routing must correspond to standard operating procedure (SOP).",
+      isFilled: !!stageName.trim(),
+      onAutofill: () => setStageName("Station 03: Automated Optical & Ultrasonic Weld Gate"),
+    },
+    {
+      key: "sampleSize",
+      label: "AQL Sample Batch Size",
+      useCase: "Statistical lot sample count drawn per ISO 2859-1 Acceptable Quality Limit (AQL) standard.",
+      guideline: "Minimum 5 units or 10% of batch size for high-reliability electronics.",
+      isFilled: !!sampleSize,
+      onAutofill: () => {
+        setSampleSize("5");
+        setPassedQty("5");
+        setFailedQty("0");
+      },
+    },
+    {
+      key: "paramMeasured",
+      label: "Torque & Continuity Reading",
+      useCase: "Parametric measurement verifying tolerances against engineering drawing specifications.",
+      guideline: "Must be within tolerance bounds (e.g. 12.5 Nm +/- 0.5).",
+      isFilled: !!paramMeasured.trim(),
+      onAutofill: () => {
+        setParamMeasured("12.45 Nm (Calibrated)");
+        setIpqcStatus("passed");
+      },
+    },
+  ];
+
+  const handleAutofillAll = () => {
+    if (pendingRuns.length > 0) setSelectedRunId(pendingRuns[0].id);
+    else setSelectedRunId("run-demo-01");
+    setStageName("Station 03: Automated Optical & Ultrasonic Weld Gate");
+    setSampleSize("5");
+    setPassedQty("5");
+    setFailedQty("0");
+    setParamMeasured("12.45 Nm (Calibrated)");
+    setIpqcStatus("passed");
+  };
 
   // Form states: CoA
   const [selectedProductId, setSelectedProductId] = useState("");
@@ -258,16 +320,24 @@ export default function QualityIpqcPage() {
         description="Mid-assembly station inspection gates, parameter tolerance checklists, and certified batch test reports for regulatory export compliance."
         actions={
           <div className="flex gap-2">
-            <ActionButton
-              tone="primary"
-              onClick={() => {
-                if (pendingRuns.length > 0 && !selectedRunId) setSelectedRunId(pendingRuns[0].id);
-                setShowIpqcModal(true);
-              }}
-            >
-              <Plus className="w-4 h-4 mr-1.5" />
-              Record IPQC Check
-            </ActionButton>
+            <div className="relative inline-block">
+              <ActionButton
+                tone="primary"
+                className={cn(isTourIpqcStep && "ring-2 ring-teal-500 ring-offset-2 animate-pulse")}
+                onClick={() => {
+                  if (pendingRuns.length > 0 && !selectedRunId) setSelectedRunId(pendingRuns[0].id);
+                  setShowIpqcModal(true);
+                }}
+              >
+                <Plus className="w-4 h-4 mr-1.5" />
+                Record IPQC Check
+              </ActionButton>
+              {isTourIpqcStep && (
+                <span className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-teal-500 text-white font-bold text-[10px] shadow animate-bounce">
+                  1
+                </span>
+              )}
+            </div>
             <ActionButton
               tone="ghost"
               onClick={() => {
@@ -487,31 +557,43 @@ export default function QualityIpqcPage() {
         title="Record In-Process Quality Inspection (IPQC)"
       >
         <form onSubmit={handleRecordIpqc} className="space-y-4">
-          <Field label="Target Production Run">
-            <select
-              value={selectedRunId}
-              onChange={(e) => setSelectedRunId(e.target.value)}
-              className="w-full text-sm p-2 border rounded-md bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700"
-              required
-            >
-              {pendingRuns.map((r) => (
-                <option key={r.id} value={r.id}>
-                  {r.run_number} - {r.sku} ({r.product_name})
-                </option>
-              ))}
-            </select>
-          </Field>
-
-          <Field label="Assembly Inspection Station">
-            <TextInput
-              value={stageName}
-              onChange={(e) => setStageName(e.target.value)}
-              placeholder="e.g. Stage 2: SMT Solder & Continuity"
-              required
+          {isTourIpqcStep && (
+            <GuidedFieldWalkthrough
+              fields={walkthroughFields}
+              activeKey={activeStepKey}
+              onSelectKey={setActiveStepKey}
+              onAutofillAll={handleAutofillAll}
             />
-          </Field>
+          )}
+          <div className={cn("p-1 rounded transition-colors", isTourIpqcStep && activeStepKey === "selectedRunId" && "ring-2 ring-teal-500 bg-teal-500/5")}>
+            <Field label="Target Production Run">
+              <select
+                value={selectedRunId}
+                onChange={(e) => setSelectedRunId(e.target.value)}
+                className="w-full text-sm p-2 border rounded-md bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700"
+                required
+              >
+                {pendingRuns.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.run_number} - {r.sku} ({r.product_name})
+                  </option>
+                ))}
+              </select>
+            </Field>
+          </div>
 
-          <div className="grid grid-cols-3 gap-3">
+          <div className={cn("p-1 rounded transition-colors", isTourIpqcStep && activeStepKey === "stageName" && "ring-2 ring-teal-500 bg-teal-500/5")}>
+            <Field label="Assembly Inspection Station">
+              <TextInput
+                value={stageName}
+                onChange={(e) => setStageName(e.target.value)}
+                placeholder="e.g. Stage 2: SMT Solder & Continuity"
+                required
+              />
+            </Field>
+          </div>
+
+          <div className={cn("grid grid-cols-3 gap-3 p-1 rounded transition-colors", isTourIpqcStep && activeStepKey === "sampleSize" && "ring-2 ring-teal-500 bg-teal-500/5")}>
             <Field label="Sample Size">
               <TextInput
                 type="number"
@@ -543,7 +625,7 @@ export default function QualityIpqcPage() {
             </Field>
           </div>
 
-          <div className="p-3 bg-slate-50 dark:bg-slate-900 rounded-lg space-y-3 border">
+          <div className={cn("p-3 bg-slate-50 dark:bg-slate-900 rounded-lg space-y-3 border transition-colors", isTourIpqcStep && activeStepKey === "paramMeasured" && "ring-2 ring-teal-500 bg-teal-500/5")}>
             <div className="font-semibold text-xs text-slate-800 dark:text-slate-200">
               Parametric Calibration Check
             </div>
@@ -585,9 +667,20 @@ export default function QualityIpqcPage() {
             <ActionButton tone="ghost" onClick={() => setShowIpqcModal(false)}>
               Cancel
             </ActionButton>
-            <ActionButton tone="primary" type="submit">
-              Authorize IPQC Gate
-            </ActionButton>
+            <div className="relative inline-block">
+              <ActionButton
+                tone="primary"
+                type="submit"
+                className={cn(isTourIpqcStep && "ring-2 ring-teal-500 animate-pulse")}
+              >
+                Authorize IPQC Gate
+              </ActionButton>
+              {isTourIpqcStep && (
+                <span className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-teal-500 text-white font-bold text-[10px] shadow animate-bounce">
+                  3
+                </span>
+              )}
+            </div>
           </div>
         </form>
       </Modal>

@@ -3,6 +3,8 @@
  * it get a plain landing message instead of a Forbidden block, since this is
  * the post-login landing page for everyone.
  */
+import { Link } from "react-router-dom";
+import { ArrowRight, Compass, Sparkles } from "lucide-react";
 import { Shell } from "@/components/erp/shell";
 import { Note, PageHeader, Panel, StatCard, PageSpinner } from "@/components/erp/ui";
 import { useAuth } from "@/lib/auth";
@@ -38,6 +40,33 @@ function Content() {
 
   return (
     <div className="flex flex-col">
+      {/* Onboarding Demo Tour Banner */}
+      <div className="mb-4 rounded-2xl border border-teal-500/30 bg-gradient-to-r from-teal-500/10 via-[var(--card)] to-indigo-500/10 p-4 shadow-xs">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="flex items-start sm:items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-teal-500/20 text-teal-700 dark:text-teal-300">
+              <Compass size={22} />
+            </div>
+            <div>
+              <h2 className="text-sm font-bold text-[var(--foreground)]">
+                New to Simple ERP? Explore How the Entire System Connects
+              </h2>
+              <p className="text-xs text-[var(--muted-foreground)]">
+                Walk through an interactive guided tour across all 13 modules — from Demand &amp; MRP, Procurement, Warehouse GRN, QC, WMS, Manufacturing, Sales Orders, to Finance 3-Way Matching.
+              </p>
+            </div>
+          </div>
+          <Link
+            to="/demo-flow"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-teal-600 hover:bg-teal-700 px-3.5 py-2 text-xs font-semibold text-white shadow-xs transition-colors shrink-0"
+          >
+            <Sparkles size={14} />
+            <span>Start Guided Demo Flow</span>
+            <ArrowRight size={13} />
+          </Link>
+        </div>
+      </div>
+
       {error && <Note tone="warning">{error.message}</Note>}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Working capital" value={format.money(wc.workingCapital, currency)} hint={wc.currency ?? ""} />

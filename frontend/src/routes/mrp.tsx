@@ -1,6 +1,7 @@
 /** Material Requirements Planning (MRP) Workbench. */
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { GuidedFieldWalkthrough } from "@/components/erp/guided-field-walkthrough";
 import { Shell } from "@/components/erp/shell";
 import {
   ActionButton,
@@ -23,8 +24,10 @@ import {
 } from "@/components/erp/ui";
 import { ScreenTourButton } from "@/components/erp/screen-tour";
 import { useAuth } from "@/lib/auth";
+import { useDemoTour } from "@/lib/demo-flow-context";
 import * as format from "@/lib/format";
 import { useApiQuery, useAsyncAction } from "@/lib/hooks";
+import { cn } from "@/lib/utils";
 
 interface PlannedOrder {
   id: string;
@@ -65,12 +68,45 @@ interface MrpRun {
 function Content() {
   const { api, can } = useAuth();
   const qc = useQueryClient();
+  const { isTourActive, activeJourneyId, currentJourneyStepIndex } = useDemoTour();
+  const isTourMrpStep = isTourActive && (
+    (activeJourneyId === "plan-to-order" && currentJourneyStepIndex === 2) ||
+    (activeJourneyId === "plan-to-production" && currentJourneyStepIndex === 0)
+  );
+
   const canWrite = can("inventory:write") || can("po:write");
 
   const [dialog, setDialog] = useState<"" | "run">("");
   const [selectedRunId, setSelectedRunId] = useState<string>("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]);
+  const [horizonDays, setHorizonDays] = useState("30");
+  const [notes, setNotes] = useState("");
+  const [activeStepKey, setActiveStepKey] = useState("horizonDays");
+
+  const walkthroughFields = [
+    {
+      key: "horizonDays",
+      label: "Planning Time Horizon",
+      useCase: "Defines the forward-looking calendar window over which open sales orders and forecast demands are netted against inventory.",
+      guideline: "30 Days (1 Month) is standard for discrete manufacturing and component procurement cycles.",
+      isFilled: !!horizonDays,
+      onAutofill: () => setHorizonDays("30"),
+    },
+    {
+      key: "notes",
+      label: "MRP Run Audit Justification",
+      useCase: "Labels the execution batch with production shift or business assumptions for cross-functional auditability.",
+      guideline: "Helps materials planners identify simulated runs vs production work order release runs.",
+      isFilled: !!notes.trim(),
+      onAutofill: () => setNotes("Q3 Baseline MRP Net Requirements Explosion"),
+    },
+  ];
+
+  const handleAutofillAll = () => {
+    setHorizonDays("30");
+    setNotes("Q3 Baseline MRP Net Requirements Explosion");
+  };
 
   const runsQuery = useApiQuery<MrpRun[]>("/api/v1/mrp/runs");
 
@@ -87,13 +123,11 @@ function Content() {
 
   const handleRunSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const f = new FormData(e.currentTarget);
-    const horizonDays = parseInt(String(f.get("horizonDays") || "30"), 10);
-    const notes = String(f.get("notes") || "");
+    const days = parseInt(horizonDays || "30", 10);
 
     const ok = await runMrpAction.run(async () => {
       const res = await api<MrpRun>("POST", "/api/v1/mrp/runs", {
-        json: { horizonDays, notes: notes || null },
+        json: { horizonDays: days, notes: notes || null },
       });
       setSelectedRunId(res.id);
       return true;
@@ -166,9 +200,19 @@ function Content() {
               ]}
             />
             {canWrite && (
-              <ActionButton onClick={() => setDialog("run")}>
-                Run MRP Calculation
-              </ActionButton>
+              <div className="relative inline-block">
+                <ActionButton
+                  className={cn(isTourMrpStep && "ring-2 ring-teal-500 ring-offset-2 animate-pulse")}
+                  onClick={() => setDialog("run")}
+                >
+                  Run MRP Calculation
+                </ActionButton>
+                {isTourMrpStep && (
+                  <span className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-teal-500 text-white font-bold text-[10px] shadow animate-bounce">
+                    1
+                  </span>
+                )}
+              </div>
             )}
           </div>
         }
@@ -337,29 +381,58 @@ function Content() {
 
       <Modal open={dialog === "run"} onClose={() => setDialog("")} title="Run MRP Simulation">
         <form onSubmit={handleRunSubmit} className="flex flex-col gap-3">
-          <InlineError message={runMrpAction.error} />
-          <Field label="Planning Horizon (Days)">
-            <SelectInput
-              name="horizonDays"
-              defaultValue="30"
-              options={[
-                { value: "14", label: "14 Days (2 Weeks)" },
-                { value: "30", label: "30 Days (1 Month)" },
-                { value: "60", label: "60 Days (2 Months)" },
-                { value: "90", label: "90 Days (Quarter)" },
-              ]}
+          {isTourMrpStep && (
+            <GuidedFieldWalkthrough
+              fields={walkthroughFields}
+              activeKey={activeStepKey}
+              onSelectKey={setActiveStepKey}
+              onAutofillAll={handleAutofillAll}
             />
-          </Field>
-          <Field label="Notes (Optional)">
-            <TextInput name="notes" placeholder="e.g. Q4 Peak Season Plan" />
-          </Field>
+          )}
+          <InlineError message={runMrpAction.error} />
+          <div className={cn("p-1 rounded transition-colors", isTourMrpStep && activeStepKey === "horizonDays" && "ring-2 ring-teal-500 bg-teal-500/5")}>
+            <Field label="Planning Horizon (Days)">
+              <SelectInput
+                name="horizonDays"
+                value={horizonDays}
+                onChange={(e) => setHorizonDays(e.target.value)}
+                options={[
+                  { value: "14", label: "14 Days (2 Weeks)" },
+                  { value: "30", label: "30 Days (1 Month)" },
+                  { value: "60", label: "60 Days (2 Months)" },
+                  { value: "90", label: "90 Days (Quarter)" },
+                ]}
+              />
+            </Field>
+          </div>
+          <div className={cn("p-1 rounded transition-colors", isTourMrpStep && activeStepKey === "notes" && "ring-2 ring-teal-500 bg-teal-500/5")}>
+            <Field label="Notes (Optional)">
+              <TextInput
+                name="notes"
+                placeholder="e.g. Q4 Peak Season Plan"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+              />
+            </Field>
+          </div>
           <div className="flex justify-end gap-2 pt-2">
             <ActionButton tone="ghost" onClick={() => setDialog("")}>
               Cancel
             </ActionButton>
-            <ActionButton type="submit" loading={runMrpAction.busy}>
-              Execute MRP Run
-            </ActionButton>
+            <div className="relative inline-block">
+              <ActionButton
+                type="submit"
+                loading={runMrpAction.busy}
+                className={cn(isTourMrpStep && "ring-2 ring-teal-500 animate-pulse")}
+              >
+                Execute MRP Run
+              </ActionButton>
+              {isTourMrpStep && (
+                <span className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-teal-500 text-white font-bold text-[10px] shadow animate-bounce">
+                  3
+                </span>
+              )}
+            </div>
           </div>
         </form>
       </Modal>

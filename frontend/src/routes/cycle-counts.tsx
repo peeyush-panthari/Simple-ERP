@@ -7,6 +7,7 @@ import {
   RefreshCw,
   Search,
 } from "lucide-react";
+import { GuidedFieldWalkthrough } from "@/components/erp/guided-field-walkthrough";
 import { Shell } from "@/components/erp/shell";
 import {
   ActionButton,
@@ -21,7 +22,9 @@ import {
   TextInput,
 } from "@/components/erp/ui";
 import { useAuth } from "@/lib/auth";
+import { useDemoTour } from "@/lib/demo-flow-context";
 import { date as formatDate, money, qty } from "@/lib/format";
+import { cn } from "@/lib/utils";
 
 interface CycleCountSession {
   id: string;
@@ -62,6 +65,8 @@ interface CycleCountLine {
 export default function CycleCountsPage() {
   const { api } = useAuth();
   const qc = useQueryClient();
+  const { isTourActive, activeJourneyId, currentJourneyStepIndex } = useDemoTour();
+  const isTourCcStep = isTourActive && activeJourneyId === "inventory-management" && currentJourneyStepIndex === 4;
 
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -69,10 +74,59 @@ export default function CycleCountsPage() {
   const [showApproveModal, setShowApproveModal] = useState(false);
 
   // Form states
+  const [selectedWhId, setSelectedWhId] = useState<string>("");
   const [targetAbc, setTargetAbc] = useState<string>("A");
   const [countingType, setCountingType] = useState<string>("abc_scheduled");
   const [blindCount, setBlindCount] = useState<boolean>(true);
   const [notes, setNotes] = useState<string>("");
+  const [activeStepKey, setActiveStepKey] = useState("warehouse");
+
+  const walkthroughFields = [
+    {
+      key: "warehouse",
+      label: "Audit Warehouse Facility",
+      useCase: "Selects physical storage location undergoing stock verification.",
+      guideline: "Bins within this warehouse will be queued for recount.",
+      isFilled: !!selectedWhId,
+      onAutofill: () => {
+        if (warehouses.length > 0) setSelectedWhId(warehouses[0].id);
+        else setSelectedWhId("wh-demo-01");
+      },
+    },
+    {
+      key: "countingType",
+      label: "Stock Counting Methodology",
+      useCase: "Determines frequency algorithm (ABC Velocity Scheduled, Random Spot Audit, Full Physical).",
+      guideline: "ABC Scheduled focuses audits on fast-moving, high-value SKUs.",
+      isFilled: !!countingType,
+      onAutofill: () => setCountingType("abc_scheduled"),
+    },
+    {
+      key: "targetAbc",
+      label: "ABC Velocity Classification Focus",
+      useCase: "Filters audit scope to Class A (high monetary turnover), Class B, or Class C.",
+      guideline: "Class A items account for 80% of consumption value and require monthly auditing.",
+      isFilled: !!targetAbc,
+      onAutofill: () => setTargetAbc("A"),
+    },
+    {
+      key: "blindCount",
+      label: "Blind Count Mode Governance",
+      useCase: "Hides system ledger quantities from floor auditor tally sheets to eliminate bias.",
+      guideline: "Standard best practice for Sarbanes-Oxley / ISO audit integrity.",
+      isFilled: !!blindCount,
+      onAutofill: () => setBlindCount(true),
+    },
+  ];
+
+  const handleAutofillAll = () => {
+    if (warehouses.length > 0) setSelectedWhId(warehouses[0].id);
+    else setSelectedWhId("wh-demo-01");
+    setCountingType("abc_scheduled");
+    setTargetAbc("A");
+    setBlindCount(true);
+    setNotes("Q4 High-Voltage Battery Pack physical reconciliation audit");
+  };
 
   // Counting inputs: map of lineId -> countedQty string
   const [countInputs, setCountInputs] = useState<Record<string, string>>({});
@@ -91,8 +145,6 @@ export default function CycleCountsPage() {
     queryKey: ["wms-warehouses"],
     queryFn: () => api<Array<{ id: string; name: string; code: string }>>("GET", "/api/v1/wms-bins/warehouses"),
   });
-
-  const [selectedWhId, setSelectedWhId] = useState<string>("");
 
   // 3. Fetch session detail if selected
   const detailQuery = useQuery({
@@ -197,16 +249,24 @@ export default function CycleCountsPage() {
         description="Perpetual ABC inventory counting, blind audit sheets, discrepancy analysis, and supervisor variance reconciliation."
         actions={
           <div className="flex gap-2">
-            <ActionButton
-              tone="primary"
-              onClick={() => {
-                if (warehouses.length > 0 && !selectedWhId) setSelectedWhId(warehouses[0].id);
-                setShowCreateModal(true);
-              }}
-            >
-              <Plus className="w-4 h-4 mr-1.5" />
-              Schedule Cycle Count
-            </ActionButton>
+            <div className="relative inline-block">
+              <ActionButton
+                tone="primary"
+                className={cn(isTourCcStep && "ring-2 ring-teal-500 ring-offset-2 animate-pulse")}
+                onClick={() => {
+                  if (warehouses.length > 0 && !selectedWhId) setSelectedWhId(warehouses[0].id);
+                  setShowCreateModal(true);
+                }}
+              >
+                <Plus className="w-4 h-4 mr-1.5" />
+                Schedule Cycle Count
+              </ActionButton>
+              {isTourCcStep && (
+                <span className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-teal-500 text-white font-bold text-[10px] shadow animate-bounce">
+                  1
+                </span>
+              )}
+            </div>
             <ActionButton
               tone="ghost"
               onClick={() => qc.invalidateQueries({ queryKey: ["cycle-count-sessions"] })}
@@ -492,47 +552,61 @@ export default function CycleCountsPage() {
         title="Schedule Cycle Count Session"
       >
         <form onSubmit={handleGenerateSession} className="space-y-4">
-          <Field label="Warehouse">
-            <select
-              value={selectedWhId}
-              onChange={(e) => setSelectedWhId(e.target.value)}
-              className="w-full text-sm p-2 border rounded-md bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700"
-              required
-            >
-              {warehouses.map((w) => (
-                <option key={w.id} value={w.id}>
-                  {w.name} ({w.code})
-                </option>
-              ))}
-            </select>
-          </Field>
+          {isTourCcStep && (
+            <GuidedFieldWalkthrough
+              fields={walkthroughFields}
+              activeKey={activeStepKey}
+              onSelectKey={setActiveStepKey}
+              onAutofillAll={handleAutofillAll}
+            />
+          )}
+          <div className={cn("p-1 rounded transition-colors", isTourCcStep && activeStepKey === "warehouse" && "ring-2 ring-teal-500 bg-teal-500/5")}>
+            <Field label="Warehouse">
+              <select
+                value={selectedWhId}
+                onChange={(e) => setSelectedWhId(e.target.value)}
+                className="w-full text-sm p-2 border rounded-md bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700"
+                required
+              >
+                {warehouses.map((w) => (
+                  <option key={w.id} value={w.id}>
+                    {w.name} ({w.code})
+                  </option>
+                ))}
+              </select>
+            </Field>
+          </div>
 
-          <Field label="Counting Method">
-            <select
-              value={countingType}
-              onChange={(e) => setCountingType(e.target.value)}
-              className="w-full text-sm p-2 border rounded-md bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700"
-            >
-              <option value="abc_scheduled">ABC Scheduled Velocity Count</option>
-              <option value="spot_audit">Random Spot Audit</option>
-              <option value="annual_full">Annual Full Physical Inventory</option>
-            </select>
-          </Field>
+          <div className={cn("p-1 rounded transition-colors", isTourCcStep && activeStepKey === "countingType" && "ring-2 ring-teal-500 bg-teal-500/5")}>
+            <Field label="Counting Method">
+              <select
+                value={countingType}
+                onChange={(e) => setCountingType(e.target.value)}
+                className="w-full text-sm p-2 border rounded-md bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700"
+              >
+                <option value="abc_scheduled">ABC Scheduled Velocity Count</option>
+                <option value="spot_audit">Random Spot Audit</option>
+                <option value="annual_full">Annual Full Physical Inventory</option>
+              </select>
+            </Field>
+          </div>
 
-          <Field label="Target Velocity Class">
-            <select
-              value={targetAbc}
-              onChange={(e) => setTargetAbc(e.target.value)}
-              className="w-full text-sm p-2 border rounded-md bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700"
-            >
-              <option value="A">Class A (Top 20% high value / fast-moving monthly)</option>
-              <option value="B">Class B (Medium velocity quarterly)</option>
-              <option value="C">Class C (Slow moving semi-annual)</option>
-              <option value="ALL">All Active Bins</option>
-            </select>
-          </Field>
+          <div className={cn("p-1 rounded transition-colors", isTourCcStep && activeStepKey === "targetAbc" && "ring-2 ring-teal-500 bg-teal-500/5")}>
+            <Field label="Target Velocity Class">
+              <select
+                value={targetAbc}
+                onChange={(e) => setTargetAbc(e.target.value)}
+                className="w-full text-sm p-2 border rounded-md bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700"
+              >
+                <option value="A">Class A (Top 20% high value / fast-moving monthly)</option>
+                <option value="B">Class B (Medium velocity quarterly)</option>
+                <option value="C">Class C (Slow moving semi-annual)</option>
+                <option value="ALL">All Active Bins</option>
+              </select>
+            </Field>
+          </div>
 
-          <div className="flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-950/30 rounded border border-amber-200 dark:border-amber-900/50">
+          <div className={cn("flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-950/30 rounded border border-amber-200 dark:border-amber-900/50 transition-colors", isTourCcStep && activeStepKey === "blindCount" && "ring-2 ring-teal-500 bg-teal-500/5")}>
             <input
               type="checkbox"
               id="blindToggle"
@@ -557,9 +631,20 @@ export default function CycleCountsPage() {
             <ActionButton tone="ghost" onClick={() => setShowCreateModal(false)}>
               Cancel
             </ActionButton>
-            <ActionButton tone="primary" type="submit">
-              Generate Session
-            </ActionButton>
+            <div className="relative inline-block">
+              <ActionButton
+                tone="primary"
+                type="submit"
+                className={cn(isTourCcStep && "ring-2 ring-teal-500 animate-pulse")}
+              >
+                Generate Session
+              </ActionButton>
+              {isTourCcStep && (
+                <span className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-teal-500 text-white font-bold text-[10px] shadow animate-bounce">
+                  3
+                </span>
+              )}
+            </div>
           </div>
         </form>
       </Modal>

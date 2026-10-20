@@ -9,6 +9,7 @@ import {
   CheckCircle2, 
   Layers,
   Sparkles,
+  Compass,
   ArrowRight
 } from "lucide-react";
 
@@ -258,6 +259,28 @@ export function GlobalHelpDrawer() {
                     </kbd>
                   </div>
                 </div>
+              </div>
+
+              {/* Dedicated Guided System Demo Flow Card */}
+              <div className="p-4 rounded-xl border border-teal-500/40 bg-gradient-to-r from-teal-500/10 to-indigo-500/10 space-y-2">
+                <div className="flex items-center gap-2 text-teal-800 dark:text-teal-200 font-bold text-xs">
+                  <Compass size={16} />
+                  <span>Guided ERP System Demo Tour</span>
+                </div>
+                <p className="text-[11px] text-[var(--muted-foreground)] leading-relaxed">
+                  New to Simple ERP? Take the complete step-by-step guided tour of all 13 modules, tasks, actions, and interconnections.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsOpen(false);
+                    navigate("/demo-flow");
+                  }}
+                  className="w-full mt-2 py-2 px-3 rounded-lg bg-teal-700 hover:bg-teal-800 text-white font-semibold text-xs flex items-center justify-center gap-1.5 shadow-xs transition-colors"
+                >
+                  <span>Launch System Demo Flow (/demo-flow)</span>
+                  <ArrowRight size={14} />
+                </button>
               </div>
 
               {/* Dedicated Interactive Training Card */}

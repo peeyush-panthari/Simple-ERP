@@ -6,6 +6,7 @@ import {
   Plus,
   Warehouse,
 } from "lucide-react";
+import { GuidedFieldWalkthrough } from "@/components/erp/guided-field-walkthrough";
 import { Shell } from "@/components/erp/shell";
 import {
   ActionButton,
@@ -16,6 +17,7 @@ import {
   TextInput,
 } from "@/components/erp/ui";
 import { useAuth } from "@/lib/auth";
+import { useDemoTour } from "@/lib/demo-flow-context";
 import { cn } from "@/lib/utils";
 
 interface BinData {
@@ -42,6 +44,8 @@ interface WarehouseRef {
 export default function WmsBinsPage() {
   const { api, can } = useAuth();
   const queryClient = useQueryClient();
+  const { isTourActive, activeJourneyId, currentJourneyStepIndex } = useDemoTour();
+  const isTourBinsStep = isTourActive && activeJourneyId === "inventory-management" && currentJourneyStepIndex === 3;
 
   const [selectedWarehouseId, setSelectedWarehouseId] = useState<string>("");
   const [selectedAisle, setSelectedAisle] = useState<string>("");
@@ -110,15 +114,22 @@ export default function WmsBinsPage() {
           description="Manage 3D physical storage coordinates (Zone > Aisle > Rack > Shelf > Bin), ABC velocity slotting, and algorithmic putaway."
           actions={
             <div className="flex items-center gap-2">
-              <ActionButton
-                tone="ghost"
-                size="sm"
-                onClick={() => setSuggestModalOpen(true)}
-                className="gap-2"
-              >
-                <Compass size={15} />
-                <span>Directed Putaway Engine</span>
-              </ActionButton>
+              <div className="relative inline-block">
+                <ActionButton
+                  tone="ghost"
+                  size="sm"
+                  onClick={() => setSuggestModalOpen(true)}
+                  className={cn("gap-2", isTourBinsStep && "ring-2 ring-teal-500 ring-offset-2 animate-pulse")}
+                >
+                  <Compass size={15} />
+                  <span>Directed Putaway Engine</span>
+                </ActionButton>
+                {isTourBinsStep && (
+                  <span className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-teal-500 text-white font-bold text-[10px] shadow animate-bounce">
+                    1
+                  </span>
+                )}
+              </div>
               <ActionButton
                 tone="primary"
                 size="sm"
@@ -394,11 +405,48 @@ function PutawaySuggestModal({
   warehouseId: string;
 }) {
   const { api } = useAuth();
+  const { isTourActive, activeJourneyId, currentJourneyStepIndex } = useDemoTour();
+  const isTourBinsStep = isTourActive && activeJourneyId === "inventory-management" && currentJourneyStepIndex === 3;
+
   const [sku, setSku] = useState("MOTOR-CNC-901");
   const [quantity, setQuantity] = useState(10);
   const [weightKg, setWeightKg] = useState(25.0);
   const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [activeStepKey, setActiveStepKey] = useState("sku");
+
+  const walkthroughFields = [
+    {
+      key: "sku",
+      label: "Received Inventory SKU",
+      useCase: "Item SKU unloaded on staging dock requiring optimal bin slotting.",
+      guideline: "Fast-moving Class A items are slotted near loading docks; heavy items on lower shelves.",
+      isFilled: !!sku.trim(),
+      onAutofill: () => setSku("MOTOR-CNC-901"),
+    },
+    {
+      key: "quantity",
+      label: "Putaway Unit Quantity",
+      useCase: "Total number of piece units or boxes to be slotted into the rack coordinate.",
+      guideline: "Cannot exceed bin maximum volumetric unit capacity.",
+      isFilled: quantity > 0,
+      onAutofill: () => setQuantity(10),
+    },
+    {
+      key: "weightKg",
+      label: "Total Gross Package Weight (kg)",
+      useCase: "Weight calculated against shelf structural load capacity.",
+      guideline: "Heavy pallets (>500kg) must be assigned to floor-level beams.",
+      isFilled: weightKg > 0,
+      onAutofill: () => setWeightKg(25.0),
+    },
+  ];
+
+  const handleAutofillAll = () => {
+    setSku("MOTOR-CNC-901");
+    setQuantity(10);
+    setWeightKg(25.0);
+  };
 
   const runSuggest = async () => {
     if (!sku.trim()) return;
@@ -429,24 +477,40 @@ function PutawaySuggestModal({
           <ActionButton tone="ghost" size="sm" onClick={onClose}>
             Close
           </ActionButton>
-          <ActionButton
-            tone="primary"
-            size="sm"
-            onClick={runSuggest}
-            loading={loading}
-          >
-            Calculate Optimal Bin
-          </ActionButton>
+          <div className="relative inline-block">
+            <ActionButton
+              tone="primary"
+              size="sm"
+              onClick={runSuggest}
+              loading={loading}
+              className={cn(isTourBinsStep && "ring-2 ring-teal-500 animate-pulse")}
+            >
+              Calculate Optimal Bin
+            </ActionButton>
+            {isTourBinsStep && (
+              <span className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-teal-500 text-white font-bold text-[10px] shadow animate-bounce">
+                3
+              </span>
+            )}
+          </div>
         </div>
       }
     >
       <div className="space-y-4 text-xs">
+        {isTourBinsStep && (
+          <GuidedFieldWalkthrough
+            fields={walkthroughFields}
+            activeKey={activeStepKey}
+            onSelectKey={setActiveStepKey}
+            onAutofillAll={handleAutofillAll}
+          />
+        )}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div>
+          <div className={cn("p-1 rounded transition-colors", isTourBinsStep && activeStepKey === "sku" && "ring-2 ring-teal-500 bg-teal-500/5")}>
             <label className="block text-[10px] text-[var(--muted-foreground)] mb-1">Incoming SKU</label>
             <TextInput value={sku} onChange={(e) => setSku(e.target.value)} />
           </div>
-          <div>
+          <div className={cn("p-1 rounded transition-colors", isTourBinsStep && activeStepKey === "quantity" && "ring-2 ring-teal-500 bg-teal-500/5")}>
             <label className="block text-[10px] text-[var(--muted-foreground)] mb-1">Quantity</label>
             <input
               type="number"
@@ -455,7 +519,7 @@ function PutawaySuggestModal({
               className="w-full px-3 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--background)] text-xs font-mono"
             />
           </div>
-          <div>
+          <div className={cn("p-1 rounded transition-colors", isTourBinsStep && activeStepKey === "weightKg" && "ring-2 ring-teal-500 bg-teal-500/5")}>
             <label className="block text-[10px] text-[var(--muted-foreground)] mb-1">Gross Weight (kg)</label>
             <input
               type="number"

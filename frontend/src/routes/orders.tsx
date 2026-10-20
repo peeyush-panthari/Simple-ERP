@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
 import { BulkUploadButton, BulkUploadDialog } from "@/components/erp/bulk-upload";
 import { ReasonDialog } from "@/components/erp/dialogs";
+import { GuidedFieldWalkthrough } from "@/components/erp/guided-field-walkthrough";
 import { OrderAllocation } from "@/components/erp/order-allocation";
 import { Shell } from "@/components/erp/shell";
 import { Tabs } from "@/components/erp/tabs";
@@ -11,10 +12,12 @@ import {
 } from "@/components/erp/ui";
 import { useAuth } from "@/lib/auth";
 import { ApiError } from "@/lib/api";
+import { useDemoTour } from "@/lib/demo-flow-context";
 import * as format from "@/lib/format";
 import { downloadBlob, useApiQuery, usePagination, type ListResponse } from "@/lib/hooks";
 import { GST_LABELS, GST_RATE_OPTIONS, UOMS } from "@/lib/reference";
 import { humanise } from "@/lib/status";
+import { cn } from "@/lib/utils";
 import { readBase64, MAX_UPLOAD_BYTES } from "@/lib/production";
 
 interface Order {
@@ -143,6 +146,9 @@ function SearchPicker<T extends { id: string }>({
 
 function CreateDialog({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
   const { api } = useAuth();
+  const { isTourActive, activeJourneyId, currentJourneyStepIndex } = useDemoTour();
+  const isTourOrderStep = isTourActive && activeJourneyId === "order-to-cash" && (currentJourneyStepIndex === 0 || currentJourneyStepIndex === 1);
+
   const [error, setError] = useState("");
   const [errorCode, setErrorCode] = useState("");
   const [busy, setBusy] = useState(false);
@@ -158,6 +164,80 @@ function CreateDialog({ onClose, onCreated }: { onClose: () => void; onCreated: 
   const [attach, setAttach] = useState<{ filename: string; contentType: string; base64: string } | null>(null);
   const [attachOpen, setAttachOpen] = useState(false);
   const [attachError, setAttachError] = useState("");
+  const [activeStepKey, setActiveStepKey] = useState("customer");
+
+  const customersQuery = useApiQuery<ListResponse<Party>>("/api/v1/parties", { type: "customer", status: "active", limit: 10 });
+  const productsQuery = useApiQuery<ListResponse<Product>>("/api/v1/products", { status: "active", sellable: "true", limit: 10 });
+
+  const walkthroughFields = [
+    {
+      key: "customer",
+      label: "Customer Master Account",
+      useCase: "Binds sales contract and legal delivery destination to an approved debtor account.",
+      guideline: "Customer must have active status and approved credit terms.",
+      isFilled: !!customer,
+      onAutofill: () => {
+        const firstCust = customersQuery.data?.data?.[0];
+        setCustomer(firstCust || { id: "cust-demo-1", code: "CUST-001", displayName: "Acrobat Power & Grid Corp" });
+      },
+    },
+    {
+      key: "customerRef",
+      label: "Customer PO Reference Number",
+      useCase: "External client purchase order number stamped on delivery challans and tax invoices.",
+      guideline: "Helps client Accounts Payable reconcile billing vouchers.",
+      isFilled: !!f.customerRef.trim(),
+      onAutofill: () => set("customerRef", "CUST-PO-2026-901"),
+    },
+    {
+      key: "paymentTerms",
+      label: "Payment Credit Terms",
+      useCase: "Defines commercial credit period (e.g. NET30, NET45) for Accounts Receivable aging.",
+      guideline: "Must comply with credit control limits established in the Customer Master.",
+      isFilled: !!f.paymentTerms.trim(),
+      onAutofill: () => set("paymentTerms", "NET30"),
+    },
+    {
+      key: "lines",
+      label: "Ordered Finished Goods & Pricing",
+      useCase: "Product SKUs, contracted delivery quantities, and agreed ex-factory unit prices.",
+      guideline: "At least one order line item is required.",
+      isFilled: lines.length > 0,
+      onAutofill: () => {
+        const firstProd = productsQuery.data?.data?.[0];
+        setLines([
+          {
+            productId: firstProd?.id || "prod-fg-1",
+            sku: firstProd?.sku || "FG-BATT-01",
+            productName: firstProd?.name || "Commercial Energy Storage Unit",
+            quantity: "10",
+            uom: "UNIT",
+            unitPrice: "15000",
+            taxCode: "GST18",
+          },
+        ]);
+      },
+    },
+  ];
+
+  const handleAutofillAll = () => {
+    const firstCust = customersQuery.data?.data?.[0];
+    setCustomer(firstCust || { id: "cust-demo-1", code: "CUST-001", displayName: "Acrobat Power & Grid Corp" });
+    set("customerRef", "CUST-PO-2026-901");
+    set("paymentTerms", "NET30");
+    const firstProd = productsQuery.data?.data?.[0];
+    setLines([
+      {
+        productId: firstProd?.id || "prod-fg-1",
+        sku: firstProd?.sku || "FG-BATT-01",
+        productName: firstProd?.name || "Commercial Energy Storage Unit",
+        quantity: "10",
+        uom: "UNIT",
+        unitPrice: "15000",
+        taxCode: "GST18",
+      },
+    ]);
+  };
 
   const addLine = () => {
     if (!product || !qty || !price) return;
@@ -183,12 +263,10 @@ function CreateDialog({ onClose, onCreated }: { onClose: () => void; onCreated: 
     if (!lines.length) return setError("Add at least one line");
     const body: Record<string, unknown> = {
       customerId: customer.id,
-      // No warehouse/promised date here - the server routes to the warehouse that can best fulfil the lines and defaults the date.
       lines: lines.map((l) => ({ productId: l.productId, quantity: l.quantity, uom: l.uom, unitPrice: l.unitPrice, taxCode: l.taxCode })),
     };
     for (const k of ["customerRef", "paymentTerms", "inverterDetails", "accessoriesRequired", "branding", "logisticsCostBorneBy"] as const) if (f[k]) body[k] = f[k];
     if (attach) Object.assign(body, { inverterDetailsFilename: attach.filename, inverterDetailsContentType: attach.contentType, inverterDetailsContentBase64: attach.base64 });
-    // No draft stage: creation confirms the order, running the credit-limit check; a resubmit can override it.
     if (override) body.allowCreditOverride = true;
     setBusy(true);
     try {
@@ -206,63 +284,97 @@ function CreateDialog({ onClose, onCreated }: { onClose: () => void; onCreated: 
   return (
     <>
       <Modal open onClose={onClose} title="New sales order" description="Records the order as received from the customer. Allocation, shipping and invoicing happen in other modules." maxWidth="52rem" wide
-        footer={<><ActionButton tone="ghost" onClick={onClose}>Cancel</ActionButton><ActionButton loading={busy} onClick={() => submit(false)}>Create</ActionButton></>}>
+        footer={
+          <>
+            <ActionButton tone="ghost" onClick={onClose}>Cancel</ActionButton>
+            <div className="relative inline-block">
+              <ActionButton
+                loading={busy}
+                className={cn(isTourOrderStep && "ring-2 ring-teal-500 animate-pulse")}
+                onClick={() => submit(false)}
+              >
+                Create
+              </ActionButton>
+              {isTourOrderStep && (
+                <span className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-teal-500 text-white font-bold text-[10px] shadow animate-bounce">
+                  3
+                </span>
+              )}
+            </div>
+          </>
+        }>
         <div className="flex flex-col gap-3">
+          {isTourOrderStep && (
+            <GuidedFieldWalkthrough
+              fields={walkthroughFields}
+              activeKey={activeStepKey}
+              onSelectKey={setActiveStepKey}
+              onAutofillAll={handleAutofillAll}
+            />
+          )}
           <InlineError message={error} />
           {errorCode === "CREDIT_LIMIT_EXCEEDED" && <div><ActionButton size="sm" className="!bg-[var(--warning)]" onClick={() => submit(true)}>Create anyway (override credit limit)</ActionButton></div>}
-          <p className="text-xs text-[var(--muted-foreground)]">Customer</p>
-          <SearchPicker<Party>
-            path="/api/v1/parties"
-            params={{ type: "customer", status: "active", limit: 50 }}
-            placeholder="Search or browse customers…"
-            chosen={!!customer}
-            choiceLabel={customer?.displayName ?? ""}
-            onChoose={setCustomer}
-            onClear={() => setCustomer(null)}
-            render={(p) => <><p className="text-sm font-medium">{p.displayName}</p><p className="text-xs text-[var(--muted-foreground)]">{p.code}</p></>}
-          />
-          <TextInput placeholder="Customer PO number (optional)" value={f.customerRef} onChange={(e) => set("customerRef", e.target.value)} />
-          <DesktopOnly className="mt-2 w-full">
-            <DataTable columns={["SKU Name", "Qty", "Price (excl. GST)", "GST", ""]} minWidth={0} fit>
-              {lines.map((l, i) => (
-                <tr key={i}>
-                  <td>{l.productName}</td><td>{format.qty(l.quantity, l.uom)}</td><td>{format.money(l.unitPrice)}</td><td>{GST_LABELS[l.taxCode] ?? l.taxCode}</td>
-                  <td><ActionButton size="sm" tone="danger" onClick={() => setLines(lines.filter((_, j) => j !== i))}>Remove</ActionButton></td>
-                </tr>
-              ))}
-            </DataTable>
-          </DesktopOnly>
-          <MobileOnly className="mt-2 w-full">
-            {lines.map((l, i) => (
-              <MobileRecordCard key={i} actions={<ActionButton size="sm" tone="danger" className="w-full justify-center" onClick={() => setLines(lines.filter((_, j) => j !== i))}>Remove</ActionButton>}>
-                <MobileRecordRow label="SKU Name" value={l.productName} />
-                <MobileRecordRow label="Qty" value={format.qty(l.quantity, l.uom)} />
-                <MobileRecordRow label="Price (excl. GST)" value={format.money(l.unitPrice)} />
-                <MobileRecordRow label="GST" value={GST_LABELS[l.taxCode] ?? l.taxCode} />
-              </MobileRecordCard>
-            ))}
-          </MobileOnly>
-          <div className="flex flex-wrap items-start gap-2">
-            <SearchPicker<Product>
-              path="/api/v1/products"
-              params={{ status: "active", sellable: "true", limit: 50 }}
-              placeholder="Search or browse SKUs…"
-              chosen={!!product}
-              choiceLabel={product?.sku ?? ""}
-              width="min(14rem, calc(100vw - 2rem))"
-              onChoose={(p) => { setProduct(p); setLineUom(p.uom || "UNIT"); }}
-              onClear={() => { setProduct(null); setLineUom("UNIT"); }}
-              render={(p) => <><p className="text-sm font-medium">{p.sku}</p><p className="text-xs text-[var(--muted-foreground)]">{p.name}</p></>}
+          <div className={cn("p-1 rounded transition-colors", isTourOrderStep && activeStepKey === "customer" && "ring-2 ring-teal-500 bg-teal-500/5")}>
+            <p className="text-xs text-[var(--muted-foreground)]">Customer</p>
+            <SearchPicker<Party>
+              path="/api/v1/parties"
+              params={{ type: "customer", status: "active", limit: 50 }}
+              placeholder="Search or browse customers…"
+              chosen={!!customer}
+              choiceLabel={customer?.displayName ?? ""}
+              onChoose={setCustomer}
+              onClear={() => setCustomer(null)}
+              render={(p) => <><p className="text-sm font-medium">{p.displayName}</p><p className="text-xs text-[var(--muted-foreground)]">{p.code}</p></>}
             />
-            <TextInput style={{ width: "6rem" }} placeholder="Qty" value={qty} onChange={(e) => setQty(e.target.value)} />
-            <SelectInput style={{ width: "6rem" }} value={lineUom} onChange={(e) => setLineUom(e.target.value)} options={UOMS.map((u) => ({ value: u, label: u }))} />
-            <TextInput style={{ width: "9rem" }} placeholder="Unit price (excl. GST)" value={price} onChange={(e) => setPrice(e.target.value)} />
-            <SelectInput style={{ width: "6rem" }} value={gst} onChange={(e) => setGst(e.target.value)} options={GST_RATE_OPTIONS} />
-            <ActionButton size="sm" onClick={addLine}>Add line</ActionButton>
+          </div>
+          <div className={cn("p-1 rounded transition-colors", isTourOrderStep && activeStepKey === "customerRef" && "ring-2 ring-teal-500 bg-teal-500/5")}>
+            <TextInput placeholder="Customer PO number (optional)" value={f.customerRef} onChange={(e) => set("customerRef", e.target.value)} />
+          </div>
+          <div className={cn("p-1 rounded transition-colors", isTourOrderStep && activeStepKey === "lines" && "ring-2 ring-teal-500 bg-teal-500/5")}>
+            <DesktopOnly className="mt-2 w-full">
+              <DataTable columns={["SKU Name", "Qty", "Price (excl. GST)", "GST", ""]} minWidth={0} fit>
+                {lines.map((l, i) => (
+                  <tr key={i}>
+                    <td>{l.productName}</td><td>{format.qty(l.quantity, l.uom)}</td><td>{format.money(l.unitPrice)}</td><td>{GST_LABELS[l.taxCode] ?? l.taxCode}</td>
+                    <td><ActionButton size="sm" tone="danger" onClick={() => setLines(lines.filter((_, j) => j !== i))}>Remove</ActionButton></td>
+                  </tr>
+                ))}
+              </DataTable>
+            </DesktopOnly>
+            <MobileOnly className="mt-2 w-full">
+              {lines.map((l, i) => (
+                <MobileRecordCard key={i} actions={<ActionButton size="sm" tone="danger" className="w-full justify-center" onClick={() => setLines(lines.filter((_, j) => j !== i))}>Remove</ActionButton>}>
+                  <MobileRecordRow label="SKU Name" value={l.productName} />
+                  <MobileRecordRow label="Qty" value={format.qty(l.quantity, l.uom)} />
+                  <MobileRecordRow label="Price (excl. GST)" value={format.money(l.unitPrice)} />
+                  <MobileRecordRow label="GST" value={GST_LABELS[l.taxCode] ?? l.taxCode} />
+                </MobileRecordCard>
+              ))}
+            </MobileOnly>
+            <div className="flex flex-wrap items-start gap-2 mt-2">
+              <SearchPicker<Product>
+                path="/api/v1/products"
+                params={{ status: "active", sellable: "true", limit: 50 }}
+                placeholder="Search or browse SKUs…"
+                chosen={!!product}
+                choiceLabel={product?.sku ?? ""}
+                width="min(14rem, calc(100vw - 2rem))"
+                onChoose={(p) => { setProduct(p); setLineUom(p.uom || "UNIT"); }}
+                onClear={() => { setProduct(null); setLineUom("UNIT"); }}
+                render={(p) => <><p className="text-sm font-medium">{p.sku}</p><p className="text-xs text-[var(--muted-foreground)]">{p.name}</p></>}
+              />
+              <TextInput style={{ width: "6rem" }} placeholder="Qty" value={qty} onChange={(e) => setQty(e.target.value)} />
+              <SelectInput style={{ width: "6rem" }} value={lineUom} onChange={(e) => setLineUom(e.target.value)} options={UOMS.map((u) => ({ value: u, label: u }))} />
+              <TextInput style={{ width: "9rem" }} placeholder="Unit price (excl. GST)" value={price} onChange={(e) => setPrice(e.target.value)} />
+              <SelectInput style={{ width: "6rem" }} value={gst} onChange={(e) => setGst(e.target.value)} options={GST_RATE_OPTIONS} />
+              <ActionButton size="sm" onClick={addLine}>Add line</ActionButton>
+            </div>
           </div>
           <p className="text-xs text-[var(--muted-foreground)]">Unit price is excluding GST — GST is added per line at the selected rate.</p>
           <div><ActionButton tone="ghost" onClick={() => setAttachOpen(true)}>{attach ? `Attached: ${attach.filename}` : "Attach document"}</ActionButton></div>
-          <TextInput placeholder="Payment terms (optional, e.g. NET30)" value={f.paymentTerms} onChange={(e) => set("paymentTerms", e.target.value)} />
+          <div className={cn("p-1 rounded transition-colors", isTourOrderStep && activeStepKey === "paymentTerms" && "ring-2 ring-teal-500 bg-teal-500/5")}>
+            <TextInput placeholder="Payment terms (optional, e.g. NET30)" value={f.paymentTerms} onChange={(e) => set("paymentTerms", e.target.value)} />
+          </div>
           <TextArea placeholder="Inverter details (model, capacity, etc.)" value={f.inverterDetails} onChange={(e) => set("inverterDetails", e.target.value)} />
           <TextArea placeholder="Accessories required" value={f.accessoriesRequired} onChange={(e) => set("accessoriesRequired", e.target.value)} />
           <TextInput placeholder="Branding" value={f.branding} onChange={(e) => set("branding", e.target.value)} />
@@ -414,6 +526,9 @@ function DetailDialog({ orderId, onClose, onChanged }: { orderId: string; onClos
 function SalesBook() {
   const { can } = useAuth();
   const qc = useQueryClient();
+  const { isTourActive, activeJourneyId, currentJourneyStepIndex } = useDemoTour();
+  const isTourOrderStep = isTourActive && activeJourneyId === "order-to-cash" && (currentJourneyStepIndex === 0 || currentJourneyStepIndex === 1);
+
   const canWrite = can("order:write");
   const [status, setStatus] = useState("");
   const [page, setPage] = usePagination();
@@ -433,7 +548,19 @@ function SalesBook() {
       {canWrite && (
         <div className="flex w-full justify-end gap-3">
           <BulkUploadButton onClick={() => setBulkOpen(true)} />
-          <ActionButton onClick={() => setCreateOpen(true)}>New order</ActionButton>
+          <div className="relative inline-block">
+            <ActionButton
+              className={cn(isTourOrderStep && "ring-2 ring-teal-500 ring-offset-2 animate-pulse")}
+              onClick={() => setCreateOpen(true)}
+            >
+              New order
+            </ActionButton>
+            {isTourOrderStep && (
+              <span className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-teal-500 text-white font-bold text-[10px] shadow animate-bounce">
+                1
+              </span>
+            )}
+          </div>
         </div>
       )}
       <div className="flex gap-4">

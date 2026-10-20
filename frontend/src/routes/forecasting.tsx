@@ -6,6 +6,7 @@ import {
   RefreshCw,
   Send,
 } from "lucide-react";
+import { GuidedFieldWalkthrough } from "@/components/erp/guided-field-walkthrough";
 import { Shell } from "@/components/erp/shell";
 import {
   ActionButton,
@@ -19,6 +20,7 @@ import {
   TextInput,
 } from "@/components/erp/ui";
 import { useAuth } from "@/lib/auth";
+import { useDemoTour } from "@/lib/demo-flow-context";
 import { date as formatDate, qty } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -53,12 +55,48 @@ interface ForecastLine {
 export default function ForecastingPage() {
   const { api } = useAuth();
   const qc = useQueryClient();
+  const { isTourActive, activeJourneyId, currentJourneyStepIndex } = useDemoTour();
+  const isTourForecastStep = isTourActive && activeJourneyId === "plan-to-order" && currentJourneyStepIndex === 0;
 
   const [selectedScenarioId, setSelectedScenarioId] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [scenarioName, setScenarioName] = useState("");
   const [horizonMonths, setHorizonMonths] = useState("6");
   const [description, setDescription] = useState("");
+  const [activeStepKey, setActiveStepKey] = useState("scenarioName");
+
+  const walkthroughFields = [
+    {
+      key: "scenarioName",
+      label: "Planning Scenario Identifier",
+      useCase: "Distinguishes baseline statistical forecast simulations from market upside and aggressive supply chain projections.",
+      guideline: "Unique alphanumeric name designating the planning cycle (e.g. Q3-Q4 Consensus S&OP).",
+      isFilled: !!scenarioName.trim(),
+      onAutofill: () => setScenarioName("Q3-Q4 Consensus S&OP Plan"),
+    },
+    {
+      key: "horizonMonths",
+      label: "Planning Horizon",
+      useCase: "Determines the rolling forward planning buckets for statistical tournament modeling (Holt-Winters, Linear Trend).",
+      guideline: "Standard enterprise S&OP spans 6 months for mid-range materials procurement and capacity planning.",
+      isFilled: !!horizonMonths,
+      onAutofill: () => setHorizonMonths("6"),
+    },
+    {
+      key: "description",
+      label: "S&OP Assumptions & Macro Notes",
+      useCase: "Documents macroeconomic trends, seasonal spikes, supplier lead times, and promotional assumptions.",
+      guideline: "Shared across executive S&OP review meetings to justify consensus adjustments.",
+      isFilled: !!description.trim(),
+      onAutofill: () => setDescription("Mid-range S&OP cycle factoring 15% seasonal volume uplift and holiday surges."),
+    },
+  ];
+
+  const handleAutofillAll = () => {
+    setScenarioName("Q3-Q4 Consensus S&OP Plan");
+    setHorizonMonths("6");
+    setDescription("Mid-range S&OP cycle factoring 15% seasonal volume uplift and holiday surges.");
+  };
 
   const [editingLineId, setEditingLineId] = useState<string | null>(null);
   const [salesOverrideVal, setSalesOverrideVal] = useState("");
@@ -156,14 +194,22 @@ export default function ForecastingPage() {
                 <RefreshCw className="h-4 w-4 mr-1" />
                 Refresh
               </ActionButton>
-              <ActionButton
-                tone="primary"
-                size="sm"
-                onClick={() => setShowCreateModal(true)}
-              >
-                <Plus className="h-4 w-4 mr-1" />
-                New Forecast Run
-              </ActionButton>
+              <div className="relative inline-block">
+                <ActionButton
+                  tone="primary"
+                  size="sm"
+                  className={cn(isTourForecastStep && "ring-2 ring-teal-500 ring-offset-2 animate-pulse")}
+                  onClick={() => setShowCreateModal(true)}
+                >
+                  <Plus className="h-4 w-4 mr-1" />
+                  New Forecast Run
+                </ActionButton>
+                {isTourForecastStep && (
+                  <span className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-teal-500 text-white font-bold text-[10px] shadow animate-bounce">
+                    1
+                  </span>
+                )}
+              </div>
             </div>
           }
         />
@@ -331,38 +377,64 @@ export default function ForecastingPage() {
                 <ActionButton tone="ghost" size="sm" onClick={() => setShowCreateModal(false)}>
                   Cancel
                 </ActionButton>
-                <ActionButton tone="primary" size="sm" onClick={handleCreateScenario}>
-                  Run Model Competition
-                </ActionButton>
+                <div className="relative inline-block">
+                  <ActionButton
+                    tone="primary"
+                    size="sm"
+                    className={cn(isTourForecastStep && "ring-2 ring-teal-500 animate-pulse")}
+                    onClick={handleCreateScenario}
+                  >
+                    Run Model Competition
+                  </ActionButton>
+                  {isTourForecastStep && (
+                    <span className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-teal-500 text-white font-bold text-[10px] shadow animate-bounce">
+                      3
+                    </span>
+                  )}
+                </div>
               </div>
             }
           >
             <div className="space-y-4">
-              <Field label="Scenario Name" required>
-                <TextInput
-                  placeholder="e.g. Q3-Q4 Baseline S&OP"
-                  value={scenarioName}
-                  onChange={(e) => setScenarioName(e.target.value)}
+              {isTourForecastStep && (
+                <GuidedFieldWalkthrough
+                  fields={walkthroughFields}
+                  activeKey={activeStepKey}
+                  onSelectKey={setActiveStepKey}
+                  onAutofillAll={handleAutofillAll}
                 />
-              </Field>
-              <Field label="Planning Horizon (Months)" required>
-                <select
-                  className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm text-[var(--foreground)] focus:outline-hidden"
-                  value={horizonMonths}
-                  onChange={(e) => setHorizonMonths(e.target.value)}
-                >
-                  <option value="3">3 Months (Quarterly Short-Range)</option>
-                  <option value="6">6 Months (Mid-Range S&OP)</option>
-                  <option value="12">12 Months (Annual Operating Plan)</option>
-                </select>
-              </Field>
-              <Field label="Description & Assumptions">
-                <TextInput
-                  placeholder="Promotion campaign assumptions, holiday season adjustments..."
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                />
-              </Field>
+              )}
+              <div className={cn("p-1 rounded transition-colors", isTourForecastStep && activeStepKey === "scenarioName" && "ring-2 ring-teal-500 bg-teal-500/5")}>
+                <Field label="Scenario Name" required>
+                  <TextInput
+                    placeholder="e.g. Q3-Q4 Baseline S&OP"
+                    value={scenarioName}
+                    onChange={(e) => setScenarioName(e.target.value)}
+                  />
+                </Field>
+              </div>
+              <div className={cn("p-1 rounded transition-colors", isTourForecastStep && activeStepKey === "horizonMonths" && "ring-2 ring-teal-500 bg-teal-500/5")}>
+                <Field label="Planning Horizon (Months)" required>
+                  <select
+                    className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm text-[var(--foreground)] focus:outline-hidden"
+                    value={horizonMonths}
+                    onChange={(e) => setHorizonMonths(e.target.value)}
+                  >
+                    <option value="3">3 Months (Quarterly Short-Range)</option>
+                    <option value="6">6 Months (Mid-Range S&OP)</option>
+                    <option value="12">12 Months (Annual Operating Plan)</option>
+                  </select>
+                </Field>
+              </div>
+              <div className={cn("p-1 rounded transition-colors", isTourForecastStep && activeStepKey === "description" && "ring-2 ring-teal-500 bg-teal-500/5")}>
+                <Field label="Description & Assumptions">
+                  <TextInput
+                    placeholder="Promotion campaign assumptions, holiday season adjustments..."
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                  />
+                </Field>
+              </div>
             </div>
           </Modal>
         )}

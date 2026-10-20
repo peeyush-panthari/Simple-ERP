@@ -9,6 +9,7 @@ import {
   Plus,
   RefreshCw,
 } from "lucide-react";
+import { GuidedFieldWalkthrough } from "@/components/erp/guided-field-walkthrough";
 import { Shell } from "@/components/erp/shell";
 import {
   ActionButton,
@@ -23,7 +24,9 @@ import {
   TextInput,
 } from "@/components/erp/ui";
 import { useAuth } from "@/lib/auth";
+import { useDemoTour } from "@/lib/demo-flow-context";
 import { date as formatDate, qty } from "@/lib/format";
+import { cn } from "@/lib/utils";
 
 interface PickWaveRecord {
   id: string;
@@ -80,6 +83,8 @@ interface OpenOrderCandidate {
 export default function WavePickingPage() {
   const { api } = useAuth();
   const qc = useQueryClient();
+  const { isTourActive, activeJourneyId, currentJourneyStepIndex } = useDemoTour();
+  const isTourWaveStep = isTourActive && activeJourneyId === "order-to-cash" && currentJourneyStepIndex === 2;
 
   const [selectedWaveId, setSelectedWaveId] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -90,6 +95,58 @@ export default function WavePickingPage() {
   const [carrierName, setCarrierName] = useState("Blue Dart Express");
   const [notes, setNotes] = useState("");
   const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]);
+  const [activeStepKey, setActiveStepKey] = useState("warehouse");
+
+  const walkthroughFields = [
+    {
+      key: "warehouse",
+      label: "Fulfillment Origin Warehouse",
+      useCase: "Warehouse facility from which stock pickers travel aisles to pick batch line items.",
+      guideline: "Must have inventory allocated against open confirmed sales orders.",
+      isFilled: !!selectedWarehouseId,
+      onAutofill: () => {
+        if (warehouses.length > 0) setSelectedWarehouseId(warehouses[0].id);
+        else setSelectedWarehouseId("wh-demo-01");
+      },
+    },
+    {
+      key: "waveType",
+      label: "Wave Optimization Clustering Strategy",
+      useCase: "Determines how orders are consolidated (Carrier Cutoff, Zone Batching, Single-Line Velocity).",
+      guideline: "Carrier Cutoff prioritizes outbound freight schedules to meet carrier departure windows.",
+      isFilled: !!waveType,
+      onAutofill: () => setWaveType("carrier_cutoff"),
+    },
+    {
+      key: "carrier",
+      label: "Carrier Cutoff Window",
+      useCase: "Synchronizes warehouse floor picking completion with 3PL logistics collection.",
+      guideline: "Identifies freight carrier SLA (e.g. Blue Dart Express - 17:00 Cutoff).",
+      isFilled: !!carrierName.trim(),
+      onAutofill: () => setCarrierName("Blue Dart Express - 17:00 Cutoff"),
+    },
+    {
+      key: "orders",
+      label: "Batched Sales Orders",
+      useCase: "Customer orders grouped together for single-pass serpentine pick path traversal.",
+      guideline: "Minimum one order required; grouping multiple orders reduces travel distance by up to 60%.",
+      isFilled: selectedOrderIds.length > 0,
+      onAutofill: () => {
+        if (openOrders.length > 0) setSelectedOrderIds(openOrders.map((o) => o.id));
+        else setSelectedOrderIds(["ord-demo-sample-1"]);
+      },
+    },
+  ];
+
+  const handleAutofillAll = () => {
+    if (warehouses.length > 0) setSelectedWarehouseId(warehouses[0].id);
+    else setSelectedWarehouseId("wh-demo-01");
+    setWaveType("carrier_cutoff");
+    setCarrierName("Blue Dart Express - 17:00 Cutoff");
+    setNotes("Batched priority dispatches for daily courier pickup");
+    if (openOrders.length > 0) setSelectedOrderIds(openOrders.map((o) => o.id));
+    else setSelectedOrderIds(["ord-demo-sample-1"]);
+  };
 
   // 1. Fetch Waves
   const wavesQuery = useQuery({
@@ -207,16 +264,24 @@ export default function WavePickingPage() {
         description="Multi-order batch consolidation, serpentine warehouse routing, carrier cutoff sorting, and put-wall pack consolidation."
         actions={
           <div className="flex gap-2">
-            <ActionButton
-              tone="primary"
-              onClick={() => {
-                if (warehouses.length > 0 && !selectedWarehouseId) setSelectedWarehouseId(warehouses[0].id);
-                setShowCreateModal(true);
-              }}
-            >
-              <Plus className="w-4 h-4 mr-1.5" />
-              New Pick Wave
-            </ActionButton>
+            <div className="relative inline-block">
+              <ActionButton
+                tone="primary"
+                className={cn(isTourWaveStep && "ring-2 ring-teal-500 ring-offset-2 animate-pulse")}
+                onClick={() => {
+                  if (warehouses.length > 0 && !selectedWarehouseId) setSelectedWarehouseId(warehouses[0].id);
+                  setShowCreateModal(true);
+                }}
+              >
+                <Plus className="w-4 h-4 mr-1.5" />
+                New Pick Wave
+              </ActionButton>
+              {isTourWaveStep && (
+                <span className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-teal-500 text-white font-bold text-[10px] shadow animate-bounce">
+                  1
+                </span>
+              )}
+            </div>
             <ActionButton
               tone="ghost"
               onClick={() => {
@@ -493,41 +558,55 @@ export default function WavePickingPage() {
         title="Generate Wave & Batch Picking Plan"
       >
         <form onSubmit={handleCreateWave} className="space-y-4">
-          <Field label="Warehouse Facility">
-            <select
-              value={selectedWarehouseId}
-              onChange={(e) => setSelectedWarehouseId(e.target.value)}
-              className="w-full text-sm p-2 border rounded-md bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700"
-              required
-            >
-              {warehouses.map((w) => (
-                <option key={w.id} value={w.id}>
-                  {w.name} ({w.code})
-                </option>
-              ))}
-            </select>
-          </Field>
-
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Wave Optimization Strategy">
+          {isTourWaveStep && (
+            <GuidedFieldWalkthrough
+              fields={walkthroughFields}
+              activeKey={activeStepKey}
+              onSelectKey={setActiveStepKey}
+              onAutofillAll={handleAutofillAll}
+            />
+          )}
+          <div className={cn("p-1 rounded transition-colors", isTourWaveStep && activeStepKey === "warehouse" && "ring-2 ring-teal-500 bg-teal-500/5")}>
+            <Field label="Warehouse Facility">
               <select
-                value={waveType}
-                onChange={(e) => setWaveType(e.target.value)}
+                value={selectedWarehouseId}
+                onChange={(e) => setSelectedWarehouseId(e.target.value)}
                 className="w-full text-sm p-2 border rounded-md bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700"
+                required
               >
-                <option value="carrier_cutoff">Carrier Departure Cutoff</option>
-                <option value="zone_batch">Aisle Zone Batching</option>
-                <option value="single_line_multi_order">Single-Line Multi-Order High Velocity</option>
+                {warehouses.map((w) => (
+                  <option key={w.id} value={w.id}>
+                    {w.name} ({w.code})
+                  </option>
+                ))}
               </select>
             </Field>
+          </div>
 
-            <Field label="Outbound Carrier / Cutoff">
-              <TextInput
-                value={carrierName}
-                onChange={(e) => setCarrierName(e.target.value)}
-                placeholder="e.g. Blue Dart Express - 17:00 Cutoff"
-              />
-            </Field>
+          <div className="grid grid-cols-2 gap-3">
+            <div className={cn("p-1 rounded transition-colors", isTourWaveStep && activeStepKey === "waveType" && "ring-2 ring-teal-500 bg-teal-500/5")}>
+              <Field label="Wave Optimization Strategy">
+                <select
+                  value={waveType}
+                  onChange={(e) => setWaveType(e.target.value)}
+                  className="w-full text-sm p-2 border rounded-md bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700"
+                >
+                  <option value="carrier_cutoff">Carrier Departure Cutoff</option>
+                  <option value="zone_batch">Aisle Zone Batching</option>
+                  <option value="single_line_multi_order">Single-Line Multi-Order High Velocity</option>
+                </select>
+              </Field>
+            </div>
+
+            <div className={cn("p-1 rounded transition-colors", isTourWaveStep && activeStepKey === "carrier" && "ring-2 ring-teal-500 bg-teal-500/5")}>
+              <Field label="Outbound Carrier / Cutoff">
+                <TextInput
+                  value={carrierName}
+                  onChange={(e) => setCarrierName(e.target.value)}
+                  placeholder="e.g. Blue Dart Express - 17:00 Cutoff"
+                />
+              </Field>
+            </div>
           </div>
 
           <Field label="Wave Notes / Instructions">
@@ -539,7 +618,7 @@ export default function WavePickingPage() {
           </Field>
 
           {/* Orders Checklist */}
-          <div className="space-y-2 pt-2">
+          <div className={cn("space-y-2 pt-2 p-1 rounded transition-colors", isTourWaveStep && activeStepKey === "orders" && "ring-2 ring-teal-500 bg-teal-500/5")}>
             <div className="flex justify-between items-center text-xs font-semibold text-slate-700 dark:text-slate-300">
               <span>Select Sales Orders to Batch ({selectedOrderIds.length} selected):</span>
               <button
@@ -598,9 +677,20 @@ export default function WavePickingPage() {
             <ActionButton tone="ghost" onClick={() => setShowCreateModal(false)}>
               Cancel
             </ActionButton>
-            <ActionButton tone="primary" type="submit">
-              Compute & Release Wave
-            </ActionButton>
+            <div className="relative inline-block">
+              <ActionButton
+                tone="primary"
+                type="submit"
+                className={cn(isTourWaveStep && "ring-2 ring-teal-500 animate-pulse")}
+              >
+                Compute & Release Wave
+              </ActionButton>
+              {isTourWaveStep && (
+                <span className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-teal-500 text-white font-bold text-[10px] shadow animate-bounce">
+                  3
+                </span>
+              )}
+            </div>
           </div>
         </form>
       </Modal>

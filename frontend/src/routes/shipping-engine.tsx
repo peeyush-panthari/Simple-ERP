@@ -8,6 +8,7 @@ import {
   Truck,
   Zap,
 } from "lucide-react";
+import { GuidedFieldWalkthrough } from "@/components/erp/guided-field-walkthrough";
 import { Shell } from "@/components/erp/shell";
 import {
   ActionButton,
@@ -22,7 +23,9 @@ import {
   TextInput,
 } from "@/components/erp/ui";
 import { useAuth } from "@/lib/auth";
+import { useDemoTour } from "@/lib/demo-flow-context";
 import { date as formatDate, money } from "@/lib/format";
+import { cn } from "@/lib/utils";
 
 interface RateQuote {
   carrier_code: string;
@@ -105,6 +108,8 @@ interface ThermalLabelData {
 export default function ShippingEnginePage() {
   const { api } = useAuth();
   const qc = useQueryClient();
+  const { isTourActive, activeJourneyId, currentJourneyStepIndex } = useDemoTour();
+  const isTourShippingStep = isTourActive && activeJourneyId === "order-to-cash" && currentJourneyStepIndex === 3;
 
   const [activeTab, setActiveTab] = useState<"rate_shop" | "shipments" | "rate_cards">("rate_shop");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -120,6 +125,52 @@ export default function ShippingEnginePage() {
   const [rateResults, setRateResults] = useState<RateShopResult | null>(null);
   const [isCalculating, setIsCalculating] = useState(false);
   const [isBooking, setIsBooking] = useState(false);
+  const [activeStepKey, setActiveStepKey] = useState("calcWeight");
+
+  const walkthroughFields = [
+    {
+      key: "calcWeight",
+      label: "Consignment Dead Weight (KG)",
+      useCase: "Actual physical gross weight measured on dispatch floor scales.",
+      guideline: "Used alongside volumetric dimensional weight (L*W*H / 5000) to determine billable freight.",
+      isFilled: !!calcWeight,
+      onAutofill: () => setCalcWeight("5.0"),
+    },
+    {
+      key: "calcPincode",
+      label: "Delivery Postal Pincode",
+      useCase: "Routes consignments to destination delivery hub and calculates regional distance freight zones.",
+      guideline: "Must be a valid 6-digit postal code recognized by logistics carriers.",
+      isFilled: !!calcPincode,
+      onAutofill: () => setCalcPincode("560001"),
+    },
+    {
+      key: "recipientName",
+      label: "Consignee Trading Identity",
+      useCase: "Client company name printed on thermal shipping label and tax e-way bill.",
+      guideline: "Must match sales order billing recipient.",
+      isFilled: !!recipientName.trim(),
+      onAutofill: () => setRecipientName("Titan Energy Labs Ltd"),
+    },
+    {
+      key: "destinationCity",
+      label: "Destination Metro City",
+      useCase: "Carrier hub destination terminal for air/surface linehaul routing.",
+      guideline: "E.g. Bengaluru, Mumbai, Delhi.",
+      isFilled: !!destinationCity.trim(),
+      onAutofill: () => setDestinationCity("Bengaluru"),
+    },
+  ];
+
+  const handleAutofillAll = () => {
+    setCalcWeight("5.0");
+    setCalcLength("40");
+    setCalcWidth("30");
+    setCalcHeight("20");
+    setCalcPincode("560001");
+    setRecipientName("Titan Energy Labs Ltd");
+    setDestinationCity("Bengaluru");
+  };
 
   // Modals
   const [selectedLabelShipmentId, setSelectedLabelShipmentId] = useState<string | null>(null);
@@ -342,14 +393,24 @@ export default function ShippingEnginePage() {
             <div className="lg:col-span-1">
               <Panel title="Package Parameters & Destination">
                 <div className="flex flex-col gap-4">
-                  <Field label="Actual Dead Weight (KG) *">
-                    <TextInput
-                      type="number"
-                      step="0.1"
-                      value={calcWeight}
-                      onChange={(e) => setCalcWeight(e.target.value)}
+                  {isTourShippingStep && (
+                    <GuidedFieldWalkthrough
+                      fields={walkthroughFields}
+                      activeKey={activeStepKey}
+                      onSelectKey={setActiveStepKey}
+                      onAutofillAll={handleAutofillAll}
                     />
-                  </Field>
+                  )}
+                  <div className={cn("p-1 rounded transition-colors", isTourShippingStep && activeStepKey === "calcWeight" && "ring-2 ring-teal-500 bg-teal-500/5")}>
+                    <Field label="Actual Dead Weight (KG) *">
+                      <TextInput
+                        type="number"
+                        step="0.1"
+                        value={calcWeight}
+                        onChange={(e) => setCalcWeight(e.target.value)}
+                      />
+                    </Field>
+                  </div>
 
                   <div className="grid grid-cols-3 gap-2">
                     <Field label="L (cm)">
@@ -375,35 +436,53 @@ export default function ShippingEnginePage() {
                     </Field>
                   </div>
 
-                  <Field label="Destination PIN Code (6-Digits) *">
-                    <TextInput
-                      value={calcPincode}
-                      onChange={(e) => setCalcPincode(e.target.value)}
-                      placeholder="e.g. 560001"
-                    />
-                  </Field>
+                  <div className={cn("p-1 rounded transition-colors", isTourShippingStep && activeStepKey === "calcPincode" && "ring-2 ring-teal-500 bg-teal-500/5")}>
+                    <Field label="Destination PIN Code (6-Digits) *">
+                      <TextInput
+                        value={calcPincode}
+                        onChange={(e) => setCalcPincode(e.target.value)}
+                        placeholder="e.g. 560001"
+                      />
+                    </Field>
+                  </div>
 
-                  <Field label="Recipient / Client Company *">
-                    <TextInput
-                      value={recipientName}
-                      onChange={(e) => setRecipientName(e.target.value)}
-                      placeholder="e.g. Titan Energy Systems"
-                    />
-                  </Field>
+                  <div className={cn("p-1 rounded transition-colors", isTourShippingStep && activeStepKey === "recipientName" && "ring-2 ring-teal-500 bg-teal-500/5")}>
+                    <Field label="Recipient / Client Company *">
+                      <TextInput
+                        value={recipientName}
+                        onChange={(e) => setRecipientName(e.target.value)}
+                        placeholder="e.g. Titan Energy Systems"
+                      />
+                    </Field>
+                  </div>
 
-                  <Field label="Destination City *">
-                    <TextInput
-                      value={destinationCity}
-                      onChange={(e) => setDestinationCity(e.target.value)}
-                      placeholder="e.g. Bengaluru"
-                    />
-                  </Field>
+                  <div className={cn("p-1 rounded transition-colors", isTourShippingStep && activeStepKey === "destinationCity" && "ring-2 ring-teal-500 bg-teal-500/5")}>
+                    <Field label="Destination City *">
+                      <TextInput
+                        value={destinationCity}
+                        onChange={(e) => setDestinationCity(e.target.value)}
+                        placeholder="e.g. Bengaluru"
+                      />
+                    </Field>
+                  </div>
 
                   <div className="mt-2">
-                    <ActionButton tone="primary" onClick={handleCalculateRates} disabled={isCalculating} className="w-full">
-                      <Zap className="mr-1.5 h-4 w-4" />
-                      {isCalculating ? "Calculating Optimal Carriers..." : "Compare Carrier Rates"}
-                    </ActionButton>
+                    <div className="relative w-full">
+                      <ActionButton
+                        tone="primary"
+                        onClick={handleCalculateRates}
+                        disabled={isCalculating}
+                        className={cn("w-full", isTourShippingStep && "ring-2 ring-teal-500 animate-pulse")}
+                      >
+                        <Zap className="mr-1.5 h-4 w-4" />
+                        {isCalculating ? "Calculating Optimal Carriers..." : "Compare Carrier Rates"}
+                      </ActionButton>
+                      {isTourShippingStep && !rateResults && (
+                        <span className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-teal-500 text-white font-bold text-[10px] shadow animate-bounce">
+                          1
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
               </Panel>
@@ -494,14 +573,22 @@ export default function ShippingEnginePage() {
                               {money(q.total_freight)}
                             </div>,
                             <div>
-                              <ActionButton
-                                size="sm"
-                                tone="primary"
-                                onClick={() => handleBookShipment(q)}
-                                disabled={isBooking}
-                              >
-                                Book & Generate AWB
-                              </ActionButton>
+                              <div className="relative inline-block">
+                                <ActionButton
+                                  size="sm"
+                                  tone="primary"
+                                  onClick={() => handleBookShipment(q)}
+                                  disabled={isBooking}
+                                  className={cn(isTourShippingStep && "ring-2 ring-teal-500 animate-pulse")}
+                                >
+                                  Book & Generate AWB
+                                </ActionButton>
+                                {isTourShippingStep && (
+                                  <span className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-teal-500 text-white font-bold text-[10px] shadow animate-bounce">
+                                    3
+                                  </span>
+                                )}
+                              </div>
                             </div>,
                           ]}
                         />

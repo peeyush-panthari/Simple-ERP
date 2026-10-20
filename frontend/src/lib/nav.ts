@@ -6,6 +6,7 @@ import {
   Bell,
   ClipboardCheck,
   ClipboardList,
+  Compass,
   Container,
   Factory,
   FileBadge,
@@ -250,6 +251,14 @@ export const NAV_ITEMS: NavItem[] = [
     icon: GraduationCap,
     group: "Administration",
   },
+  {
+    label: "System Demo Flow",
+    path: "/demo-flow",
+    permission: "demo:read",
+    alsoWith: ["training:read", "user:read"],
+    icon: Compass,
+    group: "Administration",
+  },
 ];
 
 /** Bottom tab bar has room for four modules plus "More" (which opens the full grouped nav). */
@@ -284,6 +293,9 @@ export interface BreadcrumbSegment {
 /** Resolves path segments into a semantic breadcrumb hierarchy. */
 export function resolveBreadcrumbs(pathname: string): BreadcrumbSegment[] {
   if (pathname === "/" || pathname === "/login") return [];
+  if (pathname === "/demo") {
+    return [{ label: "Home", to: "/" }, { label: "Administration" }, { label: "System Demo Flow" }];
+  }
 
   // Match exact root nav item first
   const exact = NAV_ITEMS.find((item) => item.path === pathname);

@@ -698,9 +698,8 @@ h1, h2, h3, h4 {
 }
 
 .app-sidebar {
-  position: sticky;
-  top: 3.5rem;
-  height: calc(100vh - 3.5rem);
+  position: relative;
+  height: 100vh;
   width: 16rem;
   flex-shrink: 0;
   display: flex;

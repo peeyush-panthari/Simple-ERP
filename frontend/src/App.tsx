@@ -86,7 +86,10 @@ const CapacityPlanning = lazy(() => import("@/routes/capacity-planning"));
 const ShippingEngine = lazy(() => import("@/routes/shipping-engine"));
 const ScControlTower = lazy(() => import("@/routes/sc-control-tower"));
 const Training = lazy(() => import("@/routes/training"));
+const DemoFlow = lazy(() => import("@/routes/demo-flow"));
 const NotFound = lazy(() => import("@/routes/not-found"));
+import { DemoFlowProvider } from "@/lib/demo-flow-context";
+import { GuidedTourDock } from "@/components/erp/guided-tour-dock";
 
 /** Every page except /login needs a session; a lapsed one bounces to /login. */
 function RequireAuth({ children }: { children: ReactNode }) {
@@ -102,63 +105,69 @@ const guard = (el: ReactNode) => <RequireAuth>{el}</RequireAuth>;
 export default function App() {
   return (
     <ErrorBoundary>
-      <Suspense fallback={<PageSpinner />}>
-        <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/reset-password" element={<ResetPassword />} />
-        <Route path="/accept-invite" element={<AcceptInvite />} />
-        <Route path="/" element={guard(<Home />)} />
-        <Route path="/users" element={guard(<Users />)} />
-        <Route path="/parties" element={guard(<Parties />)} />
-        <Route path="/party/:partyId" element={guard(<PartyDetail />)} />
-        <Route path="/po-invoice" element={guard(<BusinessEntities />)} />
-        <Route path="/factory-warehouse" element={guard(<FactoryWarehouse />)} />
-        <Route path="/products" element={guard(<Products />)} />
-        <Route path="/procurement" element={guard(<Procurement />)} />
-        <Route path="/mrp" element={guard(<Mrp />)} />
-        <Route path="/warehouse" element={guard(<Warehouse />)} />
-        <Route path="/warehouse/qc/:grnId" element={guard(<WarehouseQc />)} />
-        <Route path="/inventory" element={guard(<Inventory />)} />
-        <Route path="/returns" element={guard(<Returns />)} />
-        <Route path="/inventory-item/:itemId" element={guard(<InventoryItem />)} />
-        <Route path="/production/new" element={guard(<ProductionNew />)} />
-        <Route path="/production/complete/:runId" element={guard(<ProductionNew />)} />
-        <Route path="/production/:runId" element={guard(<ProductionDetail />)} />
-        <Route path="/production" element={guard(<Production />)} />
-        <Route path="/orders" element={guard(<Orders />)} />
-        <Route path="/logistics" element={guard(<Logistics />)} />
-        <Route path="/finance" element={guard(<Finance />)} />
-        <Route path="/configuration" element={guard(<Configuration />)} />
-        <Route path="/profile" element={guard(<Profile />)} />
-        <Route path="/audit" element={guard(<Audit />)} />
-        <Route path="/architecture" element={guard(<Architecture />)} />
-        <Route path="/email-config" element={guard(<EmailConfig />)} />
-        <Route path="/documents" element={guard(<Documents />)} />
-        <Route path="/notifications" element={guard(<Notifications />)} />
-        <Route path="/landed-cost" element={guard(<LandedCost />)} />
-        <Route path="/subcontracting" element={guard(<Subcontracting />)} />
-        <Route path="/wms-bins" element={guard(<WmsBins />)} />
-        <Route path="/drp" element={guard(<Drp />)} />
-        <Route path="/forecasting" element={guard(<Forecasting />)} />
-        <Route path="/traceability" element={guard(<Traceability />)} />
-        <Route path="/freight-tms" element={guard(<FreightTms />)} />
-        <Route path="/vendor-portal" element={guard(<VendorPortal />)} />
-        <Route path="/cycle-counts" element={guard(<CycleCounts />)} />
-        <Route path="/statutory-logistics" element={guard(<StatutoryLogistics />)} />
-        <Route path="/blanket-po" element={guard(<BlanketPo />)} />
-        <Route path="/wms-mobile" element={guard(<WmsMobile />)} />
-        <Route path="/wave-picking" element={guard(<WavePicking />)} />
-        <Route path="/customer-portal" element={guard(<CustomerPortal />)} />
-        <Route path="/quality-ipqc" element={guard(<QualityIpqc />)} />
-        <Route path="/avl-governance" element={guard(<AvlGovernance />)} />
-        <Route path="/capacity-planning" element={guard(<CapacityPlanning />)} />
-        <Route path="/shipping-engine" element={guard(<ShippingEngine />)} />
-        <Route path="/sc-control-tower" element={guard(<ScControlTower />)} />
-        <Route path="/training" element={guard(<Training />)} />
-        <Route path="*" element={guard(<NotFound />)} />
-      </Routes>
-    </Suspense>
+      <DemoFlowProvider>
+        <Suspense fallback={<PageSpinner />}>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/accept-invite" element={<AcceptInvite />} />
+            <Route path="/" element={guard(<Home />)} />
+            <Route path="/demo-flow" element={guard(<DemoFlow />)} />
+            <Route path="/demo" element={guard(<DemoFlow />)} />
+            <Route path="/users" element={guard(<Users />)} />
+            <Route path="/parties" element={guard(<Parties />)} />
+            <Route path="/party/:partyId" element={guard(<PartyDetail />)} />
+            <Route path="/po-invoice" element={guard(<BusinessEntities />)} />
+            <Route path="/factory-warehouse" element={guard(<FactoryWarehouse />)} />
+            <Route path="/products" element={guard(<Products />)} />
+            <Route path="/procurement" element={guard(<Procurement />)} />
+            <Route path="/mrp" element={guard(<Mrp />)} />
+            <Route path="/warehouse" element={guard(<Warehouse />)} />
+            <Route path="/warehouse/qc/:grnId" element={guard(<WarehouseQc />)} />
+            <Route path="/warehouse-qc" element={guard(<WarehouseQc />)} />
+            <Route path="/inventory" element={guard(<Inventory />)} />
+            <Route path="/returns" element={guard(<Returns />)} />
+            <Route path="/inventory-item/:itemId" element={guard(<InventoryItem />)} />
+            <Route path="/production/new" element={guard(<ProductionNew />)} />
+            <Route path="/production/complete/:runId" element={guard(<ProductionNew />)} />
+            <Route path="/production/:runId" element={guard(<ProductionDetail />)} />
+            <Route path="/production" element={guard(<Production />)} />
+            <Route path="/orders" element={guard(<Orders />)} />
+            <Route path="/logistics" element={guard(<Logistics />)} />
+            <Route path="/finance" element={guard(<Finance />)} />
+            <Route path="/configuration" element={guard(<Configuration />)} />
+            <Route path="/profile" element={guard(<Profile />)} />
+            <Route path="/audit" element={guard(<Audit />)} />
+            <Route path="/architecture" element={guard(<Architecture />)} />
+            <Route path="/email-config" element={guard(<EmailConfig />)} />
+            <Route path="/documents" element={guard(<Documents />)} />
+            <Route path="/notifications" element={guard(<Notifications />)} />
+            <Route path="/landed-cost" element={guard(<LandedCost />)} />
+            <Route path="/subcontracting" element={guard(<Subcontracting />)} />
+            <Route path="/wms-bins" element={guard(<WmsBins />)} />
+            <Route path="/drp" element={guard(<Drp />)} />
+            <Route path="/forecasting" element={guard(<Forecasting />)} />
+            <Route path="/traceability" element={guard(<Traceability />)} />
+            <Route path="/freight-tms" element={guard(<FreightTms />)} />
+            <Route path="/vendor-portal" element={guard(<VendorPortal />)} />
+            <Route path="/cycle-counts" element={guard(<CycleCounts />)} />
+            <Route path="/statutory-logistics" element={guard(<StatutoryLogistics />)} />
+            <Route path="/blanket-po" element={guard(<BlanketPo />)} />
+            <Route path="/wms-mobile" element={guard(<WmsMobile />)} />
+            <Route path="/wave-picking" element={guard(<WavePicking />)} />
+            <Route path="/customer-portal" element={guard(<CustomerPortal />)} />
+            <Route path="/quality-ipqc" element={guard(<QualityIpqc />)} />
+            <Route path="/avl-governance" element={guard(<AvlGovernance />)} />
+            <Route path="/capacity-planning" element={guard(<CapacityPlanning />)} />
+            <Route path="/shipping-engine" element={guard(<ShippingEngine />)} />
+            <Route path="/sc-control-tower" element={guard(<ScControlTower />)} />
+            <Route path="/training" element={guard(<Training />)} />
+            <Route path="*" element={guard(<NotFound />)} />
+          </Routes>
+        </Suspense>
+        <GuidedTourDock />
+      </DemoFlowProvider>
     </ErrorBoundary>
   );
 }

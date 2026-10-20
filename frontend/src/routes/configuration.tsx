@@ -3,8 +3,10 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
 import { Shell } from "@/components/erp/shell";
 import { Tabs } from "@/components/erp/tabs";
+import { GuidedFieldWalkthrough } from "@/components/erp/guided-field-walkthrough";
 import { ActionButton, DataTable, DesktopOnly, Field, Forbidden, InlineError, MobileOnly, MobileRecordCard, MobileRecordRow, Modal, Note, PageHeader, Pill, SelectInput, TextInput } from "@/components/erp/ui";
 import { useAuth } from "@/lib/auth";
+import { useDemoTour } from "@/lib/demo-flow-context";
 import { useApiQuery, useAsyncAction, type ListResponse } from "@/lib/hooks";
 import { STICKER_PAGE_SIZES, stickerFitIssue, stickerTotal, type StickerLayout } from "@/lib/sticker";
 import { cn, errMsg } from "@/lib/utils";
@@ -20,12 +22,50 @@ interface StickerSize {
 function CategoryDialog({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
   const { api } = useAuth();
   const { run, busy, error } = useAsyncAction();
+  const { isTourActive, activeJourneyId, currentJourneyStepIndex } = useDemoTour();
+  const isTourStep4 = isTourActive && activeJourneyId === "administration" && currentJourneyStepIndex === 3;
+
+  const [activeWalkthroughField, setActiveWalkthroughField] = useState("name");
+  const [name, setName] = useState("");
   const [types, setTypes] = useState<string[]>([]);
+
+  const autofillDemoCategory = () => {
+    setName("Electric Motors & Powertrains");
+    setTypes(["finished_good", "subassembly"]);
+  };
+
+  const walkthroughFields = [
+    {
+      id: "name",
+      label: "Category Name (Taxonomy Label)",
+      shortLabel: "Category Name",
+      useCase: "Master grouping for financial balance sheet reporting, gross margin analytics, and warehouse storage classification.",
+      guideline: "Descriptive category name (e.g. Electric Motors & Powertrains).",
+      restriction: "Required. Must be unique across active categories. Code (PROD-AAXX) is auto-assigned.",
+      sampleValueText: "Electric Motors & Powertrains",
+      isFilled: Boolean(name),
+      onFill: () => setName("Electric Motors & Powertrains"),
+    },
+    {
+      id: "types",
+      label: "Applicable Product Types (Optional)",
+      shortLabel: "Product Types",
+      useCase: "Constrains which product types can select this category during SKU creation to avoid improper GL mapping.",
+      guideline: "Tag with finished_good and subassembly for motor components.",
+      restriction: "Leave unticked to allow all product types. Ticked options enforce category restriction.",
+      sampleValueText: "finished_good, subassembly",
+      isFilled: types.includes("finished_good") && types.includes("subassembly"),
+      onFill: () => setTypes(["finished_good", "subassembly"]),
+    },
+  ];
+
+  const allWalkthroughFilled = Boolean(name);
+
   const submit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const name = String(new FormData(e.currentTarget).get("name") ?? "").trim();
+    const finalName = name || String(new FormData(e.currentTarget).get("name") ?? "").trim();
     const ok = await run(async () => {
-      await api("POST", "/api/v1/product-categories", { json: { productCategory: name, productTypes: types } });
+      await api("POST", "/api/v1/product-categories", { json: { productCategory: finalName, productTypes: types } });
       return true;
     });
     if (ok) {
@@ -37,16 +77,67 @@ function CategoryDialog({ onClose, onSaved }: { onClose: () => void; onSaved: ()
     <Modal descriptionSize="radix" open onClose={onClose} title="New product category" description="Codes are generated automatically (PROD-AA01, PROD-AA02, …). Leave the product types unticked to allow any kind of product in this category.">
       <form onSubmit={submit} className="flex flex-col gap-3">
         <InlineError message={error} />
-        <TextInput name="name" placeholder="Name, e.g. Battery module" required />
-        <p className="text-xs text-[var(--muted-foreground)]">Applies to (optional)</p>
-        <div className="flex flex-wrap gap-2">
-          {PRODUCT_TYPES.map((t) => (
-            <ActionButton key={t} size="sm" tone={types.includes(t) ? "primary" : "ghost"} onClick={() => setTypes(types.includes(t) ? types.filter((x) => x !== t) : [...types, t])}>{t}</ActionButton>
-          ))}
+        {isTourStep4 && (
+          <GuidedFieldWalkthrough
+            dialogTitle="New product category"
+            fields={walkthroughFields}
+            activeFieldId={activeWalkthroughField}
+            onSelectField={setActiveWalkthroughField}
+            onFillAll={autofillDemoCategory}
+            allFilled={allWalkthroughFilled}
+            submitButtonLabel="Add category"
+            stepBadgeNumber={2}
+            nextStepBadgeNumber={3}
+          />
+        )}
+        <div className={cn(isTourStep4 && activeWalkthroughField === "name" && "rounded-lg p-1 ring-2 ring-teal-500 bg-teal-500/5 transition-all")}>
+          <TextInput
+            name="name"
+            placeholder="Name, e.g. Battery module"
+            value={name}
+            onFocus={() => setActiveWalkthroughField("name")}
+            onChange={(e) => setName(e.target.value)}
+            required
+          />
         </div>
-        <div className="flex justify-end gap-2">
+        <div className={cn(isTourStep4 && activeWalkthroughField === "types" && "rounded-lg p-1 ring-2 ring-teal-500 bg-teal-500/5 transition-all space-y-1.5")}>
+          <p className="text-xs text-[var(--muted-foreground)]">Applies to (optional)</p>
+          <div className="flex flex-wrap gap-2">
+            {PRODUCT_TYPES.map((t) => (
+              <ActionButton
+                key={t}
+                size="sm"
+                tone={types.includes(t) ? "primary" : "ghost"}
+                onClick={() => {
+                  setActiveWalkthroughField("types");
+                  setTypes(types.includes(t) ? types.filter((x) => x !== t) : [...types, t]);
+                }}
+              >
+                {t}
+              </ActionButton>
+            ))}
+          </div>
+        </div>
+        <div className="flex justify-end gap-2 items-center">
           <ActionButton tone="ghost" onClick={onClose}>Cancel</ActionButton>
-          <ActionButton type="submit" loading={busy}>Add category</ActionButton>
+          <div className="relative">
+            {isTourStep4 && (
+              <span className="absolute -top-2 -right-2 flex h-5 w-5 z-10 pointer-events-none">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-5 w-5 bg-teal-500 text-[10px] font-bold text-white items-center justify-center shadow-md">
+                  3
+                </span>
+              </span>
+            )}
+            <ActionButton
+              type="submit"
+              tone={isTourStep4 ? "primary" : undefined}
+              loading={busy}
+              className={cn(isTourStep4 && allWalkthroughFilled && "ring-2 ring-teal-500 ring-offset-2 shadow-lg animate-pulse")}
+            >
+              Add category
+            </ActionButton>
+          </div>
         </div>
       </form>
     </Modal>
@@ -168,11 +259,34 @@ function StickerSizeDialog({ editing, onClose, onSaved }: { editing: StickerSize
 
 function CategoriesTab({ canWrite }: { canWrite: boolean }) {
   const qc = useQueryClient();
+  const { isTourActive, activeJourneyId, currentJourneyStepIndex } = useDemoTour();
+  const isTourStep4 = isTourActive && activeJourneyId === "administration" && currentJourneyStepIndex === 3;
+
   const list = useApiQuery<ListResponse<Category>>("/api/v1/product-categories", { limit: 200 });
   const [open, setOpen] = useState(false);
   return (
     <div className="flex w-full flex-col items-start gap-3">
-      {canWrite && <div className="flex w-full justify-end"><ActionButton onClick={() => setOpen(true)}>New category</ActionButton></div>}
+      {canWrite && (
+        <div className="flex w-full justify-end">
+          <div className="relative">
+            {isTourStep4 && (
+              <span className="absolute -top-2 -right-2 flex h-5 w-5 z-10 pointer-events-none">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-5 w-5 bg-teal-500 text-[10px] font-bold text-white items-center justify-center shadow-md">
+                  4
+                </span>
+              </span>
+            )}
+            <ActionButton
+              onClick={() => setOpen(true)}
+              tone={isTourStep4 ? "primary" : undefined}
+              className={cn(isTourStep4 && "ring-2 ring-teal-500 ring-offset-2 shadow-lg animate-pulse")}
+            >
+              New category
+            </ActionButton>
+          </div>
+        </div>
+      )}
       <InlineError message={list.error?.message} />
       <div className="w-full">
         <DataTable columns={["Code", "Product Category", "Product Type", "Products", "Status"]} fit>

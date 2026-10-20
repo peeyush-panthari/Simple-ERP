@@ -8,6 +8,7 @@ import {
   Plus,
   RefreshCw,
 } from "lucide-react";
+import { GuidedFieldWalkthrough } from "@/components/erp/guided-field-walkthrough";
 import { Shell } from "@/components/erp/shell";
 import {
   ActionButton,
@@ -22,7 +23,9 @@ import {
   TextInput,
 } from "@/components/erp/ui";
 import { useAuth } from "@/lib/auth";
+import { useDemoTour } from "@/lib/demo-flow-context";
 import { date as formatDate, money } from "@/lib/format";
+import { cn } from "@/lib/utils";
 
 interface WorkCenterItem {
   id: string;
@@ -84,6 +87,8 @@ interface RccpStation {
 export default function CapacityPlanningPage() {
   const { api } = useAuth();
   const qc = useQueryClient();
+  const { isTourActive, activeJourneyId, currentJourneyStepIndex } = useDemoTour();
+  const isTourCpStep = isTourActive && activeJourneyId === "plan-to-production" && currentJourneyStepIndex === 1;
 
   const [activeTab, setActiveTab] = useState<"work_centers" | "schedule" | "rccp">("work_centers");
   const [selectedWcId, setSelectedWcId] = useState<string>("all");
@@ -102,6 +107,52 @@ export default function CapacityPlanningPage() {
   const [hourlyMachineRate, setHourlyMachineRate] = useState<string>("750");
   const [hourlyLaborRate, setHourlyLaborRate] = useState<string>("350");
   const [isSubmittingWc, setIsSubmittingWc] = useState(false);
+  const [activeStepKey, setActiveStepKey] = useState("wcCode");
+
+  const walkthroughFields = [
+    {
+      key: "wcCode",
+      label: "Work Center Identifier",
+      useCase: "Manufacturing cell or line station tag used in routing sheets and shopfloor work order dispatch.",
+      guideline: "Standard coding convention prefix (e.g. WC-ASSY-01, WC-CNC-04).",
+      isFilled: !!wcCode.trim(),
+      onAutofill: () => setWcCode("WC-ASSY-01"),
+    },
+    {
+      key: "wcName",
+      label: "Station / Resource Description",
+      useCase: "Physical description of the machine tool, assembly cell, or testing bench.",
+      guideline: "Must clearly communicate machine function and tooling capabilities.",
+      isFilled: !!wcName.trim(),
+      onAutofill: () => setWcName("High-Speed Robotic Assembly Cell"),
+    },
+    {
+      key: "dailyCapacityHours",
+      label: "Daily Available Operating Hours",
+      useCase: "Gross operating uptime per calendar day across active production shifts.",
+      guideline: "Standard 2 shifts = 16.0 hours, 3 shifts = 24.0 hours less planned maintenance.",
+      isFilled: !!dailyCapacityHours,
+      onAutofill: () => setDailyCapacityHours("16"),
+    },
+    {
+      key: "efficiencyFactor",
+      label: "OEE / Efficiency Rating",
+      useCase: "Overall Equipment Effectiveness (OEE) multiplier adjusting nominal uptime to effective productive output.",
+      guideline: "Must be between 0.10 and 1.00 (e.g. 0.85 for 85% world-class manufacturing OEE benchmark).",
+      isFilled: !!efficiencyFactor,
+      onAutofill: () => setEfficiencyFactor("0.85"),
+    },
+  ];
+
+  const handleAutofillAll = () => {
+    setWcCode("WC-ASSY-01");
+    setWcName("High-Speed Robotic Assembly Cell");
+    setWcDepartment("Automated Pack Assembly");
+    setDailyCapacityHours("16");
+    setEfficiencyFactor("0.85");
+    setHourlyMachineRate("750");
+    setHourlyLaborRate("350");
+  };
 
   // Form states - Schedule Job
   const [schedWcId, setSchedWcId] = useState("");
@@ -265,9 +316,20 @@ export default function CapacityPlanningPage() {
                 <RefreshCw className="mr-1 h-4 w-4" /> Refresh
               </ActionButton>
               {activeTab === "work_centers" && (
-                <ActionButton tone="primary" onClick={() => setShowCreateWcModal(true)}>
-                  <Plus className="mr-1 h-4 w-4" /> Register Work Center
-                </ActionButton>
+                <div className="relative inline-block">
+                  <ActionButton
+                    tone="primary"
+                    className={cn(isTourCpStep && "ring-2 ring-teal-500 ring-offset-2 animate-pulse")}
+                    onClick={() => setShowCreateWcModal(true)}
+                  >
+                    <Plus className="mr-1 h-4 w-4" /> Register Work Center
+                  </ActionButton>
+                  {isTourCpStep && (
+                    <span className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-teal-500 text-white font-bold text-[10px] shadow animate-bounce">
+                      1
+                    </span>
+                  )}
+                </div>
               )}
               {activeTab === "schedule" && (
                 <ActionButton tone="primary" onClick={() => setShowScheduleJobModal(true)}>
@@ -626,21 +688,33 @@ export default function CapacityPlanningPage() {
         {showCreateWcModal && (
           <Modal open={showCreateWcModal} title="Register Manufacturing Work Center" onClose={() => setShowCreateWcModal(false)}>
             <div className="flex flex-col gap-4">
+              {isTourCpStep && (
+                <GuidedFieldWalkthrough
+                  fields={walkthroughFields}
+                  activeKey={activeStepKey}
+                  onSelectKey={setActiveStepKey}
+                  onAutofillAll={handleAutofillAll}
+                />
+              )}
               <div className="grid grid-cols-2 gap-4">
-                <Field label="Work Center Code *">
-                  <TextInput
-                    value={wcCode}
-                    onChange={(e) => setWcCode(e.target.value)}
-                    placeholder="e.g. WC-WELD-01"
-                  />
-                </Field>
-                <Field label="Station Name *">
-                  <TextInput
-                    value={wcName}
-                    onChange={(e) => setWcName(e.target.value)}
-                    placeholder="e.g. Ultrasonic Pack Welder"
-                  />
-                </Field>
+                <div className={cn("p-1 rounded transition-colors", isTourCpStep && activeStepKey === "wcCode" && "ring-2 ring-teal-500 bg-teal-500/5")}>
+                  <Field label="Work Center Code *">
+                    <TextInput
+                      value={wcCode}
+                      onChange={(e) => setWcCode(e.target.value)}
+                      placeholder="e.g. WC-WELD-01"
+                    />
+                  </Field>
+                </div>
+                <div className={cn("p-1 rounded transition-colors", isTourCpStep && activeStepKey === "wcName" && "ring-2 ring-teal-500 bg-teal-500/5")}>
+                  <Field label="Station Name *">
+                    <TextInput
+                      value={wcName}
+                      onChange={(e) => setWcName(e.target.value)}
+                      placeholder="e.g. Ultrasonic Pack Welder"
+                    />
+                  </Field>
+                </div>
               </div>
 
               <Field label="Department / Process Area">
@@ -652,21 +726,25 @@ export default function CapacityPlanningPage() {
               </Field>
 
               <div className="grid grid-cols-2 gap-4">
-                <Field label="Daily Capacity (Hours/Day) *">
-                  <TextInput
-                    type="number"
-                    value={dailyCapacityHours}
-                    onChange={(e) => setDailyCapacityHours(e.target.value)}
-                  />
-                </Field>
-                <Field label="Efficiency Factor (0.10 - 1.00) *">
-                  <TextInput
-                    type="number"
-                    step="0.05"
-                    value={efficiencyFactor}
-                    onChange={(e) => setEfficiencyFactor(e.target.value)}
-                  />
-                </Field>
+                <div className={cn("p-1 rounded transition-colors", isTourCpStep && activeStepKey === "dailyCapacityHours" && "ring-2 ring-teal-500 bg-teal-500/5")}>
+                  <Field label="Daily Capacity (Hours/Day) *">
+                    <TextInput
+                      type="number"
+                      value={dailyCapacityHours}
+                      onChange={(e) => setDailyCapacityHours(e.target.value)}
+                    />
+                  </Field>
+                </div>
+                <div className={cn("p-1 rounded transition-colors", isTourCpStep && activeStepKey === "efficiencyFactor" && "ring-2 ring-teal-500 bg-teal-500/5")}>
+                  <Field label="Efficiency Factor (0.10 - 1.00) *">
+                    <TextInput
+                      type="number"
+                      step="0.05"
+                      value={efficiencyFactor}
+                      onChange={(e) => setEfficiencyFactor(e.target.value)}
+                    />
+                  </Field>
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -690,9 +768,21 @@ export default function CapacityPlanningPage() {
                 <ActionButton tone="ghost" onClick={() => setShowCreateWcModal(false)}>
                   Cancel
                 </ActionButton>
-                <ActionButton tone="primary" onClick={handleCreateWorkCenter} disabled={isSubmittingWc}>
-                  {isSubmittingWc ? "Registering..." : "Create Work Center"}
-                </ActionButton>
+                <div className="relative inline-block">
+                  <ActionButton
+                    tone="primary"
+                    onClick={handleCreateWorkCenter}
+                    disabled={isSubmittingWc}
+                    className={cn(isTourCpStep && "ring-2 ring-teal-500 animate-pulse")}
+                  >
+                    {isSubmittingWc ? "Registering..." : "Create Work Center"}
+                  </ActionButton>
+                  {isTourCpStep && (
+                    <span className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-teal-500 text-white font-bold text-[10px] shadow animate-bounce">
+                      3
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           </Modal>

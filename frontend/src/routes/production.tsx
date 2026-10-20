@@ -4,6 +4,7 @@ import { useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { BulkUploadButton, BulkUploadDialog } from "@/components/erp/bulk-upload";
 import { DateRangePicker } from "@/components/erp/date-range";
+import { GuidedFieldWalkthrough } from "@/components/erp/guided-field-walkthrough";
 import { Shell } from "@/components/erp/shell";
 import { Tabs } from "@/components/erp/tabs";
 import {
@@ -12,9 +13,11 @@ import {
 import { ScreenTourButton } from "@/components/erp/screen-tour";
 import { useAuth } from "@/lib/auth";
 import { ApiError } from "@/lib/api";
+import { useDemoTour } from "@/lib/demo-flow-context";
 import * as format from "@/lib/format";
 import { useApiQuery, useDebounced, type ListResponse } from "@/lib/hooks";
 import { humanise } from "@/lib/status";
+import { cn } from "@/lib/utils";
 
 interface Run {
   id: string;
@@ -74,19 +77,62 @@ const dash = (v: string | null | undefined) => v || "—";
 
 function PlanningDialog({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
   const { api } = useAuth();
+  const { isTourActive, activeJourneyId, currentJourneyStepIndex } = useDemoTour();
+  const isTourProdStep = isTourActive && activeJourneyId === "plan-to-production" && currentJourneyStepIndex === 2;
+
   const [date, setDate] = useState("");
   const [warehouseId, setWarehouseId] = useState("");
   const [rows, setRows] = useState([{ productId: "", packId: "" }]);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [activeStepKey, setActiveStepKey] = useState("date");
+
   const products = useApiQuery<ListResponse<Product>>("/api/v1/products", { type: "finished_good", limit: 100 });
   const warehouses = useApiQuery<ListResponse<Named>>("/api/v1/warehouses", { limit: 100 });
   const whList = warehouses.data?.data ?? [];
-  // GET /warehouses already only returns the ones this actor can see, so "one row" means a locked warehouse.
   const locked = whList.length === 1;
   const effectiveWarehouse = locked ? whList[0].id : warehouseId;
   const patch = (i: number, p: Partial<(typeof rows)[number]>) => setRows(rows.map((r, j) => (j === i ? { ...r, ...p } : r)));
   const submittingRef = useRef(false);
+
+  const walkthroughFields = [
+    {
+      key: "date",
+      label: "Planned Manufacturing Date",
+      useCase: "Target calendar date for shop floor assembly line scheduling and raw material staging.",
+      guideline: "Must be today or a future scheduled shift date.",
+      isFilled: !!date,
+      onAutofill: () => setDate(new Date().toISOString().slice(0, 10)),
+    },
+    {
+      key: "warehouseId",
+      label: "Manufacturing Plant / Facility",
+      useCase: "Facility where BOM bill of materials components will be consumed and finished goods packed.",
+      guideline: "Must be a factory/plant location with active production lines.",
+      isFilled: !!effectiveWarehouse,
+      onAutofill: () => {
+        if (!locked && whList.length > 0) setWarehouseId(whList[0].id);
+      },
+    },
+    {
+      key: "rows",
+      label: "Finished Goods & Lot Pack Batch",
+      useCase: "Specifies target SKU to build and unique battery pack or serialize pallet container code.",
+      guideline: "Finished goods must have active approved Bill of Materials (BOM) configured.",
+      isFilled: rows.some((r) => !!r.productId),
+      onAutofill: () => {
+        const firstProd = products.data?.data?.[0];
+        setRows([{ productId: firstProd ? firstProd.id : "demo-fg-01", packId: "PACK-LOT-2026-A1" }]);
+      },
+    },
+  ];
+
+  const handleAutofillAll = () => {
+    setDate(new Date().toISOString().slice(0, 10));
+    if (!locked && whList.length > 0) setWarehouseId(whList[0].id);
+    const firstProd = products.data?.data?.[0];
+    setRows([{ productId: firstProd ? firstProd.id : "demo-fg-01", packId: "PACK-LOT-2026-A1" }]);
+  };
 
   const submit = async () => {
     if (submittingRef.current) return;
@@ -115,25 +161,57 @@ function PlanningDialog({ onClose, onCreated }: { onClose: () => void; onCreated
       onClose={onClose}
       title="Daily Production Planning"
       description="Reserve a Production ID and pack ID for each finished good you plan to build today - everything else is filled in later, in Complete Production."
-      footer={<><ActionButton tone="ghost" onClick={onClose}>Cancel</ActionButton><ActionButton onClick={submit} loading={saving}>Create planned runs</ActionButton></>}
+      footer={
+        <>
+          <ActionButton tone="ghost" onClick={onClose}>Cancel</ActionButton>
+          <div className="relative inline-block">
+            <ActionButton
+              onClick={submit}
+              loading={saving}
+              className={cn(isTourProdStep && "ring-2 ring-teal-500 animate-pulse")}
+            >
+              Create planned runs
+            </ActionButton>
+            {isTourProdStep && (
+              <span className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-teal-500 text-white font-bold text-[10px] shadow animate-bounce">
+                3
+              </span>
+            )}
+          </div>
+        </>
+      }
     >
       <div className="flex flex-col gap-3">
+        {isTourProdStep && (
+          <GuidedFieldWalkthrough
+            fields={walkthroughFields}
+            activeKey={activeStepKey}
+            onSelectKey={setActiveStepKey}
+            onAutofillAll={handleAutofillAll}
+          />
+        )}
         <InlineError message={error || products.error?.message} />
         <div className="form-grid">
-          <Field label="Production date"><TextInput type="date" value={date} onChange={(e) => setDate(e.target.value)} /></Field>
-          <Field label="Warehouse">
-            {locked ? <TextInput value={whList[0].name} disabled readOnly /> : <SelectInput value={warehouseId} onChange={(e) => setWarehouseId(e.target.value)} placeholder="Select warehouse" options={whList.map((w) => ({ value: w.id, label: w.name }))} />}
-          </Field>
+          <div className={cn("p-1 rounded transition-colors", isTourProdStep && activeStepKey === "date" && "ring-2 ring-teal-500 bg-teal-500/5")}>
+            <Field label="Production date"><TextInput type="date" value={date} onChange={(e) => setDate(e.target.value)} /></Field>
+          </div>
+          <div className={cn("p-1 rounded transition-colors", isTourProdStep && activeStepKey === "warehouseId" && "ring-2 ring-teal-500 bg-teal-500/5")}>
+            <Field label="Warehouse">
+              {locked ? <TextInput value={whList[0].name} disabled readOnly /> : <SelectInput value={warehouseId} onChange={(e) => setWarehouseId(e.target.value)} placeholder="Select warehouse" options={whList.map((w) => ({ value: w.id, label: w.name }))} />}
+            </Field>
+          </div>
         </div>
         <p className="mt-2 text-sm font-bold">Finished goods to plan</p>
-        {rows.map((r, i) => (
-          <div key={i} className="flex flex-wrap items-center gap-2">
-            <div className="min-w-[10rem] flex-1"><SelectInput value={r.productId} onChange={(e) => patch(i, { productId: e.target.value })} placeholder="Finished good" options={(products.data?.data ?? []).map((p) => ({ value: p.id, label: p.sku }))} /></div>
-            <div className="min-w-[10rem] flex-1"><TextInput placeholder="Pack ID (optional)" value={r.packId} onChange={(e) => patch(i, { packId: e.target.value })} /></div>
-            <ActionButton size="sm" tone="danger" onClick={() => rows.length > 1 && setRows(rows.filter((_, j) => j !== i))}>Remove</ActionButton>
-          </div>
-        ))}
-        <div><ActionButton size="sm" tone="ghost" onClick={() => setRows([...rows, { productId: "", packId: "" }])}>Add row</ActionButton></div>
+        <div className={cn("p-1 rounded transition-colors", isTourProdStep && activeStepKey === "rows" && "ring-2 ring-teal-500 bg-teal-500/5")}>
+          {rows.map((r, i) => (
+            <div key={i} className="flex flex-wrap items-center gap-2 mb-2">
+              <div className="min-w-[10rem] flex-1"><SelectInput value={r.productId} onChange={(e) => patch(i, { productId: e.target.value })} placeholder="Finished good" options={(products.data?.data ?? []).map((p) => ({ value: p.id, label: p.sku }))} /></div>
+              <div className="min-w-[10rem] flex-1"><TextInput placeholder="Pack ID (optional)" value={r.packId} onChange={(e) => patch(i, { packId: e.target.value })} /></div>
+              <ActionButton size="sm" tone="danger" onClick={() => rows.length > 1 && setRows(rows.filter((_, j) => j !== i))}>Remove</ActionButton>
+            </div>
+          ))}
+          <div><ActionButton size="sm" tone="ghost" onClick={() => setRows([...rows, { productId: "", packId: "" }])}>Add row</ActionButton></div>
+        </div>
       </div>
     </Modal>
   );
@@ -144,6 +222,9 @@ function PlanningDialog({ onClose, onCreated }: { onClose: () => void; onCreated
 function RunsTab() {
   const { can } = useAuth();
   const qc = useQueryClient();
+  const { isTourActive, activeJourneyId, currentJourneyStepIndex } = useDemoTour();
+  const isTourProdStep = isTourActive && activeJourneyId === "plan-to-production" && currentJourneyStepIndex === 2;
+
   const canProduce = can("inventory:produce");
   const [search, setSearch] = useState("");
   const [warehouse, setWarehouse] = useState("");
@@ -182,7 +263,19 @@ function RunsTab() {
         {canProduce && (
           <div className="flex flex-wrap gap-3">
             <BulkUploadButton onClick={() => setBulkOpen(true)} />
-            <ActionButton onClick={() => setPlanOpen(true)}>Production Planning</ActionButton>
+            <div className="relative inline-block">
+              <ActionButton
+                className={cn(isTourProdStep && "ring-2 ring-teal-500 ring-offset-2 animate-pulse")}
+                onClick={() => setPlanOpen(true)}
+              >
+                Production Planning
+              </ActionButton>
+              {isTourProdStep && (
+                <span className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-teal-500 text-white font-bold text-[10px] shadow animate-bounce">
+                  1
+                </span>
+              )}
+            </div>
           </div>
         )}
       </div>

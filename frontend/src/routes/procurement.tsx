@@ -9,14 +9,17 @@ import { AcknowledgementPanel, DispatchPanel, PoTrail, ackPill, shipmentPill } f
 import { RfqStartDialog, SourcingTab } from "@/components/erp/sourcing";
 import { Shell } from "@/components/erp/shell";
 import { Tabs } from "@/components/erp/tabs";
+import { GuidedFieldWalkthrough } from "@/components/erp/guided-field-walkthrough";
 import {
   ActionButton, DataTable, DesktopOnly, EmptyState, Forbidden, InlineError, MobileOnly, MobileRecordCard, MobileRecordRow, Modal, PageHeader, Pagination, Pill, SelectInput, TextInput,
 } from "@/components/erp/ui";
 import { ScreenTourButton } from "@/components/erp/screen-tour";
 import { useAuth } from "@/lib/auth";
+import { useDemoTour } from "@/lib/demo-flow-context";
 import * as format from "@/lib/format";
 import { downloadBlob, useActiveWarehouses, useVendors, useApiQuery, useAsyncAction, useDebounced, usePagination, type ListResponse } from "@/lib/hooks";
 import { GST_LABELS, GST_RATE_OPTIONS } from "@/lib/reference";
+import { cn } from "@/lib/utils";
 
 interface Po {
   id: string;
@@ -103,6 +106,20 @@ function usePdfDownload() {
 function CreateDialog({ vendors, onClose, onCreated, fromRequisition }: { vendors: Vendor[]; onClose: () => void; onCreated: (po: Po) => void | Promise<void>; fromRequisition?: Requisition }) {
   const { api } = useAuth();
   const { run, busy, error, setError } = useAsyncAction();
+  const { isTourActive, activeJourneyId, currentJourneyStepIndex } = useDemoTour();
+  const isTourStep = isTourActive && ((activeJourneyId === "procure-to-pay" && currentJourneyStepIndex === 2) || (activeJourneyId === "plan-to-order" && currentJourneyStepIndex === 3));
+
+  const [activeWalkthroughField, setActiveWalkthroughField] = useState("vendorId");
+  const [vendorId, setVendorId] = useState("");
+  const [warehouseId, setWarehouseId] = useState(fromRequisition?.warehouseId ?? "");
+  const [paymentTerms, setPaymentTerms] = useState("NET30");
+  const [paymentMode, setPaymentMode] = useState("Bank Transfer");
+  const [expectedDate, setExpectedDate] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 14);
+    return d.toISOString().split("T")[0];
+  });
+
   // Raised from a purchase requisition: its catalogue items arrive already listed, and only the prices are left to fill in.
   const [lines, setLines] = useState<StagedLine[]>(
     (fromRequisition?.lines ?? [])
@@ -113,13 +130,109 @@ function CreateDialog({ vendors, onClose, onCreated, fromRequisition }: { vendor
   const [productId, setProductId] = useState("");
   const [quantity, setQuantity] = useState("");
   const [unitPrice, setUnitPrice] = useState("");
-  const [taxCode, setTaxCode] = useState("GST0");
+  const [taxCode, setTaxCode] = useState("GST18");
 
   // Three independent lookups, fetched in parallel by react-query.
   const warehouses = useActiveWarehouses();
   const entities = useApiQuery<ListResponse<Named>>("/api/v1/business-entities", { status: "active", limit: 100 });
   const products = useApiQuery<ListResponse<Product>>("/api/v1/products", { purchasable: "true", status: "active", limit: 200 });
   const productList = products.data?.data ?? [];
+  const warehouseList = warehouses.data?.data ?? [];
+
+  const autofillDemoPo = () => {
+    if (vendors.length > 0) setVendorId(vendors[0].id);
+    if (warehouseList.length > 0) setWarehouseId(warehouseList[0].id);
+    const futureDate = new Date();
+    futureDate.setDate(futureDate.getDate() + 14);
+    setExpectedDate(futureDate.toISOString().split("T")[0]);
+    setPaymentTerms("NET30");
+    setPaymentMode("Bank Transfer");
+
+    if (productList.length > 0) {
+      const p = productList[0];
+      setLines([
+        {
+          productId: p.id,
+          skuName: p.name || p.sku,
+          quantity: "100",
+          uom: p.uom || "UNIT",
+          unitPrice: "450.00",
+          taxCode: "GST18",
+        },
+      ]);
+    }
+  };
+
+  const walkthroughFields = [
+    {
+      id: "vendorId",
+      label: "Approved Vendor Master Selection",
+      shortLabel: "Vendor",
+      useCase: "Legally binding commercial supplier for raw material supply, contractual delivery terms, and GST input tax credit.",
+      guideline: "Select an active registered vendor from the Approved Vendor List (AVL).",
+      restriction: "Required. Must be in active status with a valid GSTIN.",
+      sampleValueText: vendors[0]?.displayName || "Axon Precision Components",
+      isFilled: Boolean(vendorId),
+      onFill: () => {
+        if (vendors.length > 0) setVendorId(vendors[0].id);
+      },
+    },
+    {
+      id: "warehouseId",
+      label: "Receiving Warehouse & Inward Dock",
+      shortLabel: "Warehouse",
+      useCase: "Designates the destination plant/warehouse where the physical shipment will be unloaded, inspected, and booked via GRN.",
+      guideline: "Choose the receiving central factory or raw material warehouse.",
+      restriction: "Required. Determines delivery location printed on the PO.",
+      sampleValueText: warehouseList[0]?.name || "Pune Central Warehouse",
+      isFilled: Boolean(warehouseId),
+      onFill: () => {
+        if (warehouseList.length > 0) setWarehouseId(warehouseList[0].id);
+      },
+    },
+    {
+      id: "expectedDate",
+      label: "Required On-Dock Delivery Date",
+      shortLabel: "Delivery Date",
+      useCase: "Production supply milestone used by MRP planning engine to prevent stockouts and evaluate supplier On-Time Delivery.",
+      guideline: "Standard supplier lead time date (14 days from today).",
+      restriction: "Must be a future date.",
+      sampleValueText: expectedDate,
+      isFilled: Boolean(expectedDate),
+      onFill: () => {
+        const d = new Date();
+        d.setDate(d.getDate() + 14);
+        setExpectedDate(d.toISOString().split("T")[0]);
+      },
+    },
+    {
+      id: "lines",
+      label: "Procurement Line Items & Contract Pricing",
+      shortLabel: "Line Items",
+      useCase: "Detailed bill of materials items with purchase price, order quantity, and statutory GST rate for three-way invoice matching.",
+      guideline: "Add purchasable raw materials with verified unit prices.",
+      restriction: "At least one line item with valid unit price is strictly required.",
+      sampleValueText: productList[0] ? `${productList[0].name} (100 ${productList[0].uom} @ ₹450)` : "100 Units @ ₹450",
+      isFilled: lines.length > 0 && lines.every((l) => Boolean(l.unitPrice)),
+      onFill: () => {
+        if (productList.length > 0) {
+          const p = productList[0];
+          setLines([
+            {
+              productId: p.id,
+              skuName: p.name || p.sku,
+              quantity: "100",
+              uom: p.uom || "UNIT",
+              unitPrice: "450.00",
+              taxCode: "GST18",
+            },
+          ]);
+        }
+      },
+    },
+  ];
+
+  const allWalkthroughFilled = Boolean(vendorId && warehouseId && lines.length > 0);
 
   const addLine = () => {
     const product = productList.find((p) => p.id === productId);
@@ -135,20 +248,22 @@ function CreateDialog({ vendors, onClose, onCreated, fromRequisition }: { vendor
     e.preventDefault();
     const f = new FormData(e.currentTarget);
     const get = (k: string) => String(f.get(k) ?? "");
-    if (!get("vendorId")) return setError("Vendor is required");
-    if (!get("warehouseId")) return setError("Ship to (warehouse) is required");
+    const finalVendor = vendorId || get("vendorId");
+    const finalWh = warehouseId || get("warehouseId");
+    const finalExp = expectedDate || get("expectedDate");
+    if (!finalVendor) return setError("Vendor is required");
+    if (!finalWh) return setError("Ship to (warehouse) is required");
     if (!lines.length) return setError("Add at least one line");
     if (lines.some((l) => l.unitPrice === "")) return setError("Enter a unit price for every line");
     const done = await run(async () => {
-      // A retry after the link step failed must not raise a second order.
       const po = createdPo ?? await api<Po>("POST", "/api/v1/purchase-orders", {
         json: {
-          vendorId: get("vendorId"),
-          warehouseId: get("warehouseId"),
+          vendorId: finalVendor,
+          warehouseId: finalWh,
           businessEntityId: get("businessEntityId") || null,
-          paymentTerms: get("paymentTerms") || null,
-          paymentMode: get("paymentMode") || null,
-          expectedDate: get("expectedDate"),
+          paymentTerms: paymentTerms || get("paymentTerms") || null,
+          paymentMode: paymentMode || get("paymentMode") || null,
+          expectedDate: finalExp,
           notes: fromRequisition ? `Raised from purchase requisition ${fromRequisition.number}` : undefined,
           lines: lines.map((l) => ({ productId: l.productId, quantity: l.quantity, uom: l.uom, unitPrice: l.unitPrice, taxCode: l.taxCode })),
         },
@@ -168,24 +283,86 @@ function CreateDialog({ vendors, onClose, onCreated, fromRequisition }: { vendor
       description={fromRequisition ? "Items and quantities come from the requisition. Choose the vendor and enter each unit price." : undefined}
       wide
       footer={
-        <>
+        <div className="flex justify-end gap-2 items-center">
           <ActionButton tone="ghost" onClick={onClose}>Cancel</ActionButton>
-          <ActionButton type="submit" form="po-details-form" loading={busy}>Create</ActionButton>
-        </>
+          <div className="relative">
+            {isTourStep && (
+              <span className="absolute -top-2 -right-2 flex h-5 w-5 z-10 pointer-events-none">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-5 w-5 bg-teal-500 text-[10px] font-bold text-white items-center justify-center shadow-md">
+                  3
+                </span>
+              </span>
+            )}
+            <ActionButton
+              type="submit"
+              form="po-details-form"
+              tone={isTourStep ? "primary" : undefined}
+              loading={busy}
+              className={cn(isTourStep && allWalkthroughFilled && "ring-2 ring-teal-500 ring-offset-2 shadow-lg animate-pulse")}
+            >
+              Create
+            </ActionButton>
+          </div>
+        </div>
       }
     >
       <div className="flex flex-col gap-3">
         <InlineError message={error} />
+        {isTourStep && (
+          <GuidedFieldWalkthrough
+            dialogTitle="Purchase Order Creation"
+            fields={walkthroughFields}
+            activeFieldId={activeWalkthroughField}
+            onSelectField={setActiveWalkthroughField}
+            onFillAll={autofillDemoPo}
+            allFilled={allWalkthroughFilled}
+            submitButtonLabel="Create"
+            stepBadgeNumber={2}
+            nextStepBadgeNumber={3}
+          />
+        )}
         <form id="po-details-form" onSubmit={submit} className="flex flex-col gap-3">
-          <SelectInput name="vendorId" defaultValue="" placeholder="Vendor" options={vendors.map((v) => ({ value: v.id, label: v.displayName || v.legalName || "" }))} />
+          <div className={cn(isTourStep && activeWalkthroughField === "vendorId" && "rounded-lg p-1 ring-2 ring-teal-500 bg-teal-500/5 transition-all")}>
+            <SelectInput
+              name="vendorId"
+              value={vendorId}
+              onFocus={() => setActiveWalkthroughField("vendorId")}
+              onChange={(e) => setVendorId(e.target.value)}
+              placeholder="Vendor"
+              options={vendors.map((v) => ({ value: v.id, label: v.displayName || v.legalName || "" }))}
+            />
+          </div>
           <SelectInput name="businessEntityId" defaultValue="" placeholder="Invoice to (business entity)" options={(entities.data?.data ?? []).map((v) => ({ value: v.id, label: v.name }))} />
-          <SelectInput key={warehouses.data ? "loaded" : "loading"} name="warehouseId" defaultValue={fromRequisition?.warehouseId ?? ""} placeholder="Ship to (warehouse)" options={(warehouses.data?.data ?? []).map((v) => ({ value: v.id, label: v.name }))} />
-          <TextInput name="paymentTerms" placeholder="Terms of Payment (e.g. Net 30)" />
-          <TextInput name="paymentMode" placeholder="Mode of Payment (e.g. Bank Transfer)" />
-          <TextInput name="expectedDate" type="date" required />
+          <div className={cn(isTourStep && activeWalkthroughField === "warehouseId" && "rounded-lg p-1 ring-2 ring-teal-500 bg-teal-500/5 transition-all")}>
+            <SelectInput
+              key={warehouses.data ? "loaded" : "loading"}
+              name="warehouseId"
+              value={warehouseId}
+              onFocus={() => setActiveWalkthroughField("warehouseId")}
+              onChange={(e) => setWarehouseId(e.target.value)}
+              placeholder="Ship to (warehouse)"
+              options={warehouseList.map((v) => ({ value: v.id, label: v.name }))}
+            />
+          </div>
+          <div className="flex gap-2">
+            <TextInput name="paymentTerms" placeholder="Terms of Payment (e.g. Net 30)" value={paymentTerms} onChange={(e) => setPaymentTerms(e.target.value)} />
+            <TextInput name="paymentMode" placeholder="Mode of Payment (e.g. Bank Transfer)" value={paymentMode} onChange={(e) => setPaymentMode(e.target.value)} />
+          </div>
+          <div className={cn(isTourStep && activeWalkthroughField === "expectedDate" && "rounded-lg p-1 ring-2 ring-teal-500 bg-teal-500/5 transition-all")}>
+            <TextInput
+              name="expectedDate"
+              type="date"
+              value={expectedDate}
+              onFocus={() => setActiveWalkthroughField("expectedDate")}
+              onChange={(e) => setExpectedDate(e.target.value)}
+              required
+            />
+          </div>
         </form>
-        <p className="mt-2 text-sm font-bold">Products</p>
-        <DataTable columns={["SKU Name", "Qty", "Price", "GST %", ""]} minWidth={0} fit>
+        <div className={cn(isTourStep && activeWalkthroughField === "lines" && "rounded-lg p-2 ring-2 ring-teal-500 bg-teal-500/5 transition-all space-y-2")}>
+          <p className="text-sm font-bold">Products</p>
+          <DataTable columns={["SKU Name", "Qty", "Price", "GST %", ""]} minWidth={0} fit>
           {lines.map((l, i) => (
             <tr key={i}>
               <td>{l.skuName}</td>
@@ -211,7 +388,8 @@ function CreateDialog({ vendors, onClose, onCreated, fromRequisition }: { vendor
           <SelectInput style={{ width: "6rem" }} value={taxCode} onChange={(e) => setTaxCode(e.target.value)} options={GST_RATE_OPTIONS} />
           <ActionButton size="sm" onClick={addLine}>Add line</ActionButton>
         </div>
-        <p className="text-xs text-[var(--muted-foreground)]">Unit price is the price before GST — GST is added per line at the selected rate.</p>
+          <p className="text-xs text-[var(--muted-foreground)]">Unit price is the price before GST — GST is added per line at the selected rate.</p>
+        </div>
       </div>
     </Modal>
   );
@@ -367,6 +545,8 @@ function PurchaseOrdersView() {
   const [bulkOpen, setBulkOpen] = useState(false);
   const [openId, setOpenId] = useState("");
   const { run, error: actionError } = useAsyncAction();
+  const { isTourActive, activeJourneyId, currentJourneyStepIndex } = useDemoTour();
+  const isTourStepPo = isTourActive && ((activeJourneyId === "procure-to-pay" && currentJourneyStepIndex === 2) || (activeJourneyId === "plan-to-order" && currentJourneyStepIndex === 3));
 
   const vendors = useVendors();
   const list = useApiQuery<ListResponse<Po>>("/api/v1/purchase-orders", { page, limit: 20, q: debounced, status, vendorId: vendor });
@@ -392,7 +572,25 @@ function PurchaseOrdersView() {
         </select>
         <div className="flex-1" />
         {canWrite && <BulkUploadButton onClick={() => setBulkOpen(true)} />}
-        {canWrite && <ActionButton onClick={() => setCreateOpen(true)}>New purchase order</ActionButton>}
+        {canWrite && (
+          <div className="relative">
+            {isTourStepPo && (
+              <span className="absolute -top-2 -right-2 flex h-5 w-5 z-10 pointer-events-none">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-5 w-5 bg-teal-500 text-[10px] font-bold text-white items-center justify-center shadow-md">
+                  1
+                </span>
+              </span>
+            )}
+            <ActionButton
+              onClick={() => setCreateOpen(true)}
+              tone={isTourStepPo ? "primary" : undefined}
+              className={cn(isTourStepPo && "ring-2 ring-teal-500 ring-offset-2 shadow-lg animate-pulse")}
+            >
+              New purchase order
+            </ActionButton>
+          </div>
+        )}
       </div>
       <InlineError message={actionError || list.error?.message} />
       {pos.length === 0 && !list.isLoading ? (

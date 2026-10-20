@@ -8,12 +8,14 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
 import { BulkUploadButton, BulkUploadDialog } from "@/components/erp/bulk-upload";
 import { CheckRow } from "@/components/erp/extras";
+import { GuidedFieldWalkthrough } from "@/components/erp/guided-field-walkthrough";
 import { Shell } from "@/components/erp/shell";
 import { ActionButton, DataTable, DesktopOnly, Field, Forbidden, InlineError, MobileOnly, MobileRecordCard, MobileRecordRow, Modal, PageHeader, Pill, SelectInput, TextInput } from "@/components/erp/ui";
 import { useAuth } from "@/lib/auth";
+import { useDemoTour } from "@/lib/demo-flow-context";
 import { useApiQuery, useAsyncAction, type ListResponse } from "@/lib/hooks";
 import { COUNTRY_OPTIONS, INDIAN_STATE_NAMES, indianStateSelectOptions } from "@/lib/reference";
-import { errMsg } from "@/lib/utils";
+import { cn, errMsg } from "@/lib/utils";
 
 interface Entity {
   id: string;
@@ -53,29 +55,93 @@ const bankSummary = (e: Entity) => (e.bankName && e.bankAccountNumber ? `${e.ban
 
 function EntityDialog({ entity, onClose, onSaved }: { entity: Entity | null; onClose: () => void; onSaved: () => void }) {
   const { api } = useAuth();
+  const { isTourActive, activeJourneyId, currentJourneyStepIndex } = useDemoTour();
+  const isTourEntityStep = isTourActive && activeJourneyId === "procure-to-pay" && currentJourneyStepIndex === 4;
+
   const { run, busy, error } = useAsyncAction();
   const [isDefault, setIsDefault] = useState(!!entity?.isDefault);
   const e: Partial<Entity> = entity ?? {};
+
+  const [name, setName] = useState(e.name ?? "");
+  const [addressLine1, setAddressLine1] = useState(e.addressLine1 ?? "");
+  const [city, setCity] = useState(e.city ?? "");
+  const [stateCode, setStateCode] = useState(e.stateCode ?? "");
+  const [taxId, setTaxId] = useState(e.taxId ?? "");
+  const [bankName, setBankName] = useState(e.bankName ?? "");
+  const [bankAccountNumber, setBankAccountNumber] = useState(e.bankAccountNumber ?? "");
+  const [activeStepKey, setActiveStepKey] = useState("name");
+
+  const walkthroughFields = [
+    {
+      key: "name",
+      label: "Legal Entity Corporate Name",
+      useCase: "The registered company or vertical identity stamped onto all commercial purchase orders and GST invoices.",
+      guideline: "Must match certificate of incorporation registered with Ministry of Corporate Affairs (MCA).",
+      isFilled: !!name.trim(),
+      onAutofill: () => setName("Simple Energy Technologies Pvt Ltd"),
+    },
+    {
+      key: "taxId",
+      label: "Goods & Services Tax ID (GSTIN)",
+      useCase: "15-digit pan-India GST registration number required for statutory e-way bills and input tax credit claims.",
+      guideline: "First 2 digits represent state code (e.g. 29 for Karnataka, 27 for Maharashtra).",
+      isFilled: !!taxId.trim(),
+      onAutofill: () => setTaxId("29AABCS1429B1Z8"),
+    },
+    {
+      key: "stateCode",
+      label: "Registered State Jurisdiction",
+      useCase: "Determines intra-state (CGST+SGST) vs inter-state (IGST) tax schedule computation.",
+      guideline: "Must match the state code component of the company's GSTIN.",
+      isFilled: !!stateCode,
+      onAutofill: () => {
+        setStateCode("29");
+        setCity("Bengaluru");
+        setAddressLine1("Plot 42, KIADB Industrial Area, Phase 2");
+      },
+    },
+    {
+      key: "bankName",
+      label: "Corporate Treasury Clearing Bank",
+      useCase: "Disbursement and collections bank printed on invoices for RTGS/NEFT vendor settlements.",
+      guideline: "Must be a corporate operating account in good standing.",
+      isFilled: !!bankName.trim(),
+      onAutofill: () => {
+        setBankName("HDFC Bank Ltd");
+        setBankAccountNumber("50200088991122");
+      },
+    },
+  ];
+
+  const handleAutofillAll = () => {
+    setName("Simple Energy Technologies Pvt Ltd");
+    setAddressLine1("Plot 42, KIADB Industrial Area, Phase 2");
+    setCity("Bengaluru");
+    setStateCode("29");
+    setTaxId("29AABCS1429B1Z8");
+    setBankName("HDFC Bank Ltd");
+    setBankAccountNumber("50200088991122");
+  };
 
   const submit = async (ev: FormEvent<HTMLFormElement>) => {
     ev.preventDefault();
     const f = new FormData(ev.currentTarget);
     const get = (k: string) => String(f.get(k) ?? "");
     const body = {
-      name: get("name"),
-      addressLine1: get("addressLine1") || null,
+      name,
+      addressLine1: addressLine1 || null,
       addressLine2: get("addressLine2") || null,
-      city: get("city") || null,
-      stateCode: get("stateCode") || null,
+      city: city || null,
+      stateCode: stateCode || null,
       postalCode: get("postalCode") || null,
       country: get("country") || "IN",
-      taxId: get("taxId") || null,
+      taxId: taxId || null,
       pan: get("pan") || null,
       contactEmail: get("contactEmail") || null,
       contactPhone: get("contactPhone") || null,
-      bankName: get("bankName") || null,
+      bankName: bankName || null,
       bankBranch: get("bankBranch") || null,
-      bankAccountNumber: get("bankAccountNumber") || null,
+      bankAccountNumber: bankAccountNumber || null,
       bankIfsc: get("bankIfsc") || null,
       isDefault,
     };
@@ -93,12 +159,22 @@ function EntityDialog({ entity, onClose, onSaved }: { entity: Entity | null; onC
   return (
     <Modal open onClose={onClose} title={entity ? "Edit business entity" : "New business entity"}>
       <form onSubmit={submit} className="flex flex-col gap-3">
+        {isTourEntityStep && (
+          <GuidedFieldWalkthrough
+            fields={walkthroughFields}
+            activeKey={activeStepKey}
+            onSelectKey={setActiveStepKey}
+            onAutofillAll={handleAutofillAll}
+          />
+        )}
         <InlineError message={error} />
-        <Field label="Legal Entity Name" required>
-          <TextInput name="name" placeholder="Name, e.g. Battery Vertical Pvt Ltd" defaultValue={e.name ?? ""} required />
-        </Field>
+        <div className={cn("p-1 rounded transition-colors", isTourEntityStep && activeStepKey === "name" && "ring-2 ring-teal-500 bg-teal-500/5")}>
+          <Field label="Legal Entity Name" required>
+            <TextInput name="name" placeholder="Name, e.g. Battery Vertical Pvt Ltd" value={name} onChange={(e) => setName(e.target.value)} required />
+          </Field>
+        </div>
         <Field label="Address Line 1">
-          <TextInput name="addressLine1" placeholder="Address line 1" defaultValue={e.addressLine1 ?? ""} />
+          <TextInput name="addressLine1" placeholder="Address line 1" value={addressLine1} onChange={(e) => setAddressLine1(e.target.value)} />
         </Field>
         <Field label="Address Line 2">
           <TextInput name="addressLine2" placeholder="Address line 2 (optional)" defaultValue={e.addressLine2 ?? ""} />
@@ -106,7 +182,7 @@ function EntityDialog({ entity, onClose, onSaved }: { entity: Entity | null; onC
         <div className="flex gap-2">
           <div className="flex-1">
             <Field label="City">
-              <TextInput name="city" placeholder="City" defaultValue={e.city ?? ""} />
+              <TextInput name="city" placeholder="City" value={city} onChange={(e) => setCity(e.target.value)} />
             </Field>
           </div>
           <div className="flex-1">
@@ -115,16 +191,18 @@ function EntityDialog({ entity, onClose, onSaved }: { entity: Entity | null; onC
             </Field>
           </div>
         </div>
-        <Field label="State">
-          <SelectInput name="stateCode" placeholder="State" defaultValue={e.stateCode ?? ""} options={indianStateSelectOptions()} />
-        </Field>
+        <div className={cn("p-1 rounded transition-colors", isTourEntityStep && activeStepKey === "stateCode" && "ring-2 ring-teal-500 bg-teal-500/5")}>
+          <Field label="State">
+            <SelectInput name="stateCode" placeholder="State" value={stateCode} onChange={(e) => setStateCode(e.target.value)} options={indianStateSelectOptions()} />
+          </Field>
+        </div>
         <Field label="Country">
           <SelectInput name="country" placeholder="Country" defaultValue="IN" options={COUNTRY_OPTIONS} />
         </Field>
         <div className="flex gap-2">
-          <div className="flex-1">
+          <div className={cn("flex-1 p-1 rounded transition-colors", isTourEntityStep && activeStepKey === "taxId" && "ring-2 ring-teal-500 bg-teal-500/5")}>
             <Field label="Tax ID / GSTIN" hint="15-digit GSTIN (e.g. 22AAAAA0000A1Z5)" htmlFor="entity-tax-id">
-              <TextInput id="entity-tax-id" name="taxId" placeholder="22AAAAA0000A1Z5" defaultValue={e.taxId ?? ""} />
+              <TextInput id="entity-tax-id" name="taxId" placeholder="22AAAAA0000A1Z5" value={taxId} onChange={(e) => setTaxId(e.target.value)} />
             </Field>
           </div>
           <div className="flex-1">
@@ -147,34 +225,49 @@ function EntityDialog({ entity, onClose, onSaved }: { entity: Entity | null; onC
         </div>
         <hr className="border-[var(--border)]" />
         <p className="text-sm font-bold text-[var(--muted-foreground)]">Bank details</p>
-        <div className="flex gap-2">
-          <div className="flex-1">
-            <Field label="Bank Name">
-              <TextInput name="bankName" placeholder="Bank name (optional)" defaultValue={e.bankName ?? ""} />
-            </Field>
+        <div className={cn("p-1 rounded transition-colors", isTourEntityStep && activeStepKey === "bankName" && "ring-2 ring-teal-500 bg-teal-500/5")}>
+          <div className="flex gap-2">
+            <div className="flex-1">
+              <Field label="Bank Name">
+                <TextInput name="bankName" placeholder="Bank name (optional)" value={bankName} onChange={(e) => setBankName(e.target.value)} />
+              </Field>
+            </div>
+            <div className="flex-1">
+              <Field label="Branch">
+                <TextInput name="bankBranch" placeholder="Branch (optional)" defaultValue={e.bankBranch ?? ""} />
+              </Field>
+            </div>
           </div>
-          <div className="flex-1">
-            <Field label="Branch">
-              <TextInput name="bankBranch" placeholder="Branch (optional)" defaultValue={e.bankBranch ?? ""} />
-            </Field>
-          </div>
-        </div>
-        <div className="flex gap-2">
-          <div className="flex-1">
-            <Field label="Account Number">
-              <TextInput name="bankAccountNumber" placeholder="Account number (optional)" defaultValue={e.bankAccountNumber ?? ""} />
-            </Field>
-          </div>
-          <div className="flex-1">
-            <Field label="IFSC Code">
-              <TextInput name="bankIfsc" placeholder="IFSC code (optional)" defaultValue={e.bankIfsc ?? ""} />
-            </Field>
+          <div className="flex gap-2 mt-2">
+            <div className="flex-1">
+              <Field label="Account Number">
+                <TextInput name="bankAccountNumber" placeholder="Account number (optional)" value={bankAccountNumber} onChange={(e) => setBankAccountNumber(e.target.value)} />
+              </Field>
+            </div>
+            <div className="flex-1">
+              <Field label="IFSC Code">
+                <TextInput name="bankIfsc" placeholder="IFSC code (optional)" defaultValue={e.bankIfsc ?? ""} />
+              </Field>
+            </div>
           </div>
         </div>
         <CheckRow label="Default entity for new POs/invoices" checked={isDefault} onChange={setIsDefault} />
         <div className="flex justify-end gap-2">
           <ActionButton tone="ghost" onClick={onClose}>Cancel</ActionButton>
-          <ActionButton type="submit" loading={busy}>Save</ActionButton>
+          <div className="relative inline-block">
+            <ActionButton
+              type="submit"
+              loading={busy}
+              className={cn(isTourEntityStep && "ring-2 ring-teal-500 animate-pulse")}
+            >
+              Save
+            </ActionButton>
+            {isTourEntityStep && (
+              <span className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-teal-500 text-white font-bold text-[10px] shadow animate-bounce">
+                3
+              </span>
+            )}
+          </div>
         </div>
       </form>
     </Modal>
@@ -184,6 +277,8 @@ function EntityDialog({ entity, onClose, onSaved }: { entity: Entity | null; onC
 function Content() {
   const { api, can } = useAuth();
   const qc = useQueryClient();
+  const { isTourActive, activeJourneyId, currentJourneyStepIndex } = useDemoTour();
+  const isTourEntityStep = isTourActive && activeJourneyId === "procure-to-pay" && currentJourneyStepIndex === 4;
   const canWrite = can("org:write");
   const list = useApiQuery<ListResponse<Entity>>("/api/v1/business-entities", { limit: 100 });
   const entities = list.data?.data ?? [];
@@ -225,7 +320,19 @@ function Content() {
           canWrite && (
             <>
               <BulkUploadButton onClick={() => setBulkOpen(true)} />
-              <ActionButton onClick={() => setDialog({ entity: null })}>New business entity</ActionButton>
+              <div className="relative inline-block">
+                <ActionButton
+                  className={isTourEntityStep ? "ring-2 ring-teal-500 ring-offset-2 animate-pulse" : ""}
+                  onClick={() => setDialog({ entity: null })}
+                >
+                  New business entity
+                </ActionButton>
+                {isTourEntityStep && (
+                  <span className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-teal-500 text-white font-bold text-[10px] shadow animate-bounce pointer-events-none">
+                    1
+                  </span>
+                )}
+              </div>
             </>
           )
         }

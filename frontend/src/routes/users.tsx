@@ -7,7 +7,10 @@ import { Tabs } from "@/components/erp/tabs";
 import { ActionButton, DataTable, DesktopOnly, EmptyState, Field, FilterSelect, Forbidden, InlineError, MobileOnly, MobileRecordCard, MobileRecordRow, Modal, Note, PageHeader, Pagination, Pill, SearchInput, SelectInput, TextArea, TextInput } from "@/components/erp/ui";
 import { useAuth } from "@/lib/auth";
 import { ApiError } from "@/lib/api";
+import { GuidedFieldWalkthrough } from "@/components/erp/guided-field-walkthrough";
+import { useDemoTour } from "@/lib/demo-flow-context";
 import { useApiQuery, useAsyncAction, useDebounced, type ListResponse } from "@/lib/hooks";
+import { cn } from "@/lib/utils";
 
 interface UserRow {
   id: string;
@@ -155,29 +158,130 @@ function UsersTab({ roles, warehouses, factories }: { roles: RoleRow[]; warehous
 
   const refresh = () => qc.invalidateQueries({ queryKey: ["/api/v1/users"] });
 
+  const { isTourActive, activeJourneyId, currentJourneyStepIndex } = useDemoTour();
+  const isTourStep1 = isTourActive && activeJourneyId === "administration" && currentJourneyStepIndex === 0;
+
   // ---- invite
   const [inviteOpen, setInviteOpen] = useState(false);
   const invite = useAsyncAction();
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteDisplayName, setInviteDisplayName] = useState("");
+  const [inviteBusinessUnit, setInviteBusinessUnit] = useState("");
+  const [invitePassword, setInvitePassword] = useState("");
   const [inviteRoles, setInviteRoles] = useState<string[]>([]);
   const [inviteWh, setInviteWh] = useState<string[]>([]);
   const [inviteFac, setInviteFac] = useState<string[]>([]);
   const [inviteManager, setInviteManager] = useState("");
+
+  const [activeWalkthroughField, setActiveWalkthroughField] = useState("email");
+
   const openInvite = () => {
+    setInviteEmail("");
+    setInviteDisplayName("");
+    setInviteBusinessUnit("");
+    setInvitePassword("");
     setInviteRoles([]);
     setInviteWh([]);
     setInviteFac([]);
     setInviteManager("");
+    setActiveWalkthroughField("email");
     invite.setError("");
     setInviteOpen(true);
   };
+
+  const autofillDemoOperator = () => {
+    setInviteEmail("rahul.s@axon-industries.com");
+    setInviteDisplayName("Rahul Sharma");
+    setInviteBusinessUnit("Warehouse & Inbound Logistics");
+    setInvitePassword("Operator@123");
+    const matchedRole = roles.find((r) => /operator|receiver|warehouse|admin/i.test(r.name)) || roles[0];
+    if (matchedRole) {
+      setInviteRoles([matchedRole.id]);
+    }
+    if (warehouses.length > 0) {
+      setInviteWh([warehouses[0].id]);
+    }
+    if (factories.length > 0) {
+      setInviteFac([factories[0].id]);
+    }
+  };
+
+  const walkthroughFields = [
+    {
+      id: "email",
+      label: "Work Email (Required)",
+      shortLabel: "Email",
+      useCase: "Primary corporate identity used for authentication, MFA verification, and notifications.",
+      guideline: "Must be a corporate work email (@axon-industries.com).",
+      restriction: "Must be unique per tenant; duplicate emails are rejected.",
+      sampleValueText: "rahul.s@axon-industries.com",
+      isFilled: Boolean(inviteEmail),
+      onFill: () => setInviteEmail("rahul.s@axon-industries.com"),
+    },
+    {
+      id: "displayName",
+      label: "Display Name (Required)",
+      shortLabel: "Name",
+      useCase: "Human-readable identifier appearing on PO signatures, dock approvals, and immutable audit logs.",
+      guideline: "Full personal name (First and Last).",
+      restriction: "Minimum 2 characters, maximum 100 characters.",
+      sampleValueText: "Rahul Sharma",
+      isFilled: Boolean(inviteDisplayName),
+      onFill: () => setInviteDisplayName("Rahul Sharma"),
+    },
+    {
+      id: "businessUnit",
+      label: "Business Unit / Department",
+      shortLabel: "Dept",
+      useCase: "Departmental cost-center tag used for purchase requisition routing and department budgets.",
+      guideline: "Standardized department designation (e.g. Warehouse & Inbound Logistics).",
+      restriction: "Optional alpha-numeric designation.",
+      sampleValueText: "Warehouse & Inbound Logistics",
+      isFilled: Boolean(inviteBusinessUnit),
+      onFill: () => setInviteBusinessUnit("Warehouse & Inbound Logistics"),
+    },
+    {
+      id: "password",
+      label: "Initial Password",
+      shortLabel: "Password",
+      useCase: "One-time credential for immediate sign-in. If left empty, an email invitation link is dispatched.",
+      guideline: "Provide a strong temporary password.",
+      restriction: "Argon2id hashing; minimum 8 characters.",
+      sampleValueText: "Operator@123",
+      isFilled: Boolean(invitePassword),
+      onFill: () => setInvitePassword("Operator@123"),
+    },
+    {
+      id: "rolesAndSites",
+      label: "Roles & Site Scoping",
+      shortLabel: "Roles & Sites",
+      useCase: "Enforces Role-Based Access Control (RBAC) and scopes physical plant/warehouse data isolation.",
+      guideline: "Select Warehouse Receiver role and scope access to WH-PUNE-01 / FACT-PUNE-01.",
+      restriction: "Least privilege: non-admin operators should only access their assigned plant.",
+      sampleValueText: "Warehouse Receiver (WH-PUNE-01)",
+      isFilled: inviteRoles.length > 0,
+      onFill: () => {
+        const matchedRole = roles.find((r) => /operator|receiver|warehouse|admin/i.test(r.name)) || roles[0];
+        if (matchedRole) setInviteRoles([matchedRole.id]);
+        if (warehouses.length > 0) setInviteWh([warehouses[0].id]);
+        if (factories.length > 0) setInviteFac([factories[0].id]);
+      },
+    },
+  ];
+
+  const allWalkthroughFilled = Boolean(inviteEmail && inviteDisplayName && invitePassword && inviteRoles.length > 0);
+
   const createUser = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
-    const password = String(f.get("password") ?? "");
+    const password = invitePassword || String(f.get("password") ?? "");
+    const email = inviteEmail || String(f.get("email") ?? "");
+    const displayName = inviteDisplayName || String(f.get("displayName") ?? "");
+    const businessUnit = inviteBusinessUnit || String(f.get("businessUnit") ?? "");
     const body: Record<string, unknown> = {
-      email: String(f.get("email") ?? ""),
-      displayName: String(f.get("displayName") ?? ""),
-      businessUnit: String(f.get("businessUnit") ?? "") || null,
+      email,
+      displayName,
+      businessUnit: businessUnit || null,
       managerId: inviteManager || null,
       status: password ? "active" : "invited",
       roles: inviteRoles.map((roleId) => ({ roleId, scopes: [], warehouseIds: inviteWh, factoryIds: inviteFac })),
@@ -190,6 +294,7 @@ function UsersTab({ roles, warehouses, factories }: { roles: RoleRow[]; warehous
     if (ok) {
       setInviteOpen(false);
       await refresh();
+      toast.success(`User ${displayName} onboarded successfully!`);
     }
   };
 
@@ -291,7 +396,23 @@ function UsersTab({ roles, warehouses, factories }: { roles: RoleRow[]; warehous
         <FilterSelect value={statusFilter} onChange={handleStatusFilter} options={STATUS_OPTIONS} label="All statuses" />
         <FilterSelect value={roleFilter} onChange={handleRoleFilter} options={roles.map((r) => ({ label: r.name, value: r.id }))} label="All roles" />
         <div className="flex-1" />
-        <ActionButton onClick={openInvite}>Invite user</ActionButton>
+        <div className="relative">
+          {isTourStep1 && (
+            <span className="absolute -top-2 -right-2 flex h-5 w-5 z-10 pointer-events-none">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-5 w-5 bg-teal-500 text-[10px] font-bold text-white items-center justify-center shadow-md">
+                1
+              </span>
+            </span>
+          )}
+          <ActionButton
+            onClick={openInvite}
+            tone={isTourStep1 ? "primary" : undefined}
+            className={cn(isTourStep1 && "ring-2 ring-teal-500 ring-offset-2 shadow-lg animate-pulse")}
+          >
+            + Invite user
+          </ActionButton>
+        </div>
       </div>
       {users.length === 0 ? (
         <EmptyState title="No users found" hint="Try adjusting your search query, status, or role filter." />
@@ -352,19 +473,87 @@ function UsersTab({ roles, warehouses, factories }: { roles: RoleRow[]; warehous
       <Modal open={inviteOpen} onClose={() => setInviteOpen(false)} title="Invite user">
         <form onSubmit={createUser} className="flex flex-col gap-3">
           <InlineError message={invite.error} />
-          <TextInput name="email" type="email" placeholder="Email" required />
-          <TextInput name="displayName" placeholder="Display name" required />
-          <TextInput name="businessUnit" placeholder="Business unit (optional)" />
+          {isTourStep1 && (
+            <GuidedFieldWalkthrough
+              dialogTitle="Invite user"
+              fields={walkthroughFields}
+              activeFieldId={activeWalkthroughField}
+              onSelectField={setActiveWalkthroughField}
+              onFillAll={autofillDemoOperator}
+              allFilled={allWalkthroughFilled}
+              submitButtonLabel="Create user"
+              stepBadgeNumber={2}
+              nextStepBadgeNumber={3}
+            />
+          )}
+          <div className={cn(isTourStep1 && activeWalkthroughField === "email" && "rounded-lg p-1 ring-2 ring-teal-500 bg-teal-500/5 transition-all")}>
+            <TextInput
+              name="email"
+              type="email"
+              placeholder="Email"
+              value={inviteEmail}
+              onFocus={() => setActiveWalkthroughField("email")}
+              onChange={(e) => setInviteEmail(e.target.value)}
+              required
+            />
+          </div>
+          <div className={cn(isTourStep1 && activeWalkthroughField === "displayName" && "rounded-lg p-1 ring-2 ring-teal-500 bg-teal-500/5 transition-all")}>
+            <TextInput
+              name="displayName"
+              placeholder="Display name"
+              value={inviteDisplayName}
+              onFocus={() => setActiveWalkthroughField("displayName")}
+              onChange={(e) => setInviteDisplayName(e.target.value)}
+              required
+            />
+          </div>
+          <div className={cn(isTourStep1 && activeWalkthroughField === "businessUnit" && "rounded-lg p-1 ring-2 ring-teal-500 bg-teal-500/5 transition-all")}>
+            <TextInput
+              name="businessUnit"
+              placeholder="Business unit (optional)"
+              value={inviteBusinessUnit}
+              onFocus={() => setActiveWalkthroughField("businessUnit")}
+              onChange={(e) => setInviteBusinessUnit(e.target.value)}
+            />
+          </div>
           <Field label="Reports to" hint="Approves their purchase requisitions">
             <SelectInput value={inviteManager} onChange={(e) => setInviteManager(e.target.value)} options={managerOptions()} />
           </Field>
-          <TextInput name="password" type="password" placeholder="Password (leave blank to invite)" />
-          <p className="text-sm font-bold">Roles</p>
-          <RolePicker roles={roles} selected={inviteRoles} onToggle={(id) => setInviteRoles(toggleIn(inviteRoles, id))} />
-          <SiteAccessFields warehouses={warehouses} factories={factories} warehouseIds={inviteWh} factoryIds={inviteFac} onWarehouse={(id) => setInviteWh(toggleIn(inviteWh, id))} onFactory={(id) => setInviteFac(toggleIn(inviteFac, id))} />
-          <div className="flex justify-end gap-2">
+          <div className={cn(isTourStep1 && activeWalkthroughField === "password" && "rounded-lg p-1 ring-2 ring-teal-500 bg-teal-500/5 transition-all")}>
+            <TextInput
+              name="password"
+              type="password"
+              placeholder="Password (leave blank to invite)"
+              value={invitePassword}
+              onFocus={() => setActiveWalkthroughField("password")}
+              onChange={(e) => setInvitePassword(e.target.value)}
+            />
+          </div>
+          <div className={cn(isTourStep1 && activeWalkthroughField === "rolesAndSites" && "rounded-lg p-2 ring-2 ring-teal-500 bg-teal-500/5 transition-all space-y-2")}>
+            <p className="text-sm font-bold">Roles</p>
+            <RolePicker roles={roles} selected={inviteRoles} onToggle={(id) => setInviteRoles(toggleIn(inviteRoles, id))} />
+            <SiteAccessFields warehouses={warehouses} factories={factories} warehouseIds={inviteWh} factoryIds={inviteFac} onWarehouse={(id) => setInviteWh(toggleIn(inviteWh, id))} onFactory={(id) => setInviteFac(toggleIn(inviteFac, id))} />
+          </div>
+          <div className="flex justify-end gap-2 items-center">
             <ActionButton tone="ghost" onClick={() => setInviteOpen(false)}>Cancel</ActionButton>
-            <ActionButton type="submit" loading={invite.busy}>Create user</ActionButton>
+            <div className="relative">
+              {isTourStep1 && (
+                <span className="absolute -top-2 -right-2 flex h-5 w-5 z-10 pointer-events-none">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-5 w-5 bg-teal-500 text-[10px] font-bold text-white items-center justify-center shadow-md">
+                    3
+                  </span>
+                </span>
+              )}
+              <ActionButton
+                type="submit"
+                tone={isTourStep1 ? "primary" : undefined}
+                loading={invite.busy}
+                className={cn(isTourStep1 && allWalkthroughFilled && "ring-2 ring-teal-500 ring-offset-2 shadow-lg animate-pulse")}
+              >
+                Create user
+              </ActionButton>
+            </div>
           </div>
         </form>
       </Modal>

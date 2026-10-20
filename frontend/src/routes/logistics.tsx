@@ -1,14 +1,18 @@
 /** Logistics: transport requests with RFQs, quotes, awarding, dispatch and proof of delivery. */
 import { useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
+import { ShieldCheck } from "lucide-react";
+import { GuidedFieldWalkthrough } from "@/components/erp/guided-field-walkthrough";
 import { Shell } from "@/components/erp/shell";
 import {
-  ActionButton, DataTable, DesktopOnly, EmptyState, Forbidden, InlineError, MobileOnly, MobileRecordCard, MobileRecordRow, Modal, Note, PageHeader, Pagination, Pill, StatCard, TextArea, TextInput,
+  ActionButton, DataTable, DesktopOnly, EmptyState, Field, Forbidden, InlineError, MobileOnly, MobileRecordCard, MobileRecordRow, Modal, Note, PageHeader, Pagination, Pill, StatCard, TextArea, TextInput,
 } from "@/components/erp/ui";
 import { useAuth } from "@/lib/auth";
 import { ApiError } from "@/lib/api";
+import { useDemoTour } from "@/lib/demo-flow-context";
 import * as format from "@/lib/format";
 import { useApiQuery, useAsyncAction, type ListResponse } from "@/lib/hooks";
+import { cn } from "@/lib/utils";
 
 interface Request {
   id: string;
@@ -121,6 +125,224 @@ function PodDialog({ dispatchId, onClose, onDone }: { dispatchId: string; onClos
         <TextInput name="receivedBy" placeholder="Received by (name)" required />
         <div className="flex justify-end gap-2"><ActionButton tone="ghost" onClick={onClose}>Cancel</ActionButton><ActionButton type="submit" loading={busy}>Record delivery</ActionButton></div>
       </form>
+    </Modal>
+  );
+}
+
+function GateEntryDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { isTourActive, activeJourneyId, currentJourneyStepIndex } = useDemoTour();
+  const isTourGateStep = isTourActive && activeJourneyId === "inventory-management" && currentJourneyStepIndex === 0;
+
+  const [vehicleNumber, setVehicleNumber] = useState("");
+  const [supplierAsn, setSupplierAsn] = useState("");
+  const [driverName, setDriverName] = useState("");
+  const [assignedDock, setAssignedDock] = useState("");
+  const [grossWeight, setGrossWeight] = useState("");
+  const [activeStepKey, setActiveStepKey] = useState("vehicleNumber");
+  const [submitted, setSubmitted] = useState(false);
+
+  const fields = [
+    {
+      key: "vehicleNumber",
+      label: "Vehicle Registration Number",
+      required: true,
+      sampleValue: "MH-12-AB-1234",
+      useCase: "Commercial carrier transport vehicle crossing the factory gate security perimeter.",
+      guidelines: "Must match the vehicle registration number declared on the carrier e-Way bill and supplier ASN.",
+      onFill: () => setVehicleNumber("MH-12-AB-1234"),
+    },
+    {
+      key: "supplierAsn",
+      label: "Supplier ASN / PO Reference",
+      required: true,
+      sampleValue: "ASN-1092 (Acme Copper Ltd / PO-9002)",
+      useCase: "Validates active supplier dispatch against an authorized Simple ERP Purchase Order.",
+      guidelines: "Gate entry is rejected if no active PO commitment exists in the system.",
+      onFill: () => setSupplierAsn("ASN-1092 (Acme Copper Ltd / PO-9002)"),
+    },
+    {
+      key: "driverName",
+      label: "Driver Name & Mobile Contact",
+      required: true,
+      sampleValue: "Ramesh Kumar (+91 98765 43210)",
+      useCase: "Captures carrier custodian identity for facility security and statutory gate pass audit.",
+      guidelines: "Driver phone number is required for dock SMS paging when unload bay clears.",
+      onFill: () => setDriverName("Ramesh Kumar (+91 98765 43210)"),
+    },
+    {
+      key: "assignedDock",
+      label: "Designated Unloading Dock",
+      required: true,
+      sampleValue: "Dock Bay 3 - Inbound Quarantine",
+      useCase: "Directs incoming heavy trailer directly to the correct dock door to prevent yard congestion.",
+      guidelines: "Assigned based on SKU category (bulk metals vs delicate electronics vs HAZMAT).",
+      onFill: () => setAssignedDock("Dock Bay 3 - Inbound Quarantine"),
+    },
+    {
+      key: "grossWeight",
+      label: "Weighbridge Inward Weight (kg)",
+      required: true,
+      sampleValue: "14,250",
+      useCase: "First physical weight check to detect en-route material pilferage or wet weather tampering.",
+      guidelines: "Net weight variance > 0.5% vs packing slip triggers immediate QC supervisor hold.",
+      onFill: () => setGrossWeight("14,250"),
+    },
+  ];
+
+  const handleFillAll = () => {
+    setVehicleNumber("MH-12-AB-1234");
+    setSupplierAsn("ASN-1092 (Acme Copper Ltd / PO-9002)");
+    setDriverName("Ramesh Kumar (+91 98765 43210)");
+    setAssignedDock("Dock Bay 3 - Inbound Quarantine");
+    setGrossWeight("14,250");
+  };
+
+  const isComplete = Boolean(
+    vehicleNumber.trim() &&
+    supplierAsn.trim() &&
+    driverName.trim() &&
+    assignedDock.trim() &&
+    grossWeight.trim()
+  );
+
+  const handleSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    if (!isComplete) return;
+    setSubmitted(true);
+  };
+
+  if (!open) return null;
+
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      wide
+      title="Inbound Gate Check-In & Security Pass"
+      description="Record carrier arrival, verify Advance Shipping Notice (ASN), and assign dock bay for intake."
+    >
+      {submitted ? (
+        <div className="flex flex-col items-center justify-center py-6 text-center">
+          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600 mb-3">
+            <ShieldCheck className="h-8 w-8" />
+          </div>
+          <h3 className="text-lg font-bold text-[var(--foreground)]">Gate Pass GP-1092 Issued</h3>
+          <p className="mt-1 text-sm text-[var(--muted-foreground)] max-w-md">
+            Vehicle <strong className="text-[var(--foreground)]">{vehicleNumber}</strong> successfully checked in at Gate 2.
+            Carrier routed to <strong className="text-[var(--foreground)]">{assignedDock}</strong> for Goods Receipt Note (GRN) generation.
+          </p>
+          <div className="mt-6 flex gap-3">
+            <ActionButton tone="primary" onClick={onClose}>Done</ActionButton>
+          </div>
+        </div>
+      ) : (
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          {isTourGateStep && (
+            <div className="flex items-center justify-between rounded-lg border border-teal-500/30 bg-teal-500/5 px-3 py-2 text-xs text-teal-800 dark:text-teal-200">
+              <span className="font-medium">
+                Step 1 of Inventory Management: Check in carrier delivery vehicle and issue Security Gate Pass.
+              </span>
+              <button
+                type="button"
+                onClick={handleFillAll}
+                className="font-bold underline hover:opacity-80"
+              >
+                Autofill all fields
+              </button>
+            </div>
+          )}
+
+          <GuidedFieldWalkthrough
+            activeStepKey={activeStepKey}
+            onStepChange={setActiveStepKey}
+            fields={fields}
+            values={{
+              vehicleNumber,
+              supplierAsn,
+              driverName,
+              assignedDock,
+              grossWeight,
+            }}
+            onFillAll={handleFillAll}
+          />
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Field label="Vehicle Registration Number" required>
+              <TextInput
+                value={vehicleNumber}
+                onChange={(e) => setVehicleNumber(e.target.value)}
+                placeholder="e.g. MH-12-AB-1234"
+                className={cn(activeStepKey === "vehicleNumber" && "ring-2 ring-teal-500 bg-teal-500/5")}
+                required
+              />
+            </Field>
+
+            <Field label="Supplier ASN / PO Reference" required>
+              <TextInput
+                value={supplierAsn}
+                onChange={(e) => setSupplierAsn(e.target.value)}
+                placeholder="e.g. ASN-1092"
+                className={cn(activeStepKey === "supplierAsn" && "ring-2 ring-teal-500 bg-teal-500/5")}
+                required
+              />
+            </Field>
+
+            <Field label="Driver Name & Mobile Contact" required>
+              <TextInput
+                value={driverName}
+                onChange={(e) => setDriverName(e.target.value)}
+                placeholder="e.g. Ramesh Kumar (+91 98765 43210)"
+                className={cn(activeStepKey === "driverName" && "ring-2 ring-teal-500 bg-teal-500/5")}
+                required
+              />
+            </Field>
+
+            <Field label="Designated Unloading Dock" required>
+              <TextInput
+                value={assignedDock}
+                onChange={(e) => setAssignedDock(e.target.value)}
+                placeholder="e.g. Dock Bay 3 - Inbound Quarantine"
+                className={cn(activeStepKey === "assignedDock" && "ring-2 ring-teal-500 bg-teal-500/5")}
+                required
+              />
+            </Field>
+
+            <div className="md:col-span-2">
+              <Field label="Weighbridge Inward Gross Weight (kg)" required>
+                <TextInput
+                  value={grossWeight}
+                  onChange={(e) => setGrossWeight(e.target.value)}
+                  placeholder="e.g. 14,250"
+                  className={cn(activeStepKey === "grossWeight" && "ring-2 ring-teal-500 bg-teal-500/5")}
+                  required
+                />
+              </Field>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end gap-2 pt-2 border-t border-[var(--border)]">
+            <ActionButton tone="ghost" type="button" onClick={onClose}>Cancel</ActionButton>
+            <div className="relative inline-block">
+              <ActionButton
+                type="submit"
+                tone="primary"
+                disabled={!isComplete}
+                className={cn(
+                  isTourGateStep && isComplete && "ring-2 ring-teal-500 ring-offset-2 animate-pulse",
+                  isTourGateStep && "font-semibold"
+                )}
+              >
+                Issue Security Gate Pass GP-1092
+              </ActionButton>
+              {isTourGateStep && isComplete && (
+                <span className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-teal-500 text-white font-bold text-[10px] shadow animate-bounce pointer-events-none">
+                  3
+                </span>
+              )}
+            </div>
+          </div>
+        </form>
+      )}
     </Modal>
   );
 }
@@ -269,9 +491,13 @@ function DetailDialog({ requestId, onClose, onChanged }: { requestId: string; on
 
 function Content() {
   const qc = useQueryClient();
+  const { isTourActive, activeJourneyId, currentJourneyStepIndex } = useDemoTour();
+  const isTourGateStep = isTourActive && activeJourneyId === "inventory-management" && currentJourneyStepIndex === 0;
+
   const [status, setStatus] = useState("");
   const [page, setPage] = useState(1);
   const [openId, setOpenId] = useState("");
+  const [gateDialogOpen, setGateDialogOpen] = useState(false);
   const list = useApiQuery<ListResponse<Request>>("/api/v1/transport-requests", { page, limit: 20, status });
   const requests = list.data?.data ?? [];
   const refresh = () => qc.invalidateQueries({ queryKey: ["/api/v1/transport-requests"] });
@@ -279,7 +505,27 @@ function Content() {
 
   return (
     <div className="flex w-full flex-col items-start gap-4">
-      <PageHeader eyebrow="Demand" title="Logistics" />
+      <PageHeader
+        eyebrow="Demand"
+        title="Logistics"
+        actions={
+          <div className="relative inline-block">
+            <ActionButton
+              className={cn(
+                isTourGateStep && "ring-2 ring-teal-500 ring-offset-2 animate-pulse font-semibold"
+              )}
+              onClick={() => setGateDialogOpen(true)}
+            >
+              Gate entry
+            </ActionButton>
+            {isTourGateStep && (
+              <span className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-teal-500 text-white font-bold text-[10px] shadow animate-bounce pointer-events-none">
+                1
+              </span>
+            )}
+          </div>
+        }
+      />
       <div className="flex gap-4"><StatCard label="Requests on this page" value={requests.length} /></div>
       <label htmlFor="logistics-status-filter" className="sr-only">Filter by status</label>
       <select id="logistics-status-filter" className="filter-select" value={status} aria-label="Filter by all" onChange={(e) => { setStatus(e.target.value); setPage(1); }}>
@@ -315,6 +561,7 @@ function Content() {
       )}
       <div className="w-full"><Pagination meta={list.data?.meta} onPage={setPage} /></div>
       {openId && <DetailDialog requestId={openId} onClose={() => setOpenId("")} onChanged={refresh} />}
+      <GateEntryDialog open={gateDialogOpen} onClose={() => setGateDialogOpen(false)} />
     </div>
   );
 }

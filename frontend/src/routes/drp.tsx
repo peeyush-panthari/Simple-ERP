@@ -14,6 +14,7 @@ import {
   Sparkles,
   Truck,
 } from "lucide-react";
+import { GuidedFieldWalkthrough } from "@/components/erp/guided-field-walkthrough";
 import { Shell } from "@/components/erp/shell";
 import {
   ActionButton,
@@ -27,6 +28,7 @@ import {
   TextInput,
 } from "@/components/erp/ui";
 import { useAuth } from "@/lib/auth";
+import { useDemoTour } from "@/lib/demo-flow-context";
 import { date as formatDate, money } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -109,6 +111,8 @@ interface NetworkProjection {
 export default function DrpPage() {
   const { api, can } = useAuth();
   const queryClient = useQueryClient();
+  const { isTourActive, activeJourneyId, currentJourneyStepIndex } = useDemoTour();
+  const isTourDrpStep = isTourActive && activeJourneyId === "plan-to-order" && currentJourneyStepIndex === 1;
 
   const [activeTab, setActiveTab] = useState<"workbench" | "projections" | "lanes" | "policies">("workbench");
   const [laneModalOpen, setLaneModalOpen] = useState(false);
@@ -206,16 +210,23 @@ export default function DrpPage() {
           description="Algorithmic multi-tier inventory replenishment across Mother Distribution Centers and Regional Satellite Hubs with time-phased net requirements."
           actions={
             <div className="flex items-center gap-2">
-              <ActionButton
-                tone="ghost"
-                size="sm"
-                onClick={() => setLaneModalOpen(true)}
-                disabled={!can("inventory:write")}
-                className="gap-2"
-              >
-                <Network size={15} />
-                <span>Configure Lanes</span>
-              </ActionButton>
+              <div className="relative inline-block">
+                <ActionButton
+                  tone="ghost"
+                  size="sm"
+                  onClick={() => setLaneModalOpen(true)}
+                  disabled={!can("inventory:write")}
+                  className={cn("gap-2", isTourDrpStep && "ring-2 ring-teal-500 ring-offset-2 animate-pulse")}
+                >
+                  <Network size={15} />
+                  <span>Configure Lanes</span>
+                </ActionButton>
+                {isTourDrpStep && (
+                  <span className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-teal-500 text-white font-bold text-[10px] shadow animate-bounce">
+                    1
+                  </span>
+                )}
+              </div>
               <ActionButton
                 tone="primary"
                 size="sm"
@@ -708,6 +719,9 @@ function AddLaneModal({
   onSuccess: () => void;
 }) {
   const { api } = useAuth();
+  const { isTourActive, activeJourneyId, currentJourneyStepIndex } = useDemoTour();
+  const isTourDrpStep = isTourActive && activeJourneyId === "plan-to-order" && currentJourneyStepIndex === 1;
+
   const [srcWh, setSrcWh] = useState(warehouses[0]?.id || "");
   const [dstWh, setDstWh] = useState(warehouses[1]?.id || "");
   const [transitDays, setTransitDays] = useState("3");
@@ -715,6 +729,51 @@ function AddLaneModal({
   const [carrier, setCarrier] = useState("North-South Express");
   const [cost, setCost] = useState("14.50");
   const [submitting, setSubmitting] = useState(false);
+  const [activeStepKey, setActiveStepKey] = useState("srcWh");
+
+  const walkthroughFields = [
+    {
+      key: "srcWh",
+      label: "Source Mother DC (Supply Node)",
+      useCase: "Central manufacturing plant or mother replenishment warehouse holding primary inventory.",
+      guideline: "Must be a central distribution hub with high bulk holding capacity.",
+      isFilled: !!srcWh,
+      onAutofill: () => setSrcWh(warehouses[0]?.id || "wh-central"),
+    },
+    {
+      key: "dstWh",
+      label: "Destination Satellite Hub (Demand Node)",
+      useCase: "Regional distribution center or fulfillment outpost serving local customer demand.",
+      guideline: "Must differ from Source DC.",
+      isFilled: !!dstWh,
+      onAutofill: () => setDstWh(warehouses[1]?.id || warehouses[0]?.id || "wh-regional"),
+    },
+    {
+      key: "transitDays",
+      label: "Transit Lead Time (Days)",
+      useCase: "Lead time required for freight transport between the two facilities.",
+      guideline: "Affects DRP order release timing: Planned Order Release = Required Date - Transit Days.",
+      isFilled: !!transitDays,
+      onAutofill: () => setTransitDays("3"),
+    },
+    {
+      key: "carrier",
+      label: "Logistics Carrier & 3PL",
+      useCase: "Contracted 3PL or fleet service provider responsible for inter-facility freight.",
+      guideline: "Specifies SLA, billing rate, and freight tracking integration.",
+      isFilled: !!carrier.trim(),
+      onAutofill: () => setCarrier("North-South Dedicated Freight Line"),
+    },
+  ];
+
+  const handleAutofillAll = () => {
+    setSrcWh(warehouses[0]?.id || "wh-central");
+    setDstWh(warehouses[1]?.id || warehouses[0]?.id || "wh-regional");
+    setTransitDays("3");
+    setMode("Road");
+    setCarrier("North-South Dedicated Freight Line");
+    setCost("14.50");
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -750,15 +809,36 @@ function AddLaneModal({
           <ActionButton tone="ghost" size="sm" onClick={onClose}>
             Cancel
           </ActionButton>
-          <ActionButton tone="primary" size="sm" loading={submitting} onClick={handleSubmit}>
-            Save Lane
-          </ActionButton>
+          <div className="relative inline-block">
+            <ActionButton
+              tone="primary"
+              size="sm"
+              loading={submitting}
+              className={cn(isTourDrpStep && "ring-2 ring-teal-500 animate-pulse")}
+              onClick={handleSubmit}
+            >
+              Save Lane
+            </ActionButton>
+            {isTourDrpStep && (
+              <span className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-teal-500 text-white font-bold text-[10px] shadow animate-bounce">
+                3
+              </span>
+            )}
+          </div>
         </div>
       }
     >
       <form onSubmit={handleSubmit} className="space-y-4 text-xs">
+        {isTourDrpStep && (
+          <GuidedFieldWalkthrough
+            fields={walkthroughFields}
+            activeKey={activeStepKey}
+            onSelectKey={setActiveStepKey}
+            onAutofillAll={handleAutofillAll}
+          />
+        )}
         <div className="grid grid-cols-2 gap-3">
-          <div>
+          <div className={cn("p-1 rounded transition-colors", isTourDrpStep && activeStepKey === "srcWh" && "ring-2 ring-teal-500 bg-teal-500/5")}>
             <label className="block font-semibold mb-1">Source DC (Mother Node):</label>
             <select
               value={srcWh}
@@ -774,7 +854,7 @@ function AddLaneModal({
             </select>
           </div>
 
-          <div>
+          <div className={cn("p-1 rounded transition-colors", isTourDrpStep && activeStepKey === "dstWh" && "ring-2 ring-teal-500 bg-teal-500/5")}>
             <label className="block font-semibold mb-1">Destination Hub (Child Node):</label>
             <select
               value={dstWh}
@@ -792,7 +872,7 @@ function AddLaneModal({
         </div>
 
         <div className="grid grid-cols-3 gap-3">
-          <div>
+          <div className={cn("p-1 rounded transition-colors", isTourDrpStep && activeStepKey === "transitDays" && "ring-2 ring-teal-500 bg-teal-500/5")}>
             <label className="block font-semibold mb-1">Transit Lead Time (Days):</label>
             <TextInput
               type="number"
@@ -827,7 +907,7 @@ function AddLaneModal({
           </div>
         </div>
 
-        <div>
+        <div className={cn("p-1 rounded transition-colors", isTourDrpStep && activeStepKey === "carrier" && "ring-2 ring-teal-500 bg-teal-500/5")}>
           <label className="block font-semibold mb-1">Preferred Carrier / 3PL Name:</label>
           <TextInput
             value={carrier}

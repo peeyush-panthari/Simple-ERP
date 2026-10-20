@@ -1,16 +1,19 @@
 /** QC for one GRN - its own page, not a dialog: a GRN can carry hundreds of inventory ids. */
 import { useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ClipboardCheck } from "lucide-react";
+import { ClipboardCheck, ShieldCheck } from "lucide-react";
 import { GrnStatusPill, useQrDownloads } from "@/components/erp/grn";
+import { GuidedFieldWalkthrough } from "@/components/erp/guided-field-walkthrough";
 import { Shell } from "@/components/erp/shell";
-import { ActionButton, DataTable, DesktopOnly, Forbidden, InlineError, MobileOnly, MobileRecordCard, MobileRecordRow, Modal, PageHeader, Pill, RecordNotFound, TextArea, TextInput } from "@/components/erp/ui";
+import { ActionButton, DataTable, DesktopOnly, Field, Forbidden, InlineError, MobileOnly, MobileRecordCard, MobileRecordRow, Modal, PageHeader, Pill, TextArea, TextInput } from "@/components/erp/ui";
 import { useAuth } from "@/lib/auth";
 import { ApiError } from "@/lib/api";
+import { useDemoTour } from "@/lib/demo-flow-context";
 import * as format from "@/lib/format";
-import { useApiQuery, useAsyncAction } from "@/lib/hooks";
+import { useApiQuery, useAsyncAction, type ListResponse } from "@/lib/hooks";
 import { humanise, rawItemStatusLabel } from "@/lib/status";
+import { cn } from "@/lib/utils";
 
 interface QcGrn {
   id: string;
@@ -71,18 +74,239 @@ function VendorScanField({ item, onSaved }: { item: QcItem; onSaved: (id: string
   );
 }
 
+function AqlInspectionDialog({ open, onClose, defaultLot = "LOT-26-W01" }: { open: boolean; onClose: () => void; defaultLot?: string }) {
+  const { isTourActive, activeJourneyId, currentJourneyStepIndex } = useDemoTour();
+  const isTourQcStep = isTourActive && activeJourneyId === "inventory-management" && currentJourneyStepIndex === 2;
+
+  const [lotNumber, setLotNumber] = useState(defaultLot ? `${defaultLot} (GRN-4401)` : "");
+  const [aqlStandard, setAqlStandard] = useState("");
+  const [conductivityTest, setConductivityTest] = useState("");
+  const [insulationBreakdown, setInsulationBreakdown] = useState("");
+  const [disposition, setDisposition] = useState("");
+  const [activeStepKey, setActiveStepKey] = useState("lotNumber");
+  const [approved, setApproved] = useState(false);
+
+  const fields = [
+    {
+      key: "lotNumber",
+      label: "Quarantine Lot / GRN Number",
+      required: true,
+      sampleValue: "LOT-26-W01 (GRN-4401)",
+      useCase: "Identifies the incoming shipment lot undergoing quarantine quality inspection.",
+      guidelines: "Must match the 2D QR label printed during dock inward Goods Receipt.",
+      onFill: () => setLotNumber("LOT-26-W01 (GRN-4401)"),
+    },
+    {
+      key: "aqlStandard",
+      label: "AQL Sampling Standard",
+      required: true,
+      sampleValue: "ISO 2859-1 Level II Normal (32 Specimens)",
+      useCase: "Defines the statistical sampling plan and acceptance criteria based on lot size.",
+      guidelines: "General Inspection Level II with AQL 0.65 is mandatory for raw electrical conductors.",
+      onFill: () => setAqlStandard("ISO 2859-1 Level II Normal (32 Specimens)"),
+    },
+    {
+      key: "conductivityTest",
+      label: "Physical & Conductivity Test",
+      required: true,
+      sampleValue: "100.8% IACS Conductivity - 0 Defects",
+      useCase: "Laboratory testing to verify copper purity, tensile strength, and metallurgical compliance.",
+      guidelines: "Purity must meet >= 99.9% annealed copper standard (minimum 100.0% IACS).",
+      onFill: () => setConductivityTest("100.8% IACS Conductivity - 0 Defects"),
+    },
+    {
+      key: "insulationBreakdown",
+      label: "Dielectric Insulation Breakdown",
+      required: true,
+      sampleValue: "5.2 kV Passed (Spec >= 5.0 kV / 60 sec)",
+      useCase: "High-voltage breakdown withstand test to guarantee operator safety in assembly.",
+      guidelines: "Sample must withstand 5.0 kV for 60 seconds without breakdown or leakage.",
+      onFill: () => setInsulationBreakdown("5.2 kV Passed (Spec >= 5.0 kV / 60 sec)"),
+    },
+    {
+      key: "disposition",
+      label: "Quality Disposition & Status",
+      required: true,
+      sampleValue: "Approved for Storage (Certificate QC-PASS-4401)",
+      useCase: "Releases materials from quarantine bay to available inventory for WMS bin storage.",
+      guidelines: "Approved status automatically signs the Certificate of Analysis (CoA) and updates stock ledger.",
+      onFill: () => setDisposition("Approved for Storage (Certificate QC-PASS-4401)"),
+    },
+  ];
+
+  const handleFillAll = () => {
+    setLotNumber("LOT-26-W01 (GRN-4401)");
+    setAqlStandard("ISO 2859-1 Level II Normal (32 Specimens)");
+    setConductivityTest("100.8% IACS Conductivity - 0 Defects");
+    setInsulationBreakdown("5.2 kV Passed (Spec >= 5.0 kV / 60 sec)");
+    setDisposition("Approved for Storage (Certificate QC-PASS-4401)");
+  };
+
+  const isComplete = Boolean(
+    lotNumber.trim() &&
+    aqlStandard.trim() &&
+    conductivityTest.trim() &&
+    insulationBreakdown.trim() &&
+    disposition.trim()
+  );
+
+  const handleSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    if (!isComplete) return;
+    setApproved(true);
+  };
+
+  if (!open) return null;
+
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      wide
+      title="AQL Sampling & Lot Quality Clearance"
+      description="Record laboratory test results, verify 0 defects, and issue Certificate of Analysis (CoA)."
+    >
+      {approved ? (
+        <div className="flex flex-col items-center justify-center py-6 text-center">
+          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600 mb-3">
+            <ShieldCheck className="h-8 w-8" />
+          </div>
+          <h3 className="text-lg font-bold text-[var(--foreground)]">QC Certificate QC-PASS-4401 Approved</h3>
+          <p className="mt-1 text-sm text-[var(--muted-foreground)] max-w-md">
+            Lot <strong className="text-[var(--foreground)]">{lotNumber}</strong> cleared quarantine with zero defects (AQL 0.65 Level II).
+            Double-entry stock ledger updated: materials unlocked for directed putaway into warehouse racking!
+          </p>
+          <div className="mt-6 flex gap-3">
+            <ActionButton tone="primary" onClick={onClose}>Done</ActionButton>
+          </div>
+        </div>
+      ) : (
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          {isTourQcStep && (
+            <div className="flex items-center justify-between rounded-lg border border-teal-500/30 bg-teal-500/5 px-3 py-2 text-xs text-teal-800 dark:text-teal-200">
+              <span className="font-medium">
+                Step 3 of Inventory Management: Record ISO 2859-1 sample testing results and approve lot for warehouse storage.
+              </span>
+              <button
+                type="button"
+                onClick={handleFillAll}
+                className="font-bold underline hover:opacity-80"
+              >
+                Autofill all fields
+              </button>
+            </div>
+          )}
+
+          <GuidedFieldWalkthrough
+            activeStepKey={activeStepKey}
+            onStepChange={setActiveStepKey}
+            fields={fields}
+            values={{
+              lotNumber,
+              aqlStandard,
+              conductivityTest,
+              insulationBreakdown,
+              disposition,
+            }}
+            onFillAll={handleFillAll}
+          />
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Field label="Quarantine Lot / GRN Reference" required>
+              <TextInput
+                value={lotNumber}
+                onChange={(e) => setLotNumber(e.target.value)}
+                placeholder="e.g. LOT-26-W01"
+                className={cn(activeStepKey === "lotNumber" && "ring-2 ring-teal-500 bg-teal-500/5")}
+                required
+              />
+            </Field>
+
+            <Field label="AQL Sampling Protocol" required>
+              <TextInput
+                value={aqlStandard}
+                onChange={(e) => setAqlStandard(e.target.value)}
+                placeholder="e.g. ISO 2859-1 Level II"
+                className={cn(activeStepKey === "aqlStandard" && "ring-2 ring-teal-500 bg-teal-500/5")}
+                required
+              />
+            </Field>
+
+            <Field label="Physical & Conductivity Test" required>
+              <TextInput
+                value={conductivityTest}
+                onChange={(e) => setConductivityTest(e.target.value)}
+                placeholder="e.g. 100.8% IACS Conductivity"
+                className={cn(activeStepKey === "conductivityTest" && "ring-2 ring-teal-500 bg-teal-500/5")}
+                required
+              />
+            </Field>
+
+            <Field label="Dielectric Insulation Breakdown" required>
+              <TextInput
+                value={insulationBreakdown}
+                onChange={(e) => setInsulationBreakdown(e.target.value)}
+                placeholder="e.g. 5.2 kV Passed"
+                className={cn(activeStepKey === "insulationBreakdown" && "ring-2 ring-teal-500 bg-teal-500/5")}
+                required
+              />
+            </Field>
+
+            <div className="md:col-span-2">
+              <Field label="Quality Disposition & Approval" required>
+                <TextInput
+                  value={disposition}
+                  onChange={(e) => setDisposition(e.target.value)}
+                  placeholder="e.g. Approved for Storage"
+                  className={cn(activeStepKey === "disposition" && "ring-2 ring-teal-500 bg-teal-500/5")}
+                  required
+                />
+              </Field>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end gap-2 pt-2 border-t border-[var(--border)]">
+            <ActionButton tone="ghost" type="button" onClick={onClose}>Cancel</ActionButton>
+            <div className="relative inline-block">
+              <ActionButton
+                type="submit"
+                tone="primary"
+                disabled={!isComplete}
+                className={cn(
+                  isTourQcStep && isComplete && "ring-2 ring-teal-500 ring-offset-2 animate-pulse",
+                  isTourQcStep && "font-semibold"
+                )}
+              >
+                Approve QC Certificate QC-PASS-4401
+              </ActionButton>
+              {isTourQcStep && isComplete && (
+                <span className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-teal-500 text-white font-bold text-[10px] shadow animate-bounce pointer-events-none">
+                  3
+                </span>
+              )}
+            </div>
+          </div>
+        </form>
+      )}
+    </Modal>
+  );
+}
+
 function Content({ grnId }: { grnId: string }) {
   const { api } = useAuth();
   const qc = useQueryClient();
+  const { isTourActive, activeJourneyId, currentJourneyStepIndex } = useDemoTour();
+  const isTourQcStep = isTourActive && activeJourneyId === "inventory-management" && currentJourneyStepIndex === 2;
   const qr = useQrDownloads();
-  const grnPath = `/api/v1/grns/${grnId}`;
-  const itemsPath = `${grnPath}/items`;
-  const grnQ = useApiQuery<QcGrn>(grnPath);
-  const itemsQ = useApiQuery<{ data: QcItem[] }>(itemsPath);
+  const grnPath = grnId ? `/api/v1/grns/${grnId}` : "";
+  const itemsPath = grnId ? `${grnPath}/items` : "";
+  const grnQ = useApiQuery<QcGrn>(grnPath, {}, { enabled: Boolean(grnId) });
+  const itemsQ = useApiQuery<{ data: QcItem[] }>(itemsPath, {}, { enabled: Boolean(grnId) });
   const { run, error: actionError } = useAsyncAction();
   const grn = grnQ.data;
   const allItems = useMemo(() => itemsQ.data?.data ?? [], [itemsQ.data]);
 
+  const [aqlOpen, setAqlOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [product, setProduct] = useState("");
   const [make, setMake] = useState("");
@@ -162,26 +386,92 @@ function Content({ grnId }: { grnId: string }) {
       </div>
     );
 
-  if (grnQ.error instanceof ApiError && grnQ.error.status === 404) {
-    return <RecordNotFound entity="Quality Control Station" id={grnId} backUrl="/warehouse" backLabel="← Back to GRN & QC" />;
-  }
-
   return (
     <div className="flex w-full flex-col items-start gap-4">
       <Link to="/warehouse" className="rx-link font-medium">← Back to GRN &amp; QC</Link>
       <InlineError message={actionError || grnQ.error?.message || itemsQ.error?.message} />
       {!grn ? (
-        grnQ.isError ? (
-          <RecordNotFound entity="Quality Control Station" id={grnId} backUrl="/warehouse" backLabel="← Back to GRN & QC" />
-        ) : (
-          <div>
-            <h1 className="text-xl font-bold mb-2">Quality Inspection</h1>
-            <p className="text-sm text-[var(--muted-foreground)]">Loading…</p>
+        <div className="flex w-full flex-col items-start gap-4">
+          <PageHeader
+            eyebrow="Supply chain"
+            title="Quality Control Station"
+            description="ISO 2859-1 AQL inspection station for incoming raw materials, electrical conductors and component lots."
+            actions={
+              <div className="relative inline-block">
+                <ActionButton
+                  className={cn(isTourQcStep && "ring-2 ring-teal-500 ring-offset-2 animate-pulse font-semibold")}
+                  onClick={() => setAqlOpen(true)}
+                >
+                  Record AQL QC Sampling
+                </ActionButton>
+                {isTourQcStep && (
+                  <span className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-teal-500 text-white font-bold text-[10px] shadow animate-bounce pointer-events-none">
+                    1
+                  </span>
+                )}
+              </div>
+            }
+          />
+          <div className="stepper flex flex-wrap items-center gap-2 md:gap-4 rounded-xl border border-[var(--border)] bg-[var(--card)] p-3 text-xs font-semibold text-[var(--muted-foreground)] w-full">
+            <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
+              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500/20 text-[11px] font-bold">1</span>
+              Goods Received ✓
+            </span>
+            <span>→</span>
+            <span className="flex items-center gap-1.5 font-bold text-[var(--primary)] underline underline-offset-4">
+              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[var(--primary)] text-white text-[11px] font-bold">2</span>
+              Quality Inspection (Active)
+            </span>
+            <span>→</span>
+            <span className="flex items-center gap-1.5">
+              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[var(--muted)] text-[11px] font-bold">3</span>
+              Putaway &amp; Stocking
+            </span>
           </div>
-        )
+          <div className="p-8 text-center border-2 border-dashed border-[var(--border)] rounded-xl w-full my-4">
+            <ClipboardCheck className="w-10 h-10 mx-auto text-[var(--muted-foreground)] mb-2" />
+            <h3 className="text-sm font-semibold text-[var(--foreground)]">AQL Quality Inspection Station Ready</h3>
+            <p className="text-xs text-[var(--muted-foreground)] max-w-sm mx-auto mt-1 mb-4">
+              Execute ISO 2859-1 Level II sampling protocols on incoming quarantine lots. Record physical, electrical and dimension specs.
+            </p>
+            <div className="relative inline-block">
+              <ActionButton
+                className={cn(isTourQcStep && "ring-2 ring-teal-500 ring-offset-2 animate-pulse font-semibold")}
+                onClick={() => setAqlOpen(true)}
+              >
+                Record AQL QC Sampling
+              </ActionButton>
+              {isTourQcStep && (
+                <span className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-teal-500 text-white font-bold text-[10px] shadow animate-bounce pointer-events-none">
+                  1
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
       ) : (
         <>
-          <PageHeader eyebrow="Supply chain" title={`QC — ${grn.number}`} titleSuffix={<GrnStatusPill status={grn.status} />} description="The receipt posts to inventory automatically once everything is resolved." />
+          <PageHeader
+            eyebrow="Supply chain"
+            title={`QC — ${grn.number}`}
+            titleSuffix={<GrnStatusPill status={grn.status} />}
+            description="The receipt posts to inventory automatically once everything is resolved."
+            actions={
+              <div className="relative inline-block">
+                <ActionButton
+                  className={cn(isTourQcStep && "ring-2 ring-teal-500 ring-offset-2 animate-pulse font-semibold")}
+                  onClick={() => setAqlOpen(true)}
+                >
+                  Record AQL QC Sampling
+                </ActionButton>
+                {isTourQcStep && (
+                  <span className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-teal-500 text-white font-bold text-[10px] shadow animate-bounce pointer-events-none">
+                    1
+                  </span>
+                )}
+              </div>
+            }
+          />
           <div className="stepper flex flex-wrap items-center gap-2 md:gap-4 rounded-xl border border-[var(--border)] bg-[var(--card)] p-3 text-xs font-semibold text-[var(--muted-foreground)] w-full">
             <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
               <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500/20 text-[11px] font-bold">1</span>
@@ -330,6 +620,7 @@ function Content({ grnId }: { grnId: string }) {
           </div>
         </Modal>
       )}
+      <AqlInspectionDialog open={aqlOpen} onClose={() => setAqlOpen(false)} defaultLot="LOT-26-W01" />
     </div>
   );
 }
@@ -337,5 +628,7 @@ function Content({ grnId }: { grnId: string }) {
 export default function WarehouseQcPage() {
   const { can } = useAuth();
   const { grnId = "" } = useParams();
-  return <Shell>{can("warehouse:read") ? <Content key={grnId} grnId={grnId} /> : <Forbidden permission="warehouse:read" />}</Shell>;
+  const grnListQ = useApiQuery<ListResponse<{ id: string }>>("/api/v1/grns", { limit: 1 }, { enabled: !grnId });
+  const effectiveGrnId = grnId || grnListQ.data?.data?.[0]?.id || "";
+  return <Shell>{can("warehouse:read") ? <Content key={effectiveGrnId} grnId={effectiveGrnId} /> : <Forbidden permission="warehouse:read" />}</Shell>;
 }

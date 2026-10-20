@@ -3,13 +3,15 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { BulkUploadButton, BulkUploadDialog } from "@/components/erp/bulk-upload";
+import { GuidedFieldWalkthrough } from "@/components/erp/guided-field-walkthrough";
 import { Shell } from "@/components/erp/shell";
 import { ActionButton, DataTable, DesktopOnly, Field, Forbidden, InlineError, MobileOnly, MobileRecordCard, MobileRecordRow, Modal, PageHeader, Pagination, Pill, SelectInput, TextInput } from "@/components/erp/ui";
 import { useAuth } from "@/lib/auth";
+import { useDemoTour } from "@/lib/demo-flow-context";
 import * as format from "@/lib/format";
 import { useApiQuery, useAsyncAction, useDebounced, type ListResponse } from "@/lib/hooks";
 import { indianStateSelectOptions } from "@/lib/reference";
-import { errMsg } from "@/lib/utils";
+import { cn, errMsg } from "@/lib/utils";
 
 export interface PartyType {
   code: string;
@@ -60,34 +62,156 @@ const stateSelect = (name: string) => <SelectInput name={name} placeholder="Stat
 function CreatePartyDialog({ open, onClose, types, onCreated }: { open: boolean; onClose: () => void; types: PartyType[]; onCreated: () => void }) {
   const { api } = useAuth();
   const { run, busy, error } = useAsyncAction();
+  const { isTourActive, activeJourneyId, currentJourneyStepIndex } = useDemoTour();
+  const isTourStep1 = isTourActive && activeJourneyId === "procure-to-pay" && currentJourneyStepIndex === 0;
+
+  const [activeWalkthroughField, setActiveWalkthroughField] = useState("legalName");
+  const [legalName, setLegalName] = useState("");
   const [subtype, setSubtype] = useState("");
+  const [taxId, setTaxId] = useState("");
+  const [paymentTerms, setPaymentTerms] = useState("NET30");
+  const [currency, setCurrency] = useState("INR");
+  const [creditLimit, setCreditLimit] = useState("1000000");
+  const [addrLine1, setAddrLine1] = useState("");
+  const [addrCity, setAddrCity] = useState("");
+  const [addrPostal, setAddrPostal] = useState("");
+  const [addrState, setAddrState] = useState("27");
+  const [contactName, setContactName] = useState("");
+  const [contactEmail, setContactEmail] = useState("");
+  const [contactPhone, setContactPhone] = useState("");
+
   const subtypeMeta = types.find((t) => t.code === subtype);
   const isCustomer = subtypeMeta ? ["customer", "both"].includes(subtypeMeta.baseType) : false;
+
+  const autofillDemoVendor = () => {
+    setLegalName("Axon Precision Components Pvt Ltd");
+    const vendorType = types.find((t) => t.baseType === "vendor") || types[0];
+    if (vendorType) setSubtype(vendorType.code);
+    setTaxId("27AAACA1234A1Z5");
+    setPaymentTerms("NET30");
+    setCurrency("INR");
+    setCreditLimit("1000000");
+    setAddrLine1("Plot 12, Chakan Industrial Phase 2");
+    setAddrCity("Pune");
+    setAddrState("27");
+    setAddrPostal("410501");
+    setContactName("Rajesh Kulkarni");
+    setContactEmail("rajesh.k@axonprecision.com");
+    setContactPhone("+91-98220-44123");
+  };
+
+  const walkthroughFields = [
+    {
+      id: "legalName",
+      label: "Legal Commercial Entity Name",
+      shortLabel: "Legal Name",
+      useCase: "Primary corporate identity printed on vendor contracts, purchase orders, statutory e-Invoices, and bank remittance vouchers.",
+      guideline: "Full registered legal title (e.g. Axon Precision Components Pvt Ltd).",
+      restriction: "Required field. Must match official GST and banking tax registration.",
+      sampleValueText: "Axon Precision Components Pvt Ltd",
+      isFilled: Boolean(legalName),
+      onFill: () => setLegalName("Axon Precision Components Pvt Ltd"),
+    },
+    {
+      id: "subtype",
+      label: "Commercial Master Classification",
+      shortLabel: "Party Type",
+      useCase: "Governs transactional permissions: ensures vendors can be selected on POs and AP vouchers, while customers are restricted to sales orders.",
+      guideline: "Select an active Vendor party label.",
+      restriction: "Required for correct general ledger subledger categorization.",
+      sampleValueText: types.find((t) => t.baseType === "vendor")?.label || "Vendor",
+      isFilled: Boolean(subtype),
+      onFill: () => {
+        const v = types.find((t) => t.baseType === "vendor") || types[0];
+        if (v) setSubtype(v.code);
+      },
+    },
+    {
+      id: "taxId",
+      label: "Statutory Tax Identification (15-digit GSTIN)",
+      shortLabel: "Tax ID / GSTIN",
+      useCase: "Enables statutory CGST/SGST/IGST tax calculation, electronic invoice validation, and GST input tax credit (ITC) matching.",
+      guideline: "15-character uppercase Indian GSTIN with state prefix (e.g. 27AAACA1234A1Z5 for Maharashtra).",
+      restriction: "Determines tax jurisdiction for intra-state (CGST+SGST) vs inter-state (IGST).",
+      sampleValueText: "27AAACA1234A1Z5",
+      isFilled: Boolean(taxId),
+      onFill: () => setTaxId("27AAACA1234A1Z5"),
+    },
+    {
+      id: "paymentTerms",
+      label: "Trade Payment Terms & Credit Limit",
+      shortLabel: "Payment Terms",
+      useCase: "Controls Accounts Payable invoice due dates, cash discount windows, and overdue aging schedules.",
+      guideline: "Enter agreed trade credit duration (e.g. NET30, NET45, Advance).",
+      restriction: "Used by AP payment run to schedule disbursement dates.",
+      sampleValueText: "NET30 (₹10,00,000 Credit)",
+      isFilled: Boolean(paymentTerms),
+      onFill: () => {
+        setPaymentTerms("NET30");
+        setCurrency("INR");
+        setCreditLimit("1000000");
+      },
+    },
+    {
+      id: "billingAddress",
+      label: "Registered Manufacturing & Dispatch Site",
+      shortLabel: "Address & State",
+      useCase: "Physical plant dispatch address for delivery challans, PO dispatch, and statutory GST place-of-supply determination.",
+      guideline: "Industrial park address, city, state code 27 (Maharashtra), and 6-digit postal code.",
+      restriction: "State code must match the first 2 digits of the GSTIN.",
+      sampleValueText: "Chakan Industrial Zone, Pune, State 27",
+      isFilled: Boolean(addrLine1 && addrCity && addrState),
+      onFill: () => {
+        setAddrLine1("Plot 12, Chakan Industrial Phase 2");
+        setAddrCity("Pune");
+        setAddrState("27");
+        setAddrPostal("410501");
+        setContactName("Rajesh Kulkarni");
+        setContactEmail("rajesh.k@axonprecision.com");
+      },
+    },
+  ];
+
+  const allWalkthroughFilled = Boolean(legalName && subtype && taxId);
 
   const submit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
     const get = (k: string) => String(f.get(k) ?? "");
+    const finalLegalName = legalName || get("legalName");
+    const finalSubtype = subtype || get("subtype");
+    const finalTaxId = taxId || get("taxId");
+    const finalTerms = paymentTerms || get("paymentTerms") || null;
+    const finalCurrency = currency || get("currency") || null;
+    const finalCredit = creditLimit || get("creditLimit") || "0";
+    const finalLine1 = addrLine1 || get("addrLine1");
+    const finalCity = addrCity || get("addrCity");
+    const finalState = addrState || get("addrState");
+    const finalPostal = addrPostal || get("addrPostal");
+    const finalContact = contactName || get("contactName");
+    const finalEmail = contactEmail || get("contactEmail");
+    const finalPhone = contactPhone || get("contactPhone");
+
     const body: Record<string, unknown> = {
-      legalName: get("legalName"),
+      legalName: finalLegalName,
       type: subtypeMeta ? subtypeMeta.baseType : "vendor",
-      subtype: subtype || null,
-      taxId: get("taxId") || null,
-      taxIdCountry: get("taxId") ? "IN" : null,
-      paymentTerms: get("paymentTerms") || null,
-      currency: get("currency") || null,
-      creditLimit: get("creditLimit") || "0",
+      subtype: finalSubtype || null,
+      taxId: finalTaxId || null,
+      taxIdCountry: finalTaxId ? "IN" : null,
+      paymentTerms: finalTerms,
+      currency: finalCurrency,
+      creditLimit: finalCredit,
       addresses: [] as unknown[],
       contacts: [] as unknown[],
     };
-    if (get("addrLine1")) {
-      (body.addresses as unknown[]).push({ type: "billing", line1: get("addrLine1"), city: get("addrCity"), stateCode: get("addrState") || null, postalCode: get("addrPostal") || null, country: "IN", isDefault: true });
+    if (finalLine1) {
+      (body.addresses as unknown[]).push({ type: "billing", line1: finalLine1, city: finalCity, stateCode: finalState || null, postalCode: finalPostal || null, country: "IN", isDefault: true });
     }
     if (isCustomer && get("shipAddrLine1")) {
       (body.addresses as unknown[]).push({ type: "shipping", label: get("shipLocationName") || null, line1: get("shipAddrLine1"), city: get("shipAddrCity"), stateCode: get("shipAddrState") || null, postalCode: get("shipAddrPostal") || null, country: "IN", isDefault: true });
     }
-    if (get("contactName")) {
-      (body.contacts as unknown[]).push({ name: get("contactName"), email: get("contactEmail") || null, phone: get("contactPhone") || null, isPrimary: true });
+    if (finalContact) {
+      (body.contacts as unknown[]).push({ name: finalContact, email: finalEmail || null, phone: finalPhone || null, isPrimary: true });
     }
     const ok = await run(async () => {
       await api("POST", "/api/v1/parties", { json: body });
@@ -103,25 +227,111 @@ function CreatePartyDialog({ open, onClose, types, onCreated }: { open: boolean;
     <Modal open={open} onClose={onClose} title="New party">
       <form onSubmit={submit} className="flex flex-col gap-3">
         <InlineError message={error} />
+        {isTourStep1 && (
+          <GuidedFieldWalkthrough
+            dialogTitle="Commercial Vendor Onboarding"
+            fields={walkthroughFields}
+            activeFieldId={activeWalkthroughField}
+            onSelectField={setActiveWalkthroughField}
+            onFillAll={autofillDemoVendor}
+            allFilled={allWalkthroughFilled}
+            submitButtonLabel="Add party"
+            stepBadgeNumber={2}
+            nextStepBadgeNumber={3}
+          />
+        )}
         <p className="text-sm font-bold">Core details</p>
-        <TextInput name="legalName" placeholder="Legal name" required />
-        <SelectInput value={subtype} onChange={(e) => setSubtype(e.target.value)} placeholder="Party label" options={types.filter((t) => t.status === "active").map((t) => ({ value: t.code, label: t.label }))} />
-        <Field label="Tax Identification (GSTIN / PAN)" hint="15-digit state GSTIN (e.g. 22AAAAA0000A1Z5) or 10-digit PAN (e.g. AAAAA0000A)" htmlFor="party-tax-id">
-          <TextInput id="party-tax-id" name="taxId" placeholder="22AAAAA0000A1Z5" />
-        </Field>
-        <TextInput name="paymentTerms" placeholder="Payment terms, e.g. NET30" />
-        <div className="flex gap-2">
-          <TextInput name="currency" placeholder="Currency, e.g. INR" />
-          <TextInput name="creditLimit" placeholder="Credit limit" />
+        <div className={cn(isTourStep1 && activeWalkthroughField === "legalName" && "rounded-lg p-1 ring-2 ring-teal-500 bg-teal-500/5 transition-all")}>
+          <TextInput
+            name="legalName"
+            placeholder="Legal name"
+            value={legalName}
+            onFocus={() => setActiveWalkthroughField("legalName")}
+            onChange={(e) => setLegalName(e.target.value)}
+            required
+          />
+        </div>
+        <div className={cn(isTourStep1 && activeWalkthroughField === "subtype" && "rounded-lg p-1 ring-2 ring-teal-500 bg-teal-500/5 transition-all")}>
+          <SelectInput
+            value={subtype}
+            onFocus={() => setActiveWalkthroughField("subtype")}
+            onChange={(e) => setSubtype(e.target.value)}
+            placeholder="Party label"
+            options={types.filter((t) => t.status === "active").map((t) => ({ value: t.code, label: t.label }))}
+          />
+        </div>
+        <div className={cn(isTourStep1 && activeWalkthroughField === "taxId" && "rounded-lg p-1 ring-2 ring-teal-500 bg-teal-500/5 transition-all")}>
+          <Field label="Tax Identification (GSTIN / PAN)" hint="15-digit state GSTIN (e.g. 22AAAAA0000A1Z5) or 10-digit PAN (e.g. AAAAA0000A)" htmlFor="party-tax-id">
+            <TextInput
+              id="party-tax-id"
+              name="taxId"
+              placeholder="22AAAAA0000A1Z5"
+              value={taxId}
+              onFocus={() => setActiveWalkthroughField("taxId")}
+              onChange={(e) => setTaxId(e.target.value)}
+            />
+          </Field>
+        </div>
+        <div className={cn(isTourStep1 && activeWalkthroughField === "paymentTerms" && "rounded-lg p-1 ring-2 ring-teal-500 bg-teal-500/5 transition-all space-y-2")}>
+          <TextInput
+            name="paymentTerms"
+            placeholder="Payment terms, e.g. NET30"
+            value={paymentTerms}
+            onFocus={() => setActiveWalkthroughField("paymentTerms")}
+            onChange={(e) => setPaymentTerms(e.target.value)}
+          />
+          <div className="flex gap-2">
+            <TextInput
+              name="currency"
+              placeholder="Currency, e.g. INR"
+              value={currency}
+              onFocus={() => setActiveWalkthroughField("paymentTerms")}
+              onChange={(e) => setCurrency(e.target.value)}
+            />
+            <TextInput
+              name="creditLimit"
+              placeholder="Credit limit"
+              value={creditLimit}
+              onFocus={() => setActiveWalkthroughField("paymentTerms")}
+              onChange={(e) => setCreditLimit(e.target.value)}
+            />
+          </div>
         </div>
         <hr className="border-[var(--border)]" />
         <p className="text-sm font-bold">Billing address (optional)</p>
-        <TextInput name="addrLine1" placeholder="Address line 1" />
-        <div className="flex gap-2">
-          <TextInput name="addrCity" placeholder="City" />
-          <TextInput name="addrPostal" placeholder="Postal code" />
+        <div className={cn(isTourStep1 && activeWalkthroughField === "billingAddress" && "rounded-lg p-1 ring-2 ring-teal-500 bg-teal-500/5 transition-all space-y-2")}>
+          <TextInput
+            name="addrLine1"
+            placeholder="Address line 1"
+            value={addrLine1}
+            onFocus={() => setActiveWalkthroughField("billingAddress")}
+            onChange={(e) => setAddrLine1(e.target.value)}
+          />
+          <div className="flex gap-2">
+            <TextInput
+              name="addrCity"
+              placeholder="City"
+              value={addrCity}
+              onFocus={() => setActiveWalkthroughField("billingAddress")}
+              onChange={(e) => setAddrCity(e.target.value)}
+            />
+            <TextInput
+              name="addrPostal"
+              placeholder="Postal code"
+              value={addrPostal}
+              onFocus={() => setActiveWalkthroughField("billingAddress")}
+              onChange={(e) => setAddrPostal(e.target.value)}
+            />
+          </div>
+          <SelectInput
+            name="addrState"
+            placeholder="State"
+            value={addrState}
+            onFocus={() => setActiveWalkthroughField("billingAddress")}
+            onChange={(e) => setAddrState(e.target.value)}
+            options={indianStateSelectOptions()}
+          />
         </div>
-        {stateSelect("addrState")}
         {isCustomer && (
           <>
             <hr className="border-[var(--border)]" />
@@ -137,14 +347,31 @@ function CreatePartyDialog({ open, onClose, types, onCreated }: { open: boolean;
         )}
         <hr className="border-[var(--border)]" />
         <p className="text-sm font-bold">Primary contact (optional)</p>
-        <TextInput name="contactName" placeholder="Contact name" />
+        <TextInput name="contactName" placeholder="Contact name" value={contactName} onChange={(e) => setContactName(e.target.value)} />
         <div className="flex gap-2">
-          <TextInput name="contactEmail" placeholder="Email" />
-          <TextInput name="contactPhone" placeholder="Phone" />
+          <TextInput name="contactEmail" placeholder="Contact email" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} />
+          <TextInput name="contactPhone" placeholder="Contact phone" value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} />
         </div>
-        <div className="flex justify-end gap-2">
+        <div className="flex justify-end gap-2 items-center pt-2">
           <ActionButton tone="ghost" onClick={onClose}>Cancel</ActionButton>
-          <ActionButton type="submit" loading={busy}>Create party</ActionButton>
+          <div className="relative">
+            {isTourStep1 && (
+              <span className="absolute -top-2 -right-2 flex h-5 w-5 z-10 pointer-events-none">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-5 w-5 bg-teal-500 text-[10px] font-bold text-white items-center justify-center shadow-md">
+                  3
+                </span>
+              </span>
+            )}
+            <ActionButton
+              type="submit"
+              tone={isTourStep1 ? "primary" : undefined}
+              loading={busy}
+              className={cn(isTourStep1 && allWalkthroughFilled && "ring-2 ring-teal-500 ring-offset-2 shadow-lg animate-pulse")}
+            >
+              Add party
+            </ActionButton>
+          </div>
         </div>
       </form>
     </Modal>
@@ -163,6 +390,8 @@ function Content() {
   const [createOpen, setCreateOpen] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
   const [actionError, setActionError] = useState("");
+  const { isTourActive, activeJourneyId, currentJourneyStepIndex } = useDemoTour();
+  const isTourStep1 = isTourActive && activeJourneyId === "procure-to-pay" && currentJourneyStepIndex === 0;
 
   const types = useApiQuery<{ data: PartyType[] }>("/api/v1/party-types");
   const list = useApiQuery<ListResponse<Party>>("/api/v1/parties", { page, limit: 15, q: debouncedSearch, type, status });
@@ -209,7 +438,25 @@ function Content() {
         </select>
         <div className="flex-1" />
         {canWrite && <BulkUploadButton onClick={() => setBulkOpen(true)} />}
-        {canWrite && <ActionButton onClick={() => setCreateOpen(true)}>New party</ActionButton>}
+        {canWrite && (
+          <div className="relative">
+            {isTourStep1 && (
+              <span className="absolute -top-2 -right-2 flex h-5 w-5 z-10 pointer-events-none">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-5 w-5 bg-teal-500 text-[10px] font-bold text-white items-center justify-center shadow-md">
+                  1
+                </span>
+              </span>
+            )}
+            <ActionButton
+              onClick={() => setCreateOpen(true)}
+              tone={isTourStep1 ? "primary" : undefined}
+              className={cn(isTourStep1 && "ring-2 ring-teal-500 ring-offset-2 shadow-lg animate-pulse")}
+            >
+              New party
+            </ActionButton>
+          </div>
+        )}
       </div>
       <InlineError message={actionError || list.error?.message} />
       <DesktopOnly className="w-full">

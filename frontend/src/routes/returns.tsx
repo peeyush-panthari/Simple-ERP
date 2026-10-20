@@ -2,6 +2,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { RotateCcw, Undo2 } from "lucide-react";
+import { GuidedFieldWalkthrough } from "@/components/erp/guided-field-walkthrough";
 import { Shell } from "@/components/erp/shell";
 import {
   ActionButton,
@@ -20,8 +21,10 @@ import {
   TextInput,
 } from "@/components/erp/ui";
 import { useAuth } from "@/lib/auth";
+import { useDemoTour } from "@/lib/demo-flow-context";
 import * as format from "@/lib/format";
 import { useApiQuery, useAsyncAction, type ListResponse } from "@/lib/hooks";
+import { cn } from "@/lib/utils";
 
 interface RmaLine {
   id: string;
@@ -90,12 +93,24 @@ interface Rtv {
 function Content() {
   const { api, can } = useAuth();
   const qc = useQueryClient();
+  const { isTourActive, activeJourneyId, currentJourneyStepIndex } = useDemoTour();
+  const isTourReturnsStep = isTourActive && activeJourneyId === "inventory-management" && currentJourneyStepIndex === 5;
+
   const canWrite = can("warehouse:write") || can("orders:write") || can("po:write");
 
   const [activeTab, setActiveTab] = useState<"rma" | "rtv">("rma");
   const [dialog, setDialog] = useState<"" | "new-rma" | "receive-rma" | "inspect-rma" | "new-rtv" | "dispatch-rtv">("");
   const [selectedRma, setSelectedRma] = useState<Rma | null>(null);
   const [selectedRtv, setSelectedRtv] = useState<Rtv | null>(null);
+
+  // Form states for new RMA
+  const [rmaCustomerId, setRmaCustomerId] = useState("");
+  const [rmaWarehouseId, setRmaWarehouseId] = useState("");
+  const [rmaProductId, setRmaProductId] = useState("");
+  const [rmaQty, setRmaQty] = useState("1");
+  const [rmaUnitPrice, setRmaUnitPrice] = useState("15000");
+  const [rmaReason, setRmaReason] = useState("");
+  const [activeStepKey, setActiveStepKey] = useState("customer");
 
   // Queries
   const rmasQuery = useApiQuery<Rma[]>("/api/v1/returns/rmas");
@@ -124,16 +139,71 @@ function Content() {
   const customers = parties.filter((p) => p.type === "customer" || p.type === "both");
   const vendors = parties.filter((p) => p.type === "vendor" || p.type === "both");
 
+  const walkthroughFields = [
+    {
+      key: "customer",
+      label: "Customer Counterparty",
+      useCase: "Original purchaser initiating return authorization or warranty replacement request.",
+      guideline: "Customer must be an active trading partner registered in Master Data.",
+      isFilled: !!rmaCustomerId,
+      onAutofill: () => {
+        if (customers.length > 0) setRmaCustomerId(customers[0].id);
+        else setRmaCustomerId("cust-demo-1");
+      },
+    },
+    {
+      key: "warehouse",
+      label: "Receiving Quarantine Warehouse",
+      useCase: "Warehouse dock location where returned packages are received and staged for inspection.",
+      guideline: "Must have designated RMA inspection and quarantine holding bays.",
+      isFilled: !!rmaWarehouseId,
+      onAutofill: () => {
+        if (warehouses.length > 0) setRmaWarehouseId(warehouses[0].id);
+        else setRmaWarehouseId("wh-demo-1");
+      },
+    },
+    {
+      key: "product",
+      label: "Returned Product SKU",
+      useCase: "Item SKU being returned by customer for refund, scrap, or repair.",
+      guideline: "Must correspond to an active finished good or component SKU.",
+      isFilled: !!rmaProductId,
+      onAutofill: () => {
+        if (products.length > 0) setRmaProductId(products[0].id);
+        else setRmaProductId("prod-demo-1");
+      },
+    },
+    {
+      key: "reason",
+      label: "RMA Justification & Claim Reason",
+      useCase: "Detailed explanation of reason for return (e.g. SMT solder defect, transit damage).",
+      guideline: "Required for QA root-cause analysis and determining credit note eligibility.",
+      isFilled: !!rmaReason.trim(),
+      onAutofill: () => setRmaReason("Transit enclosure dent and battery firmware handshake fault"),
+    },
+  ];
+
+  const handleAutofillAll = () => {
+    if (customers.length > 0) setRmaCustomerId(customers[0].id);
+    else setRmaCustomerId("cust-demo-1");
+    if (warehouses.length > 0) setRmaWarehouseId(warehouses[0].id);
+    else setRmaWarehouseId("wh-demo-1");
+    if (products.length > 0) setRmaProductId(products[0].id);
+    else setRmaProductId("prod-demo-1");
+    setRmaQty("1");
+    setRmaUnitPrice("15000");
+    setRmaReason("Transit enclosure dent and battery firmware handshake fault");
+  };
+
   // RMA Handlers
   const handleCreateRma = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const f = new FormData(e.currentTarget);
-    const customerId = String(f.get("customerId"));
-    const warehouseId = String(f.get("warehouseId"));
-    const returnReason = String(f.get("returnReason"));
-    const productId = String(f.get("productId"));
-    const authorizedQty = parseFloat(String(f.get("authorizedQty") || "1"));
-    const unitPrice = parseFloat(String(f.get("unitPrice") || "0"));
+    const customerId = rmaCustomerId || customers[0]?.id;
+    const warehouseId = rmaWarehouseId || warehouses[0]?.id;
+    const returnReason = rmaReason || "Defective unit return";
+    const productId = rmaProductId || products[0]?.id;
+    const authorizedQty = parseFloat(rmaQty || "1");
+    const unitPrice = parseFloat(rmaUnitPrice || "0");
 
     const ok = await asyncAction.run(async () => {
       await api("POST", "/api/v1/returns/rmas", {
@@ -266,14 +336,22 @@ function Content() {
         description="End-to-end customer return authorizations (RMA) and returns to vendors (RTV) with stock ledger updates and debit/credit notes."
         actions={
           canWrite && (
-            <ActionButton
-              onClick={() => {
-                if (activeTab === "rma") setDialog("new-rma");
-                else setDialog("new-rtv");
-              }}
-            >
-              {activeTab === "rma" ? "Authorize Customer Return (RMA)" : "New Return to Vendor (RTV)"}
-            </ActionButton>
+            <div className="relative inline-block">
+              <ActionButton
+                className={cn(isTourReturnsStep && "ring-2 ring-teal-500 ring-offset-2 animate-pulse")}
+                onClick={() => {
+                  if (activeTab === "rma") setDialog("new-rma");
+                  else setDialog("new-rtv");
+                }}
+              >
+                {activeTab === "rma" ? "Authorize Customer Return (RMA)" : "New Return to Vendor (RTV)"}
+              </ActionButton>
+              {isTourReturnsStep && (
+                <span className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-teal-500 text-white font-bold text-[10px] shadow animate-bounce">
+                  1
+                </span>
+              )}
+            </div>
           )
         }
       />
@@ -515,49 +593,100 @@ function Content() {
       {/* New RMA Dialog */}
       <Modal open={dialog === "new-rma"} onClose={() => setDialog("")} title="Authorize Customer Return (RMA)">
         <form onSubmit={handleCreateRma} className="flex flex-col gap-3">
+          {isTourReturnsStep && (
+            <GuidedFieldWalkthrough
+              fields={walkthroughFields}
+              activeKey={activeStepKey}
+              onSelectKey={setActiveStepKey}
+              onAutofillAll={handleAutofillAll}
+            />
+          )}
           <InlineError message={asyncAction.error} />
-          <Field label="Customer">
-            <SelectInput
-              name="customerId"
-              required
-              placeholder="Select Customer"
-              options={customers.map((c) => ({ value: c.id, label: c.displayName || c.legalName }))}
-            />
-          </Field>
-          <Field label="Receiving Warehouse">
-            <SelectInput
-              name="warehouseId"
-              required
-              placeholder="Select Warehouse"
-              options={warehouses.map((w) => ({ value: w.id, label: `${w.code} — ${w.name}` }))}
-            />
-          </Field>
-          <Field label="Product to Return">
-            <SelectInput
-              name="productId"
-              required
-              placeholder="Select Product"
-              options={products.map((p) => ({ value: p.id, label: `${p.sku} — ${p.name}` }))}
-            />
-          </Field>
-          <div className="grid grid-cols-2 gap-2">
-            <Field label="Authorized Quantity">
-              <TextInput name="authorizedQty" type="number" defaultValue="1" required />
-            </Field>
-            <Field label="Unit Price (for credit refund)">
-              <TextInput name="unitPrice" type="number" defaultValue="0" required />
+          <div className={cn("p-1 rounded transition-colors", isTourReturnsStep && activeStepKey === "customer" && "ring-2 ring-teal-500 bg-teal-500/5")}>
+            <Field label="Customer">
+              <SelectInput
+                name="customerId"
+                required
+                value={rmaCustomerId}
+                onChange={(e) => setRmaCustomerId(e.target.value)}
+                placeholder="Select Customer"
+                options={customers.map((c) => ({ value: c.id, label: c.displayName || c.legalName }))}
+              />
             </Field>
           </div>
-          <Field label="Return Reason">
-            <TextInput name="returnReason" placeholder="e.g. Defective battery, wrong SKU, buyer remorse" required />
-          </Field>
+          <div className={cn("p-1 rounded transition-colors", isTourReturnsStep && activeStepKey === "warehouse" && "ring-2 ring-teal-500 bg-teal-500/5")}>
+            <Field label="Receiving Warehouse">
+              <SelectInput
+                name="warehouseId"
+                required
+                value={rmaWarehouseId}
+                onChange={(e) => setRmaWarehouseId(e.target.value)}
+                placeholder="Select Warehouse"
+                options={warehouses.map((w) => ({ value: w.id, label: `${w.code} — ${w.name}` }))}
+              />
+            </Field>
+          </div>
+          <div className={cn("p-1 rounded transition-colors", isTourReturnsStep && activeStepKey === "product" && "ring-2 ring-teal-500 bg-teal-500/5")}>
+            <Field label="Product to Return">
+              <SelectInput
+                name="productId"
+                required
+                value={rmaProductId}
+                onChange={(e) => setRmaProductId(e.target.value)}
+                placeholder="Select Product"
+                options={products.map((p) => ({ value: p.id, label: `${p.sku} — ${p.name}` }))}
+              />
+            </Field>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <Field label="Authorized Quantity">
+              <TextInput
+                name="authorizedQty"
+                type="number"
+                value={rmaQty}
+                onChange={(e) => setRmaQty(e.target.value)}
+                required
+              />
+            </Field>
+            <Field label="Unit Price (for credit refund)">
+              <TextInput
+                name="unitPrice"
+                type="number"
+                value={rmaUnitPrice}
+                onChange={(e) => setRmaUnitPrice(e.target.value)}
+                required
+              />
+            </Field>
+          </div>
+          <div className={cn("p-1 rounded transition-colors", isTourReturnsStep && activeStepKey === "reason" && "ring-2 ring-teal-500 bg-teal-500/5")}>
+            <Field label="Return Reason">
+              <TextInput
+                name="returnReason"
+                placeholder="e.g. Defective battery, wrong SKU, buyer remorse"
+                value={rmaReason}
+                onChange={(e) => setRmaReason(e.target.value)}
+                required
+              />
+            </Field>
+          </div>
           <div className="flex justify-end gap-2 pt-2">
             <ActionButton tone="ghost" onClick={() => setDialog("")}>
               Cancel
             </ActionButton>
-            <ActionButton type="submit" loading={asyncAction.busy}>
-              Create RMA
-            </ActionButton>
+            <div className="relative inline-block">
+              <ActionButton
+                type="submit"
+                loading={asyncAction.busy}
+                className={cn(isTourReturnsStep && "ring-2 ring-teal-500 animate-pulse")}
+              >
+                Create RMA
+              </ActionButton>
+              {isTourReturnsStep && (
+                <span className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-teal-500 text-white font-bold text-[10px] shadow animate-bounce">
+                  3
+                </span>
+              )}
+            </div>
           </div>
         </form>
       </Modal>

@@ -8,10 +8,13 @@ import { useState, type FormEvent } from "react";
 import { BulkUploadButton, BulkUploadDialog } from "@/components/erp/bulk-upload";
 import { Shell } from "@/components/erp/shell";
 import { Tabs } from "@/components/erp/tabs";
+import { GuidedFieldWalkthrough } from "@/components/erp/guided-field-walkthrough";
 import { ActionButton, DataTable, DesktopOnly, Forbidden, InlineError, MobileOnly, MobileRecordCard, MobileRecordRow, Modal, PageHeader, Pill, SelectInput, TextInput } from "@/components/erp/ui";
 import { useAuth } from "@/lib/auth";
+import { useDemoTour } from "@/lib/demo-flow-context";
 import { useApiQuery, useAsyncAction, type ListResponse } from "@/lib/hooks";
 import { COUNTRY_OPTIONS, INDIAN_STATE_NAMES, INDIAN_STATE_SELECT_OPTIONS } from "@/lib/reference";
+import { cn } from "@/lib/utils";
 
 interface Factory {
   id: string;
@@ -54,11 +57,77 @@ const stateLabel = (code?: string | null) => (code && INDIAN_STATE_NAMES[code] ?
 function FactoryDialog({ factory, onClose, onSaved }: { factory: Factory | null; onClose: () => void; onSaved: () => void }) {
   const { api } = useAuth();
   const { run, busy, error } = useAsyncAction();
+  const { isTourActive, activeJourneyId, currentJourneyStepIndex } = useDemoTour();
+  const isTourStep2 = isTourActive && activeJourneyId === "administration" && currentJourneyStepIndex === 1;
+
+  const [activeWalkthroughField, setActiveWalkthroughField] = useState("name");
+  const [name, setName] = useState(factory?.name ?? "");
+  const [addressLine1, setAddressLine1] = useState(factory?.addressLine1 ?? "");
+  const [city, setCity] = useState(factory?.city ?? "");
+  const [stateCode, setStateCode] = useState(factory?.stateCode ?? "");
+  const [postalCode, setPostalCode] = useState(factory?.postalCode ?? "");
+
+  const autofillDemoPlant = () => {
+    setName("Pune Assembly Plant 1");
+    setAddressLine1("Plot 42, Hinjewadi Industrial Zone Phase 2");
+    setCity("Pune");
+    setStateCode("27");
+    setPostalCode("411057");
+  };
+
+  const walkthroughFields = [
+    {
+      id: "name",
+      label: "Factory Name (Required)",
+      shortLabel: "Name",
+      useCase: "Primary manufacturing facility entity that hosts assembly lines, shop-floor work centers, and working calendars.",
+      guideline: "Descriptive facility identifier (e.g. Pune Assembly Plant 1).",
+      restriction: "Required. Factory codes are generated automatically (FACT-XXXX).",
+      sampleValueText: "Pune Assembly Plant 1",
+      isFilled: Boolean(name),
+      onFill: () => setName("Pune Assembly Plant 1"),
+    },
+    {
+      id: "addressLine1",
+      label: "Street Address",
+      shortLabel: "Address",
+      useCase: "Physical plant dispatch and delivery address printed on vendor purchase orders and gate-in records.",
+      guideline: "Industrial park or plot details.",
+      restriction: "Standard physical street address.",
+      sampleValueText: "Plot 42, Hinjewadi Industrial Zone Phase 2",
+      isFilled: Boolean(addressLine1),
+      onFill: () => setAddressLine1("Plot 42, Hinjewadi Industrial Zone Phase 2"),
+    },
+    {
+      id: "location",
+      label: "City, State & Postal Code",
+      shortLabel: "City/State",
+      useCase: "Determines statutory GST tax jurisdiction (State code 27 = Maharashtra for intra-state CGST/SGST).",
+      guideline: "2-digit Indian state code matching the registered tax entity.",
+      restriction: "Mandatory for automated tax calculation.",
+      sampleValueText: "Pune, State 27, PIN 411057",
+      isFilled: Boolean(city && stateCode && postalCode),
+      onFill: () => {
+        setCity("Pune");
+        setStateCode("27");
+        setPostalCode("411057");
+      },
+    },
+  ];
+
+  const allWalkthroughFilled = Boolean(name && addressLine1 && city && stateCode);
+
   const submit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
     const get = (k: string) => String(f.get(k) ?? "");
-    const body = { name: get("name"), addressLine1: get("addressLine1") || null, city: get("city") || null, stateCode: get("stateCode") || null, postalCode: get("postalCode") || null };
+    const body = {
+      name: name || get("name"),
+      addressLine1: addressLine1 || get("addressLine1") || null,
+      city: city || get("city") || null,
+      stateCode: stateCode || get("stateCode") || null,
+      postalCode: postalCode || get("postalCode") || null,
+    };
     const ok = await run(async () => {
       if (factory) await api("PATCH", `/api/v1/factories/${factory.id}`, { json: body });
       else await api("POST", "/api/v1/factories", { json: body });
@@ -73,16 +142,83 @@ function FactoryDialog({ factory, onClose, onSaved }: { factory: Factory | null;
     <Modal open onClose={onClose} title={factory ? "Edit factory" : "New factory"} description="Codes are generated automatically." descriptionSize="radix">
       <form onSubmit={submit} className="flex flex-col gap-3">
         <InlineError message={error} />
-        <TextInput name="name" placeholder="Name, e.g. Pune Plant" defaultValue={factory?.name ?? ""} required />
-        <TextInput name="addressLine1" placeholder="Address line 1" defaultValue={factory?.addressLine1 ?? ""} />
-        <div className="flex gap-2">
-          <TextInput name="city" placeholder="City" defaultValue={factory?.city ?? ""} />
-          <TextInput name="stateCode" placeholder="State code" defaultValue={factory?.stateCode ?? ""} />
-          <TextInput name="postalCode" placeholder="Postal code" defaultValue={factory?.postalCode ?? ""} />
+        {isTourStep2 && !factory && (
+          <GuidedFieldWalkthrough
+            dialogTitle="New factory"
+            fields={walkthroughFields}
+            activeFieldId={activeWalkthroughField}
+            onSelectField={setActiveWalkthroughField}
+            onFillAll={autofillDemoPlant}
+            allFilled={allWalkthroughFilled}
+            submitButtonLabel="Save"
+            stepBadgeNumber={2}
+            nextStepBadgeNumber={3}
+          />
+        )}
+        <div className={cn(isTourStep2 && !factory && activeWalkthroughField === "name" && "rounded-lg p-1 ring-2 ring-teal-500 bg-teal-500/5 transition-all")}>
+          <TextInput
+            name="name"
+            placeholder="Name, e.g. Pune Plant"
+            value={name}
+            onFocus={() => setActiveWalkthroughField("name")}
+            onChange={(e) => setName(e.target.value)}
+            required
+          />
         </div>
-        <div className="flex justify-end gap-2">
+        <div className={cn(isTourStep2 && !factory && activeWalkthroughField === "addressLine1" && "rounded-lg p-1 ring-2 ring-teal-500 bg-teal-500/5 transition-all")}>
+          <TextInput
+            name="addressLine1"
+            placeholder="Address line 1"
+            value={addressLine1}
+            onFocus={() => setActiveWalkthroughField("addressLine1")}
+            onChange={(e) => setAddressLine1(e.target.value)}
+          />
+        </div>
+        <div className={cn(isTourStep2 && !factory && activeWalkthroughField === "location" && "rounded-lg p-1 ring-2 ring-teal-500 bg-teal-500/5 transition-all")}>
+          <div className="flex gap-2">
+            <TextInput
+              name="city"
+              placeholder="City"
+              value={city}
+              onFocus={() => setActiveWalkthroughField("location")}
+              onChange={(e) => setCity(e.target.value)}
+            />
+            <TextInput
+              name="stateCode"
+              placeholder="State code"
+              value={stateCode}
+              onFocus={() => setActiveWalkthroughField("location")}
+              onChange={(e) => setStateCode(e.target.value)}
+            />
+            <TextInput
+              name="postalCode"
+              placeholder="Postal code"
+              value={postalCode}
+              onFocus={() => setActiveWalkthroughField("location")}
+              onChange={(e) => setPostalCode(e.target.value)}
+            />
+          </div>
+        </div>
+        <div className="flex justify-end gap-2 items-center">
           <ActionButton tone="ghost" onClick={onClose}>Cancel</ActionButton>
-          <ActionButton type="submit" loading={busy}>Save</ActionButton>
+          <div className="relative">
+            {isTourStep2 && !factory && (
+              <span className="absolute -top-2 -right-2 flex h-5 w-5 z-10 pointer-events-none">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-5 w-5 bg-teal-500 text-[10px] font-bold text-white items-center justify-center shadow-md">
+                  3
+                </span>
+              </span>
+            )}
+            <ActionButton
+              type="submit"
+              tone={isTourStep2 && !factory ? "primary" : undefined}
+              loading={busy}
+              className={cn(isTourStep2 && !factory && allWalkthroughFilled && "ring-2 ring-teal-500 ring-offset-2 shadow-lg animate-pulse")}
+            >
+              Save
+            </ActionButton>
+          </div>
         </div>
       </form>
     </Modal>
@@ -92,14 +228,91 @@ function FactoryDialog({ factory, onClose, onSaved }: { factory: Factory | null;
 function WarehouseDialog({ warehouse, factories, onClose, onSaved }: { warehouse: Warehouse | null; factories: Factory[]; onClose: () => void; onSaved: () => void }) {
   const { api } = useAuth();
   const { run, busy, error } = useAsyncAction();
+  const { isTourActive, activeJourneyId, currentJourneyStepIndex } = useDemoTour();
+  const isTourStep2 = isTourActive && activeJourneyId === "administration" && currentJourneyStepIndex === 1;
+
   const w: Partial<Warehouse> = warehouse ?? {};
+  const [activeWalkthroughField, setActiveWalkthroughField] = useState("name");
+  const [name, setName] = useState(w.name ?? "");
+  const [status, setStatus] = useState(warehouse ? w.status || "active" : "active");
+  const [factoryId, setFactoryId] = useState(w.factoryId ?? (factories[0]?.id || ""));
+  const [addressLine1, setAddressLine1] = useState(w.addressLine1 ?? "");
+  const [city, setCity] = useState(w.city ?? "");
+  const [postalCode, setPostalCode] = useState(w.postalCode ?? "");
+  const [stateCode, setStateCode] = useState(w.stateCode ?? "27");
+
+  const autofillDemoWarehouse = () => {
+    setName("Pune Central Warehouse");
+    setStatus("active");
+    if (factories.length > 0) {
+      setFactoryId(factories[0].id);
+    }
+    setAddressLine1("Plot 42, Inbound Bay A & B");
+    setCity("Pune");
+    setStateCode("27");
+    setPostalCode("411057");
+  };
+
+  const walkthroughFields = [
+    {
+      id: "name",
+      label: "Warehouse Name (Required)",
+      shortLabel: "Name",
+      useCase: "Physical inventory storage facility with dock doors, receiving bays, and directed bin putaway.",
+      guideline: "Descriptive storage location name (e.g. Pune Central Warehouse).",
+      restriction: "Required. Unique warehouse code generated automatically.",
+      sampleValueText: "Pune Central Warehouse",
+      isFilled: Boolean(name),
+      onFill: () => setName("Pune Central Warehouse"),
+    },
+    {
+      id: "factoryId",
+      label: "Status & Factory Topology Link",
+      shortLabel: "Factory Link",
+      useCase: "Geographically links storage site to manufacturing plant for internal stock transfer orders.",
+      guideline: "Select the plant where this warehouse physically operates.",
+      restriction: "Warehouse must be active to transact stock.",
+      sampleValueText: "Active / Pune Plant",
+      isFilled: Boolean(factoryId && status === "active"),
+      onFill: () => {
+        setStatus("active");
+        if (factories.length > 0) setFactoryId(factories[0].id);
+      },
+    },
+    {
+      id: "location",
+      label: "Inbound Dock Address & State",
+      shortLabel: "Dock Address",
+      useCase: "Ship-to destination printed on vendor POs and statutory e-Way Bills.",
+      guideline: "Specify dock and gate identifiers for delivery drivers.",
+      restriction: "State code must match the registered tax entity.",
+      sampleValueText: "Plot 42, Inbound Bay A & B, Pune, State 27",
+      isFilled: Boolean(addressLine1 && city && stateCode),
+      onFill: () => {
+        setAddressLine1("Plot 42, Inbound Bay A & B");
+        setCity("Pune");
+        setStateCode("27");
+        setPostalCode("411057");
+      },
+    },
+  ];
+
+  const allWalkthroughFilled = Boolean(name && factoryId && addressLine1 && city);
+
   const submit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
     const get = (k: string) => String(f.get(k) ?? "");
     const body = {
-      name: get("name"), status: get("status") || "active", addressLine1: get("addressLine1") || null, addressLine2: get("addressLine2") || null, city: get("city") || null,
-      postalCode: get("postalCode") || null, stateCode: get("stateCode") || null, country: get("country") || "IN", factoryId: get("factoryId") || null,
+      name: name || get("name"),
+      status: status || get("status") || "active",
+      addressLine1: addressLine1 || get("addressLine1") || null,
+      addressLine2: get("addressLine2") || null,
+      city: city || get("city") || null,
+      postalCode: postalCode || get("postalCode") || null,
+      stateCode: stateCode || get("stateCode") || null,
+      country: get("country") || "IN",
+      factoryId: factoryId || get("factoryId") || null,
     };
     const ok = await run(async () => {
       if (warehouse) await api("PATCH", `/api/v1/warehouses/${warehouse.id}`, { json: body });
@@ -115,21 +328,70 @@ function WarehouseDialog({ warehouse, factories, onClose, onSaved }: { warehouse
     <Modal open onClose={onClose} descriptionSize="radix" title={warehouse ? "Edit warehouse" : "New warehouse"} description={warehouse ? undefined : "Codes are generated automatically."}>
       <form onSubmit={submit} className="flex flex-col gap-3">
         <InlineError message={error} />
+        {isTourStep2 && !warehouse && (
+          <GuidedFieldWalkthrough
+            dialogTitle="New warehouse"
+            fields={walkthroughFields}
+            activeFieldId={activeWalkthroughField}
+            onSelectField={setActiveWalkthroughField}
+            onFillAll={autofillDemoWarehouse}
+            allFilled={allWalkthroughFilled}
+            submitButtonLabel="Save"
+            stepBadgeNumber={2}
+            nextStepBadgeNumber={3}
+          />
+        )}
         {warehouse && <p className="text-sm text-[var(--muted-foreground)]">Code (immutable): {w.code}</p>}
-        <TextInput name="name" placeholder="Name" defaultValue={w.name ?? ""} required />
-        <SelectInput name="status" defaultValue={warehouse ? w.status : "active"} options={WAREHOUSE_STATUSES} />
-        <SelectInput name="factoryId" placeholder="Factory (optional)" defaultValue={w.factoryId ?? ""} options={factories.filter((f) => f.status === "active").map((f) => ({ value: f.id, label: f.name }))} />
-        <TextInput name="addressLine1" placeholder="Address line 1" defaultValue={w.addressLine1 ?? ""} />
-        <TextInput name="addressLine2" placeholder="Address line 2 (optional)" defaultValue={w.addressLine2 ?? ""} />
-        <div className="flex gap-2">
-          <TextInput name="city" placeholder="City" defaultValue={w.city ?? ""} />
-          <TextInput name="postalCode" placeholder="Postal code" defaultValue={w.postalCode ?? ""} />
+        <div className={cn(isTourStep2 && !warehouse && activeWalkthroughField === "name" && "rounded-lg p-1 ring-2 ring-teal-500 bg-teal-500/5 transition-all")}>
+          <TextInput
+            name="name"
+            placeholder="Name"
+            value={name}
+            onFocus={() => setActiveWalkthroughField("name")}
+            onChange={(e) => setName(e.target.value)}
+            required
+          />
         </div>
-        <SelectInput name="stateCode" placeholder="State" defaultValue={w.stateCode ?? ""} options={stateOptions} />
+        <div className={cn(isTourStep2 && !warehouse && activeWalkthroughField === "factoryId" && "rounded-lg p-1 ring-2 ring-teal-500 bg-teal-500/5 transition-all space-y-2")}>
+          <SelectInput name="status" value={status} onChange={(e) => setStatus(e.target.value)} options={WAREHOUSE_STATUSES} />
+          <SelectInput name="factoryId" placeholder="Factory (optional)" value={factoryId} onChange={(e) => setFactoryId(e.target.value)} options={factories.filter((f) => f.status === "active").map((f) => ({ value: f.id, label: f.name }))} />
+        </div>
+        <div className={cn(isTourStep2 && !warehouse && activeWalkthroughField === "location" && "rounded-lg p-1 ring-2 ring-teal-500 bg-teal-500/5 transition-all space-y-2")}>
+          <TextInput
+            name="addressLine1"
+            placeholder="Address line 1"
+            value={addressLine1}
+            onFocus={() => setActiveWalkthroughField("location")}
+            onChange={(e) => setAddressLine1(e.target.value)}
+          />
+          <TextInput name="addressLine2" placeholder="Address line 2 (optional)" defaultValue={w.addressLine2 ?? ""} />
+          <div className="flex gap-2">
+            <TextInput name="city" placeholder="City" value={city} onChange={(e) => setCity(e.target.value)} />
+            <TextInput name="postalCode" placeholder="Postal code" value={postalCode} onChange={(e) => setPostalCode(e.target.value)} />
+          </div>
+          <SelectInput name="stateCode" placeholder="State" value={stateCode} onChange={(e) => setStateCode(e.target.value)} options={stateOptions} />
+        </div>
         <SelectInput name="country" placeholder="Country" defaultValue="IN" options={COUNTRY_OPTIONS} />
-        <div className="flex justify-end gap-2">
+        <div className="flex justify-end gap-2 items-center">
           <ActionButton tone="ghost" onClick={onClose}>Cancel</ActionButton>
-          <ActionButton type="submit" loading={busy}>Save</ActionButton>
+          <div className="relative">
+            {isTourStep2 && !warehouse && (
+              <span className="absolute -top-2 -right-2 flex h-5 w-5 z-10 pointer-events-none">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-5 w-5 bg-teal-500 text-[10px] font-bold text-white items-center justify-center shadow-md">
+                  3
+                </span>
+              </span>
+            )}
+            <ActionButton
+              type="submit"
+              tone={isTourStep2 && !warehouse ? "primary" : undefined}
+              loading={busy}
+              className={cn(isTourStep2 && !warehouse && allWalkthroughFilled && "ring-2 ring-teal-500 ring-offset-2 shadow-lg animate-pulse")}
+            >
+              Save
+            </ActionButton>
+          </div>
         </div>
       </form>
     </Modal>
@@ -138,6 +400,9 @@ function WarehouseDialog({ warehouse, factories, onClose, onSaved }: { warehouse
 
 function FactoriesTab({ canWrite }: { canWrite: boolean }) {
   const qc = useQueryClient();
+  const { isTourActive, activeJourneyId, currentJourneyStepIndex } = useDemoTour();
+  const isTourStep2 = isTourActive && activeJourneyId === "administration" && currentJourneyStepIndex === 1;
+
   const list = useApiQuery<ListResponse<Factory>>("/api/v1/factories", { limit: 100 });
   const factories = list.data?.data ?? [];
   const [dialog, setDialog] = useState<{ factory: Factory | null } | null>(null);
@@ -152,7 +417,25 @@ function FactoriesTab({ canWrite }: { canWrite: boolean }) {
         <h2 className="rx-heading-6">Factories</h2>
         <div className="flex-1" />
         {canWrite && <BulkUploadButton onClick={() => setBulk(true)} />}
-        {canWrite && <ActionButton onClick={() => setDialog({ factory: null })}>New factory</ActionButton>}
+        {canWrite && (
+          <div className="relative">
+            {isTourStep2 && (
+              <span className="absolute -top-2 -right-2 flex h-5 w-5 z-10 pointer-events-none">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-5 w-5 bg-teal-500 text-[10px] font-bold text-white items-center justify-center shadow-md">
+                  2
+                </span>
+              </span>
+            )}
+            <ActionButton
+              onClick={() => setDialog({ factory: null })}
+              tone={isTourStep2 ? "primary" : undefined}
+              className={cn(isTourStep2 && "ring-2 ring-teal-500 ring-offset-2 shadow-lg animate-pulse")}
+            >
+              New factory
+            </ActionButton>
+          </div>
+        )}
       </div>
       <InlineError message={list.error?.message} />
       <DesktopOnly className="w-full">
@@ -180,6 +463,9 @@ function FactoriesTab({ canWrite }: { canWrite: boolean }) {
 
 function WarehousesTab({ canWrite }: { canWrite: boolean }) {
   const qc = useQueryClient();
+  const { isTourActive, activeJourneyId, currentJourneyStepIndex } = useDemoTour();
+  const isTourStep2 = isTourActive && activeJourneyId === "administration" && currentJourneyStepIndex === 1;
+
   const list = useApiQuery<ListResponse<Warehouse>>("/api/v1/warehouses", { limit: 100 });
   const factories = useApiQuery<ListResponse<Factory>>("/api/v1/factories", { limit: 100 });
   const warehouses = list.data?.data ?? [];
@@ -195,7 +481,25 @@ function WarehousesTab({ canWrite }: { canWrite: boolean }) {
         <h2 className="rx-heading-6">Warehouses</h2>
         <div className="flex-1" />
         {canWrite && <BulkUploadButton onClick={() => setBulk(true)} />}
-        {canWrite && <ActionButton onClick={() => setDialog({ warehouse: null })}>New warehouse</ActionButton>}
+        {canWrite && (
+          <div className="relative">
+            {isTourStep2 && (
+              <span className="absolute -top-2 -right-2 flex h-5 w-5 z-10 pointer-events-none">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-5 w-5 bg-teal-500 text-[10px] font-bold text-white items-center justify-center shadow-md">
+                  2
+                </span>
+              </span>
+            )}
+            <ActionButton
+              onClick={() => setDialog({ warehouse: null })}
+              tone={isTourStep2 ? "primary" : undefined}
+              className={cn(isTourStep2 && "ring-2 ring-teal-500 ring-offset-2 shadow-lg animate-pulse")}
+            >
+              New warehouse
+            </ActionButton>
+          </div>
+        )}
       </div>
       <InlineError message={list.error?.message} />
       <DesktopOnly className="w-full">
