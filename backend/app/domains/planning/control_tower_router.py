@@ -6,23 +6,18 @@ Endpoints:
 - GET /geographic-velocity: Regional order distribution velocity across zones
 - POST /snapshot: Record daily executive KPI snapshot
 """
-import uuid
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, timedelta
 from decimal import Decimal
-from typing import Annotated, Any, Dict, List, Optional
-from fastapi import APIRouter, Depends, Query
-from pydantic import BaseModel, Field
-import sqlalchemy as sa
-from sqlalchemy import select, func, and_, or_
+from typing import Annotated
+from fastapi import APIRouter, Depends
+from sqlalchemy import select, func
 
 from app.core.auth import Actor, require_any_permission
 from app.core.db import session
-from app.models.ar_invoice import ArInvoice
 from app.models.order import Order
 from app.models.party import Party
 from app.models.phase3_modules import ScKpiSnapshot
 from app.models.product import Product
-from app.models.purchase_order import PurchaseOrder
 from app.models.stock_balance import StockBalance
 
 router = APIRouter(prefix="/api/v1/control-tower", tags=["Supply Chain Control Tower"])

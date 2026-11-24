@@ -36,7 +36,6 @@ from __future__ import annotations
 import uuid
 from datetime import date, datetime, timedelta, timezone
 
-from sqlalchemy import func
 
 from app.core.db import session
 from app.models.ar_invoice import ArInvoice

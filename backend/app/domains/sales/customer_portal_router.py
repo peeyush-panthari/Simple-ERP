@@ -10,11 +10,10 @@ Endpoints:
 import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
-from typing import Annotated, Any, Dict, List, Optional
-from fastapi import APIRouter, Depends, Query
+from typing import Annotated, Optional
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
-import sqlalchemy as sa
-from sqlalchemy import select, or_, func
+from sqlalchemy import select
 
 from app.core.auth import Actor, require_any_permission
 from app.core.db import session
@@ -23,8 +22,7 @@ from app.models.ar_invoice import ArInvoice
 from app.models.order import Order
 from app.models.order_line import OrderLine
 from app.models.party import Party
-from app.models.phase2_modules import CustomerPortalUser, CustomerRmaTicket
-from app.models.product import Product
+from app.models.phase2_modules import CustomerRmaTicket
 from app.services.sequences import next_document_number
 
 router = APIRouter(prefix="/api/v1/customer-portal", tags=["Customer Portal"])

@@ -28,7 +28,7 @@ from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 from sqlalchemy import or_
 
-from app.core.auth import Actor, CurrentActor, require_any_permission, require_permission
+from app.core.auth import Actor, require_any_permission, require_permission
 from app.core.config import settings
 from app.core.db import session
 from app.core.errors import ProblemError, conflict, not_found, rule_violation

@@ -4,7 +4,7 @@ import uuid
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Query
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from sqlalchemy import select
 
 from app.core.auth import Actor, require_any_permission

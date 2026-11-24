@@ -8,20 +8,18 @@ Endpoints:
 import uuid
 from datetime import date, datetime, timedelta
 from decimal import Decimal
-from typing import Annotated, Any, Dict, List, Optional
-from fastapi import APIRouter, Depends, Query
+from typing import Annotated, Optional
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
-import sqlalchemy as sa
 from sqlalchemy import select, func
 
 from app.core.auth import Actor, require_any_permission
 from app.core.db import session
-from app.core.errors import bad_request, not_found
+from app.core.errors import not_found
 from app.models.business_entity import BusinessEntity
 from app.models.order import Order
 from app.models.party import Party
 from app.models.phase1_modules import EwayBill
-from app.services.sequences import next_document_number
 
 router = APIRouter(prefix="/api/v1/statutory", tags=["Statutory Logistics"])
 

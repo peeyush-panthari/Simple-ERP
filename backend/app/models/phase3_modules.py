@@ -4,12 +4,12 @@
 3. Supply Chain Control Tower Dashboard (ScKpiSnapshot)
 """
 import uuid
-from datetime import date, datetime, timezone
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Any, Dict, List, Optional
 
 from sqlalchemy import (
-    Boolean, CheckConstraint, Date, DateTime, ForeignKey, Index, Integer,
+    Boolean, Date, DateTime, ForeignKey, Index, Integer,
     Numeric, String, Text, UniqueConstraint, func
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID

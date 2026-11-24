@@ -19,7 +19,7 @@ import zipfile
 
 import qrcode
 import zxingcpp
-from fastapi import APIRouter, Depends, Request, Response
+from fastapi import APIRouter, Depends, Response
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 

@@ -9,16 +9,14 @@ Endpoints:
 - GET /recalls/{id}/customer-advisories: Generate advisory customer notices
 """
 import uuid
-from datetime import datetime
-from typing import Annotated, Any, Dict, List, Optional
+from typing import Annotated, Optional
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
-import sqlalchemy as sa
-from sqlalchemy import select, func
+from sqlalchemy import select
 
 from app.core.auth import Actor, require_any_permission
 from app.core.db import session
-from app.core.errors import bad_request, not_found
+from app.core.errors import not_found
 from app.models.inventory_item import InventoryItem
 from app.models.long_term_modules import LotGenealogyEdge, RecallAffectedItem, RecallEvent
 from app.models.order import Order

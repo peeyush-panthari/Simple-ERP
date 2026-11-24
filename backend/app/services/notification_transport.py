@@ -159,7 +159,7 @@ def send_sms(*, to: str, body: str) -> dict:
         method="POST",
     )
     try:
-        with urllib.request.urlopen(req, timeout=10) as resp:
+        with urllib.request.urlopen(req, timeout=10):
             return {"ok": True, "provider": "twilio"}
     except urllib.error.HTTPError as exc:
         body_text = exc.read().decode("utf-8", errors="replace")[:500]

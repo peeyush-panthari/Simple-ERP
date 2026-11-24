@@ -6,7 +6,7 @@ from collections import defaultdict
 from datetime import date, timedelta
 from decimal import Decimal
 
-from sqlalchemy import and_, or_, select
+from sqlalchemy import or_, select
 
 from app.core.db import session
 from app.core.money import decimal_str, to_decimal
@@ -310,7 +310,6 @@ def release_planned_orders(
 ) -> list[dict]:
     """Converts selected MrpPlannedOrders into real PurchaseRequisitions or ProductionRuns."""
     released_results = []
-    actor_id = actor.get("sub") or actor.get("email") or "system"
     actor_name = actor.get("name") or actor.get("email") or "System Planner"
 
     orders = session.execute(

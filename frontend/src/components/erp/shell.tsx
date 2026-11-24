@@ -141,14 +141,7 @@ function NavLinkItem({ item, onNavigate }: { item: NavItem; onNavigate?: () => v
         <span className="truncate">{item.label}</span>
       </div>
       {item.badge && (
-        <span
-          className={cn(
-            "text-[9px] font-semibold px-1.5 py-0.5 rounded leading-none shrink-0 tracking-tight ml-1.5",
-            item.roadmapStage === "medium_term"
-              ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
-              : "bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20"
-          )}
-        >
+        <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded leading-none shrink-0 tracking-tight ml-1.5 bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/20">
           {item.badge}
         </span>
       )}

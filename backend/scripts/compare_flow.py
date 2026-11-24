@@ -4,7 +4,7 @@ every response, with ids, document numbers, timestamps and the per-run suffix no
 The scenario is the money path: vendor -> product -> PO (GST split) -> GRN -> QC (lot + serialised) -> customer -> order
 -> allocate -> pack -> ship -> invoice -> payment -> credit note -> reversal, plus a few negative cases.
 """
-import json, re, sys, urllib.request, urllib.error, uuid
+import json, re, urllib.request, urllib.error, uuid
 
 NEW, OLD = "http://127.0.0.1:8000", "http://127.0.0.1:5001"
 EMAIL, PW = "dev-admin@example.test", "DevAdmin#Pass2026"

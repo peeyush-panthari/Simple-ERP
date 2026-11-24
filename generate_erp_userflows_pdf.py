@@ -6,7 +6,6 @@ UI controls, forms, modals, validation mechanisms, and cross-persona handoffs ac
 """
 
 import os
-import sys
 import weasyprint
 
 def get_userflow_css():

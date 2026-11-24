@@ -1,6 +1,6 @@
 """Fetch every GET endpoint from the original (Flask :5001) and the new (FastAPI :8000) API with the same login
 and compare the JSON. Both point at the same database, so any difference is a behavioural difference."""
-import json, re, sys, urllib.request, urllib.error
+import json, re, urllib.request, urllib.error
 
 NEW, OLD = "http://127.0.0.1:8000", "http://127.0.0.1:5001"
 EMAIL, PW = "dev-admin@example.test", "DevAdmin#Pass2026"

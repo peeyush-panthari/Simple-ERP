@@ -6,14 +6,11 @@ from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import desc, func, select
-from sqlalchemy.orm import selectinload
+from sqlalchemy import desc, select
 
 from app.core.db import session
 from app.core.errors import bad_request, not_found
 from app.models.drp import DistributionLane, DrpReplenishmentPolicy, PlannedTransferOrder
-from app.models.order import Order
-from app.models.order_line import OrderLine
 from app.models.product import Product
 from app.models.stock_balance import StockBalance
 from app.models.transfer import Transfer

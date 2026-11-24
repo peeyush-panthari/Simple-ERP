@@ -36,7 +36,6 @@ from app.core.money import decimal_str, round_dp, to_decimal
 from app.core.pagination import ListQuery, list_response, offset_of, parse_sort
 from app.domains.production.schemas import (
     AdditionalComponentBody,
-    ConsumedItemBody,
     FinishedGoodStatusBody,
     FinishedGoodTransferBody,
     ProductionBody,

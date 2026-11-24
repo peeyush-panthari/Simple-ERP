@@ -9,7 +9,7 @@ import pytest
 
 from app.core.db import SessionLocal
 from app.models.email_config import EmailConfig
-from app.services import email_config_repo, notification_repo, notification_transport
+from app.services import email_config_repo, notification_repo
 
 
 class _SmtpHandler(socketserver.StreamRequestHandler):

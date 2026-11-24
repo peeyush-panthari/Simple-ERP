@@ -3,13 +3,12 @@ from __future__ import annotations
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 from sqlalchemy import desc, select
 
 from app.core.auth import Actor, require_any_permission
 from app.core.db import session
-from app.models.location import Location
 from app.models.putaway_task import PutawayTask
 from app.models.warehouse import Warehouse
 from app.services.putaway_engine import (

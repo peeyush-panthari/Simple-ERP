@@ -18,12 +18,6 @@ from app.models.warehouse import Warehouse
 from app.models.production_run import ProductionRun
 from app.models.order import Order
 from app.models.order_line import OrderLine
-from app.models.phase2_modules import (
-    PickWave, PickWaveOrder, PickWaveLine,
-    CustomerPortalUser, CustomerRmaTicket,
-    IpqcInspection, CertificateOfAnalysis,
-    ApprovedVendor, VendorComplianceCert
-)
 from app.domains.warehouse.wave_picking_router import (
     create_wave, list_waves, get_wave_detail, confirm_line_pick, complete_wave,
     CreateWaveRequest, ConfirmPickRequest

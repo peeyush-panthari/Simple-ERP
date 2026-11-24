@@ -14,8 +14,6 @@ from app.models.doc_sequence import DocSequence
 from app.models.grn import Grn
 from app.models.grn_line import GrnLine
 from app.models.landed_cost import LandedCostCharge, LandedCostItem, LandedCostReceipt, LandedCostVoucher
-from app.models.party import Party
-from app.models.product import Product
 
 
 def _quantize(val: Decimal | float | int, decimals: int = 2) -> Decimal:

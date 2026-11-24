@@ -37,7 +37,6 @@ from app.domains.grn.schemas import (
     GrnBody,
     GrnBulkUploadBody,
     GrnEditBody,
-    GrnLineEditBody,
     InspectBody,
     LineBody,
     PutawayBody,

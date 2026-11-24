@@ -8,17 +8,16 @@ Endpoints:
 - GET /check-po: Pre-PO placement validation gate checking vendor AVL clearance
 """
 import uuid
-from datetime import date, datetime, timezone
+from datetime import date
 from decimal import Decimal
-from typing import Annotated, Any, Dict, List, Optional
+from typing import Annotated, Optional
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
-import sqlalchemy as sa
-from sqlalchemy import select, or_, func
+from sqlalchemy import select, or_
 
 from app.core.auth import Actor, require_any_permission
 from app.core.db import session
-from app.core.errors import bad_request, not_found
+from app.core.errors import not_found
 from app.models.party import Party
 from app.models.phase2_modules import ApprovedVendor, VendorComplianceCert
 from app.models.product import Product

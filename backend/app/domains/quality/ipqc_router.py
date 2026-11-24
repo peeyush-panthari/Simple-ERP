@@ -8,21 +8,19 @@ Endpoints:
 - GET /coa/{id}/print: Printable CoA certificate slip data
 """
 import uuid
-from datetime import date, datetime, timezone
+from datetime import date
 from decimal import Decimal
-from typing import Annotated, Any, Dict, List, Optional
-from fastapi import APIRouter, Depends, Query
+from typing import Annotated, List, Optional
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
-import sqlalchemy as sa
-from sqlalchemy import select, or_, func
+from sqlalchemy import select
 
 from app.core.auth import Actor, require_any_permission
 from app.core.db import session
-from app.core.errors import bad_request, not_found
+from app.core.errors import not_found
 from app.models.phase2_modules import IpqcInspection, CertificateOfAnalysis
 from app.models.product import Product
 from app.models.production_run import ProductionRun
-from app.models.production_run_stage import ProductionRunStage
 from app.services.sequences import next_document_number
 
 router = APIRouter(prefix="/api/v1/quality", tags=["Quality Control"])

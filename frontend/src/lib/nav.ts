@@ -57,10 +57,8 @@ export interface NavItem {
   group: NavGroupName;
   /** Identifier of the ERP module. Omitted for core platform infrastructure. */
   module?: string;
-  /** Badge label for roadmap / upcoming features */
+  /** Optional badge label (e.g. 'New' or 'Beta') */
   badge?: string;
-  /** Roadmap development horizon */
-  roadmapStage?: "medium_term" | "long_term";
 }
 
 /**

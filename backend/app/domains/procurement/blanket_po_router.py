@@ -6,13 +6,12 @@ Endpoints:
 - POST /blanket-pos/{id}/release: Issue Call-Off / Release Purchase Order against BPA
 """
 import uuid
-from datetime import date, datetime
+from datetime import date
 from decimal import Decimal
-from typing import Annotated, Any, Dict, List, Optional
-from fastapi import APIRouter, Depends, Query
+from typing import Annotated, List, Optional
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
-import sqlalchemy as sa
-from sqlalchemy import select, func
+from sqlalchemy import select
 
 from app.core.auth import Actor, require_any_permission
 from app.core.db import session

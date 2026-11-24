@@ -7,11 +7,11 @@ Implements:
 5. Model Tournament Selection based on back-tested MAPE (Mean Absolute Percentage Error)
 """
 import uuid
-from datetime import date, datetime
-from typing import Any, Dict, List, Optional, Tuple
+from datetime import date
+from typing import Dict, List, Optional, Tuple
 from dateutil.relativedelta import relativedelta
 import sqlalchemy as sa
-from sqlalchemy import select, func
+from sqlalchemy import select
 
 from app.core.db import session
 from app.models.long_term_modules import DemandForecastScenario, ForecastPeriodLine

@@ -5,7 +5,6 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import desc, select
-from sqlalchemy.orm import selectinload
 
 from app.core.auth import Actor, require_any_permission
 from app.core.db import session

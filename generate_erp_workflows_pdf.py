@@ -6,7 +6,6 @@ decision engines, state machines, and cross-module integrations with high-fideli
 """
 
 import os
-import sys
 import weasyprint
 
 def get_base_css():

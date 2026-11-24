@@ -32,12 +32,11 @@ from app.core.auth import Actor, require_permission
 from app.core.access_scope import assert_warehouse_in_scope
 from app.core.db import session
 from app.core.errors import ProblemError, rule_violation
-from app.core.money import decimal_str, to_decimal
+from app.core.money import decimal_str
 from app.core.pagination import ListQuery, list_response, offset_of
 from app.core.scalars import DecimalString
 from app.domains.procurement.router import _create_po_postgres
 from app.domains.procurement.schemas import LineBody, PoBody
-from app.models.purchase_requisition import PurchaseRequisition
 from app.models.purchase_rfq import PurchaseQuotation, PurchaseQuotationLine, PurchaseRfq, PurchaseRfqLine, PurchaseRfqVendor
 from app.services import notification_repo, party_summary, requisition_repo, sourcing_repo, warehouse_repo
 from app.services.sequences import next_document_number

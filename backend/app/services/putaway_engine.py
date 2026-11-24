@@ -10,9 +10,6 @@ from sqlalchemy.orm import Session
 from app.core.db import session as db_session
 from app.models.inventory_item import InventoryItem
 from app.models.location import Location
-from app.models.product import Product
-from app.models.putaway_task import PutawayTask
-from app.models.warehouse import Warehouse
 
 
 def get_warehouse_location_tree(warehouse_id: uuid.UUID, tenant_id: uuid.UUID, db: Session | None = None) -> list[dict[str, Any]]:

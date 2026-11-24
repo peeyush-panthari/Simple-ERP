@@ -49,7 +49,7 @@ from app.domains.identity.schemas import (
 )
 from app.domains.identity.serializers import me_response, session_user
 from app.core.audit import audit, read_audit_trail
-from app.core.permissions import ALL_PERMISSIONS, PERMISSIONS, can_grant
+from app.core.permissions import PERMISSIONS, can_grant
 from app.models.factory import Factory
 from app.models.password_history import PasswordHistory
 from app.models.role import Role
@@ -833,7 +833,6 @@ def create_user(
     request: Request,
     raw_body: bytes = Depends(get_raw_body),
     actor: Actor = Depends(require_permission("user:write")),
-    idempotency_key: str | None = None,
 ):
     def _do():
         tenant_id = actor["tenant_id"]

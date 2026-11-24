@@ -3,14 +3,11 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
 
 import pyotp
-import pytest
 from app.core import security
 from app.core.db import session
 from app.models.session import Session as SessionModel
-from app.models.user import User
 from app.models.user_credentials import MfaRecoveryCode
 
 

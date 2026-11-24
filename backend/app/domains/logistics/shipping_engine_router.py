@@ -11,15 +11,14 @@ import uuid
 import random
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
-from typing import Annotated, Any, Dict, List, Optional
-from fastapi import APIRouter, Depends, Query
+from typing import Annotated, Optional
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
-import sqlalchemy as sa
-from sqlalchemy import select, func, and_
+from sqlalchemy import select
 
 from app.core.auth import Actor, require_any_permission
 from app.core.db import session
-from app.core.errors import bad_request, not_found
+from app.core.errors import not_found
 from app.models.order import Order
 from app.models.phase3_modules import CarrierRateCard, CarrierShipment
 from app.services.sequences import next_document_number

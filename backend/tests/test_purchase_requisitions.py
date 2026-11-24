@@ -244,7 +244,6 @@ def test_cancel_rules(client, world):
 
 
 def test_link_purchase_order_marks_it_ordered(client, world):
-    from app.models.purchase_order import PurchaseOrder
 
     pr = _raise(client, world).json()
     url = f"/api/v1/purchase-requisitions/{pr['id']}"

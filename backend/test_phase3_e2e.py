@@ -5,19 +5,10 @@
 """
 import sys
 import uuid
-from decimal import Decimal
 from datetime import date, timedelta
 from app.core.db import session
 from app.models.tenant import Tenant
 from app.models.user import User
-from app.models.party import Party
-from app.models.product import Product
-from app.models.warehouse import Warehouse
-from app.models.production_run import ProductionRun
-from app.models.order import Order
-from app.models.phase3_modules import (
-    WorkCenter, WorkCenterSchedule, CarrierRateCard, CarrierShipment, ScKpiSnapshot
-)
 from app.domains.operations.capacity_planning_router import (
     list_work_centers, create_work_center, list_schedule, schedule_job, reassign_job,
     get_rccp_summary, CreateWorkCenterRequest, ScheduleJobRequest, ReassignJobRequest

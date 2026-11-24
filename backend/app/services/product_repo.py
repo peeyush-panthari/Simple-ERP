@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 
 from sqlalchemy import func
 
-from app.core.db import current_request_scope, on_request_end, session
+from app.core.db import current_request_scope, on_request_end
 from app.core.errors import not_found
 from app.core.money import decimal_str
 from app.models.product import Product
