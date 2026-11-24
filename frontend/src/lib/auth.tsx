@@ -2,10 +2,9 @@
  * Session/user/permission state - mirrors the Reflex app's AuthState (itself a
  * port of the original lib/auth.tsx).
  *
- * Tokens persist in localStorage under the same keys the previous frontends
- * used (axon.accessToken / axon.refreshToken), so a reload doesn't sign the
- * user out; the user object is re-fetched via /auth/me on load rather than
- * persisted. Refresh-token rotation is guarded by a single in-flight promise:
+ * Tokens persist in localStorage under the keys (simple.accessToken / simple.refreshToken),
+ * so a reload doesn't sign the user out; the user object is re-fetched via /auth/me on load
+ * rather than persisted. Refresh-token rotation is guarded by a single in-flight promise:
  * the backend treats reuse of an already-rotated refresh token as theft and
  * revokes every session for the user, so several concurrent 401s must share
  * ONE refresh instead of each replaying the stale token.
@@ -15,8 +14,8 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { ApiError, getBlob, request, type RequestOptions } from "@/lib/api";
 import { permits } from "@/lib/nav";
 
-const ACCESS_KEY = "axon.accessToken";
-const REFRESH_KEY = "axon.refreshToken";
+const ACCESS_KEY = "simple.accessToken";
+const REFRESH_KEY = "simple.refreshToken";
 /** Refresh well under the access-token TTL so a role edited elsewhere takes effect within minutes. */
 const PROACTIVE_REFRESH_MS = 5 * 60 * 1000;
 
@@ -29,6 +28,10 @@ export interface User {
   id: string;
   email: string;
   displayName: string;
+  tenantId?: string;
+  tenantName?: string;
+  tenantSlug?: string;
+  enabledModules?: string[];
   roles: Role[];
   permissions: string[];
   warehouseIds: string[] | null;
@@ -56,6 +59,8 @@ interface AuthContextValue {
   status: AuthStatus;
   user: User | null;
   permissions: string[];
+  enabledModules: string[];
+  isModuleEnabled: (module: string) => boolean;
   /** "*" grants everything; "resource:*" every action on a resource. */
   can: (permission: string) => boolean;
   canAny: (permissions: string[]) => boolean;
@@ -73,7 +78,11 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 function readToken(key: string): string {
   try {
-    return localStorage.getItem(key) ?? "";
+    const val = localStorage.getItem(key);
+    if (val) return val;
+    if (key === ACCESS_KEY) return localStorage.getItem("axon.accessToken") ?? "";
+    if (key === REFRESH_KEY) return localStorage.getItem("axon.refreshToken") ?? "";
+    return "";
   } catch {
     return "";
   }
@@ -97,6 +106,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const clearSession = useCallback(() => {
     writeToken(ACCESS_KEY, "");
     writeToken(REFRESH_KEY, "");
+    try {
+      localStorage.removeItem("axon.accessToken");
+      localStorage.removeItem("axon.refreshToken");
+    } catch {
+      /* ignore */
+    }
     setUser(null);
     setStatus("anonymous");
   }, []);
@@ -236,11 +251,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [api]);
 
   const permissions = useMemo(() => user?.permissions ?? [], [user]);
+  const enabledModules = useMemo(() => (user?.enabledModules && user.enabledModules.length > 0 ? user.enabledModules : ["*"]), [user]);
+  const isModuleEnabled = useCallback(
+    (mod: string) => {
+      if (!mod || enabledModules.includes("*")) return true;
+      return enabledModules.includes(mod);
+    },
+    [enabledModules],
+  );
+
   const value = useMemo<AuthContextValue>(
     () => ({
       status,
       user,
       permissions,
+      enabledModules,
+      isModuleEnabled,
       can: (p) => permits(permissions, p),
       canAny: (ps) => ps.some((p) => permits(permissions, p)),
       login,
@@ -250,7 +276,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       apiBlob,
       reloadUser,
     }),
-    [status, user, permissions, login, setSession, logout, api, apiBlob, reloadUser],
+    [status, user, permissions, enabledModules, isModuleEnabled, login, setSession, logout, api, apiBlob, reloadUser],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

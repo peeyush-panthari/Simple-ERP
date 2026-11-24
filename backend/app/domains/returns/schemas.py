@@ -5,7 +5,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 # RMA Schemas
@@ -55,6 +55,8 @@ class RmaInspectRequest(BaseModel):
 
 
 class RmaLineOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: uuid.UUID
     lineNo: int
     productId: uuid.UUID
@@ -71,11 +73,10 @@ class RmaLineOut(BaseModel):
     inspectionStatus: str
     dispositionNotes: str | None = None
 
-    class Config:
-        from_attributes = True
-
 
 class RmaOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: uuid.UUID
     number: str
     customerId: uuid.UUID
@@ -98,9 +99,6 @@ class RmaOut(BaseModel):
     inspectedAt: datetime | None = None
     createdAt: datetime
     lines: list[RmaLineOut] = []
-
-    class Config:
-        from_attributes = True
 
 
 # RTV Schemas
@@ -132,6 +130,8 @@ class RtvDispatchRequest(BaseModel):
 
 
 class RtvLineOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: uuid.UUID
     lineNo: int
     productId: uuid.UUID
@@ -143,11 +143,10 @@ class RtvLineOut(BaseModel):
     rejectionCode: str | None = None
     reason: str | None = None
 
-    class Config:
-        from_attributes = True
-
 
 class RtvOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: uuid.UUID
     number: str
     vendorId: uuid.UUID
@@ -172,6 +171,3 @@ class RtvOut(BaseModel):
     completedAt: datetime | None = None
     createdAt: datetime
     lines: list[RtvLineOut] = []
-
-    class Config:
-        from_attributes = True

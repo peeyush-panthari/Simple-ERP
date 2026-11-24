@@ -213,9 +213,9 @@ function NavGroupSection({
 }
 
 function NavGroups({ onNavigate }: { onNavigate?: () => void }) {
-  const { permissions } = useAuth();
+  const { permissions, enabledModules } = useAuth();
   const { pathname } = useLocation();
-  const groups = useMemo(() => groupedNav(permissions), [permissions]);
+  const groups = useMemo(() => groupedNav(permissions, enabledModules), [permissions, enabledModules]);
 
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>(() => {
     try {
@@ -283,12 +283,12 @@ function NavGroups({ onNavigate }: { onNavigate?: () => void }) {
 }
 
 function BottomTabBar() {
-  const { permissions } = useAuth();
+  const { permissions, enabledModules } = useAuth();
   const { pathname } = useLocation();
   const [open, setOpen] = useState(false);
   return (
     <nav className="mobile-tabbar">
-      {mobileTabItems(permissions).map((item) => {
+      {mobileTabItems(permissions, enabledModules).map((item) => {
         const Icon = item.icon;
         return (
           <NavLink key={item.path} to={item.path} className={cn("mobile-tab-item", pathname === item.path && "mobile-tab-item-active")}>

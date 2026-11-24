@@ -2,7 +2,7 @@
 
 Ported verbatim from backend_py/app/email_type.py. Pydantic's EmailStr (via
 email-validator) rejects reserved/special-use TLDs like .local, which the
-dev bootstrap admin address (admin@axon-erp.local) relies on.
+dev bootstrap admin address (admin@simple-erp.local) relies on.
 """
 
 from __future__ import annotations

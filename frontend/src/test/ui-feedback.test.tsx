@@ -97,7 +97,7 @@ describe("account menu", () => {
       return new Response("{}", { status: 200, headers: { "content-type": "application/json" } });
     }));
     localStorage.clear();
-    localStorage.setItem("axon.accessToken", "tok");
+    localStorage.setItem("simple.accessToken", "tok");
     render(
       <QueryClientProvider client={new QueryClient()}>
         <MemoryRouter initialEntries={["/home"]}>

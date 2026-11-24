@@ -229,7 +229,7 @@ def login(body: LoginBody, request: Request):
                 status_code=401,
                 media_type="application/problem+json",
                 content={
-                    "type": "https://errors.axon-erp.dev/mfa-required",
+                    "type": "https://errors.simple-erp.dev/mfa-required",
                     "title": "MFA required",
                     "status": 401,
                     "detail": "Provide the 6-digit code from your authenticator app or an emergency recovery code",

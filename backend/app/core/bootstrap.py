@@ -26,7 +26,7 @@ from app.models.tenant import Tenant
 from app.models.user import User
 from app.models.user_role import UserRole
 
-logger = logging.getLogger("axon.bootstrap")
+logger = logging.getLogger("simple.bootstrap")
 
 DEFAULT_PARTY_TYPES = [
     ("raw_material_vendor", "Vendor - Raw Material", "vendor"),
@@ -98,7 +98,7 @@ def _ensure_first_administrator(tenant_id: uuid.UUID) -> None:
 
     email = settings.bootstrap_admin_email.strip().lower()
     generated = not settings.bootstrap_admin_password
-    password = settings.bootstrap_admin_password or f"Axon!{secrets.token_urlsafe(9)}"
+    password = settings.bootstrap_admin_password or f"Simple!{secrets.token_urlsafe(9)}"
 
     admin_role = Role.query.filter_by(tenant_id=tenant_id, name="System Admin").first()
     if admin_role is None:

@@ -3,8 +3,9 @@
 **A practical, screen-by-screen manual for everyday use of the Simple ERP system — what each screen is for, how to reach it, and how to complete the tasks it supports.**
 
 *Version:* 2.4.0 Enterprise Edition  
-*Date of Revision:* October 2026  
-*Status:* Complete Operational Reference Manual
+*Date of Revision:* November 2026  
+*Status:* Complete Operational Reference Manual  
+*Companion Guide:* For initial corporate setup, legal entity/GSTIN registration, setup-time module customization, and data cutover, refer to the **[Company Onboarding Guide](COMPANY_ONBOARDING_GUIDE.md)**.
 
 ---
 
@@ -1118,7 +1119,7 @@ Sidebar → Finance (or Foundation) → **PO & Invoice** (path `/po-invoice`). R
 3. Enter the registered **Name** (e.g., "Simple ERP Energy Solutions Pvt Ltd").
 4. Enter the registered address: Address Line 1, City, Postal code, and select the **State** from the dropdown.
 5. In the statutory section, enter the **Tax ID / GSTIN** and **Company PAN**.
-6. In the contact section, enter the **Contact email** (e.g., `billing@axon-erp.local`) and phone.
+6. In the contact section, enter the **Contact email** (e.g., `billing@simple-erp.local`) and phone.
 7. In the Bank details section, enter the **Bank name**, **Branch**, **Account number**, and **IFSC code**.
 8. If this entity should be the primary seller pre-populated on new POs and sales invoices, tick **"Default entity for new POs/invoices"**.
 9. Click **Save**.

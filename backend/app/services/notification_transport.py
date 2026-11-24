@@ -35,7 +35,7 @@ from email.utils import parseaddr
 
 from app.core.config import settings
 
-logger = logging.getLogger("axon.notification.transport")
+logger = logging.getLogger("simple.notification.transport")
 
 _PERMANENT_SMTP_RE = re.compile(r"\b5\d\d\b")
 _PERMANENT_SMTP_PHRASES_RE = re.compile(r"no recipients|invalid address", re.IGNORECASE)

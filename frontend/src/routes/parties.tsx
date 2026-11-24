@@ -84,7 +84,7 @@ function CreatePartyDialog({ open, onClose, types, onCreated }: { open: boolean;
   const isCustomer = subtypeMeta ? ["customer", "both"].includes(subtypeMeta.baseType) : false;
 
   const autofillDemoVendor = () => {
-    setLegalName("Axon Precision Components Pvt Ltd");
+    setLegalName("Simple Precision Components Pvt Ltd");
     const vendorType = types.find((t) => t.baseType === "vendor") || types[0];
     if (vendorType) setSubtype(vendorType.code);
     setTaxId("27AAACA1234A1Z5");
@@ -96,7 +96,7 @@ function CreatePartyDialog({ open, onClose, types, onCreated }: { open: boolean;
     setAddrState("27");
     setAddrPostal("410501");
     setContactName("Rajesh Kulkarni");
-    setContactEmail("rajesh.k@axonprecision.com");
+    setContactEmail("rajesh.k@simpleprecision.com");
     setContactPhone("+91-98220-44123");
   };
 
@@ -106,11 +106,11 @@ function CreatePartyDialog({ open, onClose, types, onCreated }: { open: boolean;
       label: "Legal Commercial Entity Name",
       shortLabel: "Legal Name",
       useCase: "Primary corporate identity printed on vendor contracts, purchase orders, statutory e-Invoices, and bank remittance vouchers.",
-      guideline: "Full registered legal title (e.g. Axon Precision Components Pvt Ltd).",
+      guideline: "Full registered legal title (e.g. Simple Precision Components Pvt Ltd).",
       restriction: "Required field. Must match official GST and banking tax registration.",
-      sampleValueText: "Axon Precision Components Pvt Ltd",
+      sampleValueText: "Simple Precision Components Pvt Ltd",
       isFilled: Boolean(legalName),
-      onFill: () => setLegalName("Axon Precision Components Pvt Ltd"),
+      onFill: () => setLegalName("Simple Precision Components Pvt Ltd"),
     },
     {
       id: "subtype",
@@ -167,7 +167,7 @@ function CreatePartyDialog({ open, onClose, types, onCreated }: { open: boolean;
         setAddrState("27");
         setAddrPostal("410501");
         setContactName("Rajesh Kulkarni");
-        setContactEmail("rajesh.k@axonprecision.com");
+        setContactEmail("rajesh.k@simpleprecision.com");
       },
     },
   ];

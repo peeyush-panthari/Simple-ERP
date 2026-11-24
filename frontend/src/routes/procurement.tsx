@@ -171,7 +171,7 @@ function CreateDialog({ vendors, onClose, onCreated, fromRequisition }: { vendor
       useCase: "Legally binding commercial supplier for raw material supply, contractual delivery terms, and GST input tax credit.",
       guideline: "Select an active registered vendor from the Approved Vendor List (AVL).",
       restriction: "Required. Must be in active status with a valid GSTIN.",
-      sampleValueText: vendors[0]?.displayName || "Axon Precision Components",
+      sampleValueText: vendors[0]?.displayName || "Simple Precision Components",
       isFilled: Boolean(vendorId),
       onFill: () => {
         if (vendors.length > 0) setVendorId(vendors[0].id);

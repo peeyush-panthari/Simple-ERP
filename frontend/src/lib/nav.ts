@@ -55,6 +55,8 @@ export interface NavItem {
   alsoWith?: string[];
   icon: LucideIcon;
   group: NavGroupName;
+  /** Identifier of the ERP module. Omitted for core platform infrastructure. */
+  module?: string;
   /** Badge label for roadmap / upcoming features */
   badge?: string;
   /** Roadmap development horizon */
@@ -68,11 +70,11 @@ export interface NavItem {
 export const NAV_ITEMS: NavItem[] = [
   // 1. Overview & Analytics
   { label: "Control tower", path: "/", permission: "analytics:read", icon: LayoutDashboard, group: "Overview" },
-  { label: "SC Control Tower", path: "/sc-control-tower", permission: "sc_control_tower:read", icon: LayoutDashboard, group: "Overview" },
+  { label: "SC Control Tower", path: "/sc-control-tower", permission: "sc_control_tower:read", icon: LayoutDashboard, group: "Overview", module: "sc_control_tower" },
   { label: "System status", path: "/architecture", permission: "analytics:read", icon: Network, group: "Overview" },
 
   // 2. Planning & Supply Chain (SCM)
-  { label: "MRP Planning", path: "/mrp", permission: "mrp:read", alsoWith: ["inventory:read"], icon: SlidersHorizontal, group: "Planning & SCM" },
+  { label: "MRP Planning", path: "/mrp", permission: "mrp:read", alsoWith: ["inventory:read"], icon: SlidersHorizontal, group: "Planning & SCM", module: "planning_mrp" },
   {
     label: "Multi-Echelon DRP",
     path: "/drp",
@@ -80,6 +82,7 @@ export const NAV_ITEMS: NavItem[] = [
     alsoWith: ["inventory:read", "warehouse:read"],
     icon: Network,
     group: "Planning & SCM",
+    module: "planning_drp",
   },
   {
     label: "Demand Forecasting",
@@ -88,6 +91,7 @@ export const NAV_ITEMS: NavItem[] = [
     alsoWith: ["inventory:read"],
     icon: LineChart,
     group: "Planning & SCM",
+    module: "planning_forecasting",
   },
 
   // 3. Procurement & Sourcing
@@ -98,6 +102,7 @@ export const NAV_ITEMS: NavItem[] = [
     alsoWith: ["pr:read", "pr:approve", "pr:team_approve", "sourcing:read"],
     icon: ShoppingCart,
     group: "Procurement",
+    module: "procurement",
   },
   { label: "Supplier Directory", path: "/parties", permission: "party:read", icon: Building2, group: "Procurement" },
   {
@@ -106,6 +111,7 @@ export const NAV_ITEMS: NavItem[] = [
     permission: "vendor_portal:read",
     icon: Building,
     group: "Procurement",
+    module: "vendor_portal",
   },
   {
     label: "Blanket POs (BPA)",
@@ -113,6 +119,7 @@ export const NAV_ITEMS: NavItem[] = [
     permission: "blanket_po:read",
     icon: FileSpreadsheet,
     group: "Procurement",
+    module: "blanket_po",
   },
   {
     label: "Approved Vendor List (AVL)",
@@ -120,19 +127,21 @@ export const NAV_ITEMS: NavItem[] = [
     permission: "avl_governance:read",
     icon: Award,
     group: "Procurement",
+    module: "avl_governance",
   },
 
   // 4. Warehouse & Logistics
-  { label: "GRN & QC", path: "/warehouse", permission: "warehouse:read", icon: Warehouse, group: "Warehouse & Logistics" },
-  { label: "Inventory", path: "/inventory", permission: "inventory:read", icon: Boxes, group: "Warehouse & Logistics" },
+  { label: "GRN & QC", path: "/warehouse", permission: "warehouse:read", icon: Warehouse, group: "Warehouse & Logistics", module: "warehouse_grn_qc" },
+  { label: "Inventory", path: "/inventory", permission: "inventory:read", icon: Boxes, group: "Warehouse & Logistics", module: "inventory_balances" },
   {
     label: "Cycle Counting",
     path: "/cycle-counts",
     permission: "cycle_count:read",
     icon: ClipboardCheck,
     group: "Warehouse & Logistics",
+    module: "cycle_counts",
   },
-  { label: "Returns (RMA/RTV)", path: "/returns", permission: "returns:read", alsoWith: ["warehouse:read"], icon: Truck, group: "Warehouse & Logistics" },
+  { label: "Returns (RMA/RTV)", path: "/returns", permission: "returns:read", alsoWith: ["warehouse:read"], icon: Truck, group: "Warehouse & Logistics", module: "returns_management" },
   {
     label: "Landed Cost Tracking",
     path: "/landed-cost",
@@ -140,6 +149,7 @@ export const NAV_ITEMS: NavItem[] = [
     alsoWith: ["warehouse:read"],
     icon: Receipt,
     group: "Warehouse & Logistics",
+    module: "landed_cost",
   },
   {
     label: "Directed Putaway & Bins",
@@ -148,14 +158,16 @@ export const NAV_ITEMS: NavItem[] = [
     alsoWith: ["warehouse:read"],
     icon: Layers,
     group: "Warehouse & Logistics",
+    module: "wms_bins",
   },
-  { label: "Logistics TMS", path: "/logistics", permission: "logistics:read", icon: Truck, group: "Warehouse & Logistics" },
+  { label: "Logistics TMS", path: "/logistics", permission: "logistics:read", icon: Truck, group: "Warehouse & Logistics", module: "logistics_tms" },
   {
     label: "e-Way Bill & IRN",
     path: "/statutory-logistics",
     permission: "statutory_logistics:read",
     icon: FileBadge,
     group: "Warehouse & Logistics",
+    module: "statutory_logistics",
   },
   {
     label: "Freight Consolidation",
@@ -164,6 +176,7 @@ export const NAV_ITEMS: NavItem[] = [
     alsoWith: ["logistics:read"],
     icon: Ship,
     group: "Warehouse & Logistics",
+    module: "freight_tms",
   },
   {
     label: "WMS Mobile Scanner",
@@ -171,6 +184,7 @@ export const NAV_ITEMS: NavItem[] = [
     permission: "wms_mobile:use",
     icon: Smartphone,
     group: "Warehouse & Logistics",
+    module: "wms_mobile",
   },
   {
     label: "Wave & Batch Picking",
@@ -178,6 +192,7 @@ export const NAV_ITEMS: NavItem[] = [
     permission: "wave_picking:read",
     icon: Layers,
     group: "Warehouse & Logistics",
+    module: "wave_picking",
   },
   {
     label: "Shipping Engine & AWBs",
@@ -185,10 +200,11 @@ export const NAV_ITEMS: NavItem[] = [
     permission: "shipping_engine:read",
     icon: Truck,
     group: "Warehouse & Logistics",
+    module: "shipping_engine",
   },
 
   // 5. Manufacturing & Operations
-  { label: "Production & Runs", path: "/production", permission: "inventory:read", icon: Factory, group: "Manufacturing" },
+  { label: "Production & Runs", path: "/production", permission: "inventory:read", icon: Factory, group: "Manufacturing", module: "mfg_production" },
   {
     label: "Subcontracting & Job-Work",
     path: "/subcontracting",
@@ -196,6 +212,7 @@ export const NAV_ITEMS: NavItem[] = [
     alsoWith: ["inventory:read", "warehouse:read"],
     icon: Workflow,
     group: "Manufacturing",
+    module: "mfg_subcontracting",
   },
   {
     label: "Batch Traceability",
@@ -204,6 +221,7 @@ export const NAV_ITEMS: NavItem[] = [
     alsoWith: ["inventory:read"],
     icon: QrCode,
     group: "Manufacturing",
+    module: "mfg_traceability",
   },
   {
     label: "Quality IPQC & CoA",
@@ -211,6 +229,7 @@ export const NAV_ITEMS: NavItem[] = [
     permission: "quality_ipqc:read",
     icon: ShieldCheck,
     group: "Manufacturing",
+    module: "quality_ipqc",
   },
   {
     label: "Capacity Planning (RCCP)",
@@ -218,21 +237,23 @@ export const NAV_ITEMS: NavItem[] = [
     permission: "capacity_planning:read",
     icon: SlidersHorizontal,
     group: "Manufacturing",
+    module: "capacity_planning",
   },
 
   // 6. Sales & Orders
-  { label: "Orders", path: "/orders", permission: "order:read", icon: ClipboardList, group: "Sales & Orders" },
+  { label: "Orders", path: "/orders", permission: "order:read", icon: ClipboardList, group: "Sales & Orders", module: "sales_orders" },
   {
     label: "Customer B2B Portal",
     path: "/customer-portal",
     permission: "customer_portal:read",
     icon: Building,
     group: "Sales & Orders",
+    module: "customer_portal",
   },
 
   // 7. Finance & Accounting
   { label: "PO & Invoice", path: "/po-invoice", permission: "org:read", icon: Receipt, group: "Finance" },
-  { label: "Finance & AR/AP", path: "/finance", permission: "finance:read", icon: Wallet, group: "Finance" },
+  { label: "Finance & AR/AP", path: "/finance", permission: "finance:read", icon: Wallet, group: "Finance", module: "finance" },
 
   // 8. Administration & Master Data
   { label: "Products & BOM", path: "/products", permission: "product:read", icon: Package, group: "Administration" },
@@ -270,17 +291,21 @@ export function permits(granted: readonly string[], permission: string): boolean
   return granted.includes(`${permission.split(":")[0]}:*`);
 }
 
-export function visibleNav(granted: readonly string[]): NavItem[] {
-  return NAV_ITEMS.filter((i) => permits(granted, i.permission) || (i.alsoWith ?? []).some((p) => permits(granted, p)));
+export function visibleNav(granted: readonly string[], enabledModules: readonly string[] = ["*"]): NavItem[] {
+  return NAV_ITEMS.filter((i) => {
+    const isModuleActive = !i.module || enabledModules.includes("*") || enabledModules.includes(i.module);
+    const hasPermission = permits(granted, i.permission) || (i.alsoWith ?? []).some((p) => permits(granted, p));
+    return isModuleActive && hasPermission;
+  });
 }
 
-export function groupedNav(granted: readonly string[]): { group: NavGroupName; items: NavItem[] }[] {
-  const visible = visibleNav(granted);
+export function groupedNav(granted: readonly string[], enabledModules: readonly string[] = ["*"]): { group: NavGroupName; items: NavItem[] }[] {
+  const visible = visibleNav(granted, enabledModules);
   return NAV_GROUPS.map((group) => ({ group, items: visible.filter((i) => i.group === group) })).filter((g) => g.items.length > 0);
 }
 
-export function mobileTabItems(granted: readonly string[]): NavItem[] {
-  return visibleNav(granted)
+export function mobileTabItems(granted: readonly string[], enabledModules: readonly string[] = ["*"]): NavItem[] {
+  return visibleNav(granted, enabledModules)
     .filter((i) => MOBILE_TAB_PATHS.includes(i.path))
     .sort((a, b) => MOBILE_TAB_PATHS.indexOf(a.path) - MOBILE_TAB_PATHS.indexOf(b.path));
 }

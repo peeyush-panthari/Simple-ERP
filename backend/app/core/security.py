@@ -172,7 +172,7 @@ _COMMON_PASSWORDS = {
     "admin123",
     "welcome1",
     "changeme",
-    "axonerp123",
+    "simpleerp123",
 }
 
 

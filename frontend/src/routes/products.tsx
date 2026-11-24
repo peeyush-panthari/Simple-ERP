@@ -118,7 +118,7 @@ function CreateProductDialog({ categories, onClose, onCreated }: { categories: C
   const autofillDemoProduct = () => {
     setSku("SKU-MOT-500");
     setName("500W High-Torque Brushless Motor");
-    setMake("Axon Powertrain");
+    setMake("Simple Powertrain");
     setModelNumber("MOT-500-BLDC");
     setType("finished_good");
     if (fgCat) {
@@ -145,13 +145,13 @@ function CreateProductDialog({ categories, onClose, onCreated }: { categories: C
       label: "SKU Title & Manufacturer Make",
       shortLabel: "Name & Make",
       useCase: "Customer-facing description and engineering manufacturer identification printed on work instructions, packing slips, and sales invoices.",
-      guideline: "Descriptive name including rating (500W BLDC) and manufacturer/brand (Axon Powertrain).",
+      guideline: "Descriptive name including rating (500W BLDC) and manufacturer/brand (Simple Powertrain).",
       restriction: "Both SKU Name and Make are required fields.",
-      sampleValueText: "500W High-Torque Brushless Motor (Axon Powertrain)",
+      sampleValueText: "500W High-Torque Brushless Motor (Simple Powertrain)",
       isFilled: Boolean(name && make),
       onFill: () => {
         setName("500W High-Torque Brushless Motor");
-        setMake("Axon Powertrain");
+        setMake("Simple Powertrain");
         setModelNumber("MOT-500-BLDC");
       },
     },

@@ -69,7 +69,7 @@ describe("AuthProvider", () => {
 
 
   it("rehydrates the user from a stored access token", async () => {
-    localStorage.setItem("axon.accessToken", "tok");
+    localStorage.setItem("simple.accessToken", "tok");
     mockFetch(() => json(200, USER));
     setup();
     await waitFor(() => expect(screen.getByTestId("status")).toHaveTextContent("authenticated"));
@@ -78,8 +78,8 @@ describe("AuthProvider", () => {
   });
 
   it("recovers an expired access token through the refresh token", async () => {
-    localStorage.setItem("axon.accessToken", "expired");
-    localStorage.setItem("axon.refreshToken", "r1");
+    localStorage.setItem("simple.accessToken", "expired");
+    localStorage.setItem("simple.refreshToken", "r1");
     mockFetch((path, init) => {
       if (path.endsWith("/auth/refresh")) return json(200, { accessToken: "fresh", refreshToken: "r2" });
       const bearer = (init.headers as Record<string, string>).Authorization;
@@ -87,22 +87,22 @@ describe("AuthProvider", () => {
     });
     setup();
     await waitFor(() => expect(screen.getByTestId("status")).toHaveTextContent("authenticated"));
-    expect(localStorage.getItem("axon.accessToken")).toBe("fresh");
-    expect(localStorage.getItem("axon.refreshToken")).toBe("r2");
+    expect(localStorage.getItem("simple.accessToken")).toBe("fresh");
+    expect(localStorage.getItem("simple.refreshToken")).toBe("r2");
   });
 
   it("clears the session when the refresh token is rejected", async () => {
-    localStorage.setItem("axon.accessToken", "expired");
-    localStorage.setItem("axon.refreshToken", "dead");
+    localStorage.setItem("simple.accessToken", "expired");
+    localStorage.setItem("simple.refreshToken", "dead");
     mockFetch(() => json(401, { title: "no" }));
     setup();
     await waitFor(() => expect(screen.getByTestId("status")).toHaveTextContent("anonymous"));
-    expect(localStorage.getItem("axon.refreshToken")).toBeNull();
+    expect(localStorage.getItem("simple.refreshToken")).toBeNull();
   });
 
   it("shares ONE refresh across concurrent 401s (a second refresh would replay a rotated token)", async () => {
-    localStorage.setItem("axon.accessToken", "good");
-    localStorage.setItem("axon.refreshToken", "r1");
+    localStorage.setItem("simple.accessToken", "good");
+    localStorage.setItem("simple.refreshToken", "r1");
     let refreshes = 0;
     let rotated = false;
     mockFetch(async (path, init) => {
@@ -126,7 +126,7 @@ describe("AuthProvider", () => {
   });
 
   it("exposes permission checks including wildcards", async () => {
-    localStorage.setItem("axon.accessToken", "tok");
+    localStorage.setItem("simple.accessToken", "tok");
     mockFetch(() => json(200, { ...USER, permissions: ["order:read"] }));
     setup();
     await waitFor(() => expect(screen.getByTestId("can-order")).toHaveTextContent("true"));
@@ -139,7 +139,7 @@ describe("AuthProvider", () => {
     setup((c) => (ctx = c));
     await waitFor(() => expect(screen.getByTestId("status")).toHaveTextContent("anonymous"));
     await expect(ctx.login({ email: "a@b.test", password: "x" })).resolves.toEqual({ mfaRequired: true });
-    expect(localStorage.getItem("axon.accessToken")).toBeNull();
+    expect(localStorage.getItem("simple.accessToken")).toBeNull();
   });
 
   it("login surfaces the problem+json detail, including per-field errors", async () => {
@@ -151,21 +151,21 @@ describe("AuthProvider", () => {
   });
 
   it("logout clears tokens even if the server call fails", async () => {
-    localStorage.setItem("axon.accessToken", "tok");
-    localStorage.setItem("axon.refreshToken", "r1");
+    localStorage.setItem("simple.accessToken", "tok");
+    localStorage.setItem("simple.refreshToken", "r1");
     mockFetch((path) => (path.endsWith("/auth/logout") ? json(500, {}) : json(200, USER)));
     let ctx!: ReturnType<typeof useAuth>;
     setup((c) => (ctx = c));
     await waitFor(() => expect(screen.getByTestId("status")).toHaveTextContent("authenticated"));
     await ctx.logout();
     await waitFor(() => expect(screen.getByTestId("status")).toHaveTextContent("anonymous"));
-    expect(localStorage.getItem("axon.accessToken")).toBeNull();
+    expect(localStorage.getItem("simple.accessToken")).toBeNull();
   });
 });
 
 describe("Forbidden", () => {
   it("names the missing permission for a signed-in user", async () => {
-    localStorage.setItem("axon.accessToken", "tok");
+    localStorage.setItem("simple.accessToken", "tok");
     mockFetch(() => json(200, USER));
     render(
       <QueryClientProvider client={new QueryClient()}>

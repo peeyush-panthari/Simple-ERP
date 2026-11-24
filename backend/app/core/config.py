@@ -32,7 +32,7 @@ class Settings(BaseSettings):
     trusted_proxy_hops: int = 0
 
     database_url: str = (
-        "postgresql+psycopg://axon_py:axon_py@127.0.0.1:5433/axon_erp_py"
+        "postgresql+psycopg://simple_erp:simple_erp@127.0.0.1:5433/simple_erp_py"
     )
 
     # Connection pool - see app/core/db.py.
@@ -44,18 +44,18 @@ class Settings(BaseSettings):
     port: int = 8000
 
     jwt_secret: str = "dev-only-change-me"
-    jwt_issuer: str = "axon-identity-py"
-    jwt_audience: str = "axon-erp"
+    jwt_issuer: str = "simple-identity-py"
+    jwt_audience: str = "simple-erp"
     access_token_ttl: int = 900
     refresh_token_ttl: int = 2592000
 
     mfa_issuer: str = "Simple ERP"
-    bootstrap_admin_email: str = "admin@axon-erp.local"
+    bootstrap_admin_email: str = "admin@simple-erp.local"
     bootstrap_admin_password: str = ""
 
     default_tenant_id: str = "00000000-0000-4000-8000-000000000001"
     default_tenant_name: str = "Simple ERP Demo Tenant"
-    default_tenant_slug: str = "axon-demo"
+    default_tenant_slug: str = "simple-demo"
 
     cors_allowed_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
     rate_limit_login_per_minute: int = 20
@@ -145,7 +145,7 @@ class Settings(BaseSettings):
     # document module
     pdf_engine: str = "html"  # "gotenberg" | "weasyprint" | "html"
     gotenberg_url: str = ""
-    document_local_dir: str = "/tmp/axon-documents"
+    document_local_dir: str = "/tmp/simple-documents"
     presigned_url_ttl_seconds: int = 900
     company_name: str = "Simple ERP Industries"
     company_address: str = "Plot 22, Hinjawadi Phase II, Pune 411057, India"

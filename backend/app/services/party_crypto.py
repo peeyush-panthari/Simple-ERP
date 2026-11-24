@@ -25,7 +25,7 @@ VERSION = "v1"
 KEY_BYTES = 32  # AES-256
 IV_BYTES = 12  # 96-bit nonce, GCM-recommended size
 
-HKDF_SALT = b"axon-erp/party/bank-account/v1"
+HKDF_SALT = b"simple-erp/party/bank-account/v1"
 HKDF_INFO = b"party.bank_accounts.account_number"
 
 

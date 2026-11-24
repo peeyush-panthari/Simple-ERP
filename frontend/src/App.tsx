@@ -1,5 +1,6 @@
 import { lazy, Suspense, Component, type ReactNode } from "react";
-import { Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { Link, Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { Layers } from "lucide-react";
 import { PageSpinner } from "@/components/erp/ui";
 import { useAuth } from "@/lib/auth";
 
@@ -100,7 +101,41 @@ function RequireAuth({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
+function ModuleGuard({ module, children }: { module: string; children: ReactNode }) {
+  const { isModuleEnabled, can, user } = useAuth();
+  if (!isModuleEnabled(module)) {
+    return (
+      <div className="flex min-h-[60vh] flex-col items-center justify-center p-6 text-center">
+        <div className="mb-4 rounded-full bg-[var(--muted)] p-4 text-[var(--muted-foreground)]">
+          <Layers size={32} />
+        </div>
+        <h2 className="mb-2 text-xl font-semibold text-[var(--foreground)]">Module Not Enabled</h2>
+        <p className="mb-6 max-w-md text-sm text-[var(--muted-foreground)]">
+          This module is currently inactive for <strong>{user?.tenantName || "your business"}</strong>.
+          You can enable it in system configuration.
+        </p>
+        <div className="flex items-center gap-3">
+          <Link to="/" className="btn-secondary rounded px-4 py-2 text-sm">
+            Dashboard
+          </Link>
+          {can("org:write") && (
+            <Link to="/configuration" className="btn-primary rounded px-4 py-2 text-sm">
+              Configure Modules
+            </Link>
+          )}
+        </div>
+      </div>
+    );
+  }
+  return <>{children}</>;
+}
+
 const guard = (el: ReactNode) => <RequireAuth>{el}</RequireAuth>;
+const modGuard = (module: string, el: ReactNode) => (
+  <RequireAuth>
+    <ModuleGuard module={module}>{el}</ModuleGuard>
+  </RequireAuth>
+);
 
 export default function App() {
   return (
@@ -121,21 +156,21 @@ export default function App() {
             <Route path="/po-invoice" element={guard(<BusinessEntities />)} />
             <Route path="/factory-warehouse" element={guard(<FactoryWarehouse />)} />
             <Route path="/products" element={guard(<Products />)} />
-            <Route path="/procurement" element={guard(<Procurement />)} />
-            <Route path="/mrp" element={guard(<Mrp />)} />
-            <Route path="/warehouse" element={guard(<Warehouse />)} />
-            <Route path="/warehouse/qc/:grnId" element={guard(<WarehouseQc />)} />
-            <Route path="/warehouse-qc" element={guard(<WarehouseQc />)} />
-            <Route path="/inventory" element={guard(<Inventory />)} />
-            <Route path="/returns" element={guard(<Returns />)} />
-            <Route path="/inventory-item/:itemId" element={guard(<InventoryItem />)} />
-            <Route path="/production/new" element={guard(<ProductionNew />)} />
-            <Route path="/production/complete/:runId" element={guard(<ProductionNew />)} />
-            <Route path="/production/:runId" element={guard(<ProductionDetail />)} />
-            <Route path="/production" element={guard(<Production />)} />
-            <Route path="/orders" element={guard(<Orders />)} />
-            <Route path="/logistics" element={guard(<Logistics />)} />
-            <Route path="/finance" element={guard(<Finance />)} />
+            <Route path="/procurement" element={modGuard("procurement", <Procurement />)} />
+            <Route path="/mrp" element={modGuard("planning_mrp", <Mrp />)} />
+            <Route path="/warehouse" element={modGuard("warehouse_grn_qc", <Warehouse />)} />
+            <Route path="/warehouse/qc/:grnId" element={modGuard("warehouse_grn_qc", <WarehouseQc />)} />
+            <Route path="/warehouse-qc" element={modGuard("warehouse_grn_qc", <WarehouseQc />)} />
+            <Route path="/inventory" element={modGuard("inventory_balances", <Inventory />)} />
+            <Route path="/returns" element={modGuard("returns_management", <Returns />)} />
+            <Route path="/inventory-item/:itemId" element={modGuard("inventory_balances", <InventoryItem />)} />
+            <Route path="/production/new" element={modGuard("mfg_production", <ProductionNew />)} />
+            <Route path="/production/complete/:runId" element={modGuard("mfg_production", <ProductionNew />)} />
+            <Route path="/production/:runId" element={modGuard("mfg_production", <ProductionDetail />)} />
+            <Route path="/production" element={modGuard("mfg_production", <Production />)} />
+            <Route path="/orders" element={modGuard("sales_orders", <Orders />)} />
+            <Route path="/logistics" element={modGuard("logistics_tms", <Logistics />)} />
+            <Route path="/finance" element={modGuard("finance", <Finance />)} />
             <Route path="/configuration" element={guard(<Configuration />)} />
             <Route path="/profile" element={guard(<Profile />)} />
             <Route path="/audit" element={guard(<Audit />)} />
@@ -143,25 +178,25 @@ export default function App() {
             <Route path="/email-config" element={guard(<EmailConfig />)} />
             <Route path="/documents" element={guard(<Documents />)} />
             <Route path="/notifications" element={guard(<Notifications />)} />
-            <Route path="/landed-cost" element={guard(<LandedCost />)} />
-            <Route path="/subcontracting" element={guard(<Subcontracting />)} />
-            <Route path="/wms-bins" element={guard(<WmsBins />)} />
-            <Route path="/drp" element={guard(<Drp />)} />
-            <Route path="/forecasting" element={guard(<Forecasting />)} />
-            <Route path="/traceability" element={guard(<Traceability />)} />
-            <Route path="/freight-tms" element={guard(<FreightTms />)} />
-            <Route path="/vendor-portal" element={guard(<VendorPortal />)} />
-            <Route path="/cycle-counts" element={guard(<CycleCounts />)} />
-            <Route path="/statutory-logistics" element={guard(<StatutoryLogistics />)} />
-            <Route path="/blanket-po" element={guard(<BlanketPo />)} />
-            <Route path="/wms-mobile" element={guard(<WmsMobile />)} />
-            <Route path="/wave-picking" element={guard(<WavePicking />)} />
-            <Route path="/customer-portal" element={guard(<CustomerPortal />)} />
-            <Route path="/quality-ipqc" element={guard(<QualityIpqc />)} />
-            <Route path="/avl-governance" element={guard(<AvlGovernance />)} />
-            <Route path="/capacity-planning" element={guard(<CapacityPlanning />)} />
-            <Route path="/shipping-engine" element={guard(<ShippingEngine />)} />
-            <Route path="/sc-control-tower" element={guard(<ScControlTower />)} />
+            <Route path="/landed-cost" element={modGuard("landed_cost", <LandedCost />)} />
+            <Route path="/subcontracting" element={modGuard("mfg_subcontracting", <Subcontracting />)} />
+            <Route path="/wms-bins" element={modGuard("wms_bins", <WmsBins />)} />
+            <Route path="/drp" element={modGuard("planning_drp", <Drp />)} />
+            <Route path="/forecasting" element={modGuard("planning_forecasting", <Forecasting />)} />
+            <Route path="/traceability" element={modGuard("mfg_traceability", <Traceability />)} />
+            <Route path="/freight-tms" element={modGuard("freight_tms", <FreightTms />)} />
+            <Route path="/vendor-portal" element={modGuard("vendor_portal", <VendorPortal />)} />
+            <Route path="/cycle-counts" element={modGuard("cycle_counts", <CycleCounts />)} />
+            <Route path="/statutory-logistics" element={modGuard("statutory_logistics", <StatutoryLogistics />)} />
+            <Route path="/blanket-po" element={modGuard("blanket_po", <BlanketPo />)} />
+            <Route path="/wms-mobile" element={modGuard("wms_mobile", <WmsMobile />)} />
+            <Route path="/wave-picking" element={modGuard("wave_picking", <WavePicking />)} />
+            <Route path="/customer-portal" element={modGuard("customer_portal", <CustomerPortal />)} />
+            <Route path="/quality-ipqc" element={modGuard("quality_ipqc", <QualityIpqc />)} />
+            <Route path="/avl-governance" element={modGuard("avl_governance", <AvlGovernance />)} />
+            <Route path="/capacity-planning" element={modGuard("capacity_planning", <CapacityPlanning />)} />
+            <Route path="/shipping-engine" element={modGuard("shipping_engine", <ShippingEngine />)} />
+            <Route path="/sc-control-tower" element={modGuard("sc_control_tower", <ScControlTower />)} />
             <Route path="/training" element={guard(<Training />)} />
             <Route path="*" element={guard(<NotFound />)} />
           </Routes>

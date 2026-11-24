@@ -26,10 +26,16 @@ Startup order: postgres, redis, rabbitmq healthy -> **`migrate`** (runs
 roles, first administrator, built-in notification templates; exits) -> **`api`**
 and **`worker`**. If `BOOTSTRAP_ADMIN_PASSWORD` is empty a random admin password
 is generated and printed once in the `migrate` logs
-(`docker compose logs migrate`), login `admin@axon-erp.local`.
+(`docker compose logs migrate`), login `admin@simple-erp.local`.
 
 One image, three roles (`backend/docker-entrypoint.sh`): `api`, `worker`,
 `migrate`.
+
+## Documentation & Implementation Guides
+
+* **[Company Onboarding Guide](COMPANY_ONBOARDING_GUIDE.md):** The definitive end-to-end operational manual for onboarding new companies, subsidiaries, and business units onto Simple ERP. Covers tenant provisioning, setup-time module customization (trading vs. manufacturing presets), legal entity & GSTIN registration, physical & WMS topography, master data migration, RBAC site scoping, external statutory rails, and opening balance cutover.
+* **[Module User Guide & FAQs](USER_GUIDE.md):** Screen-by-screen operational manual for day-to-day use of every module, navigation hierarchy, permissions, and FAQs.
+* **[Deployment Guide](DEPLOYMENT.md):** Production hosting, container architectures, reverse proxies, and environment configurations.
 
 ## What each piece is for
 
@@ -211,10 +217,10 @@ cd backend
 ```
 
 Real Postgres, no mocking of the database. The suite runs on its own database
-(`axon_erp_migration_test`), separate from the dev one (`axon_erp_migration`, what `backend/.env`
+(`simple_erp_migration_test`), separate from the dev one (`simple_erp_migration`, what `backend/.env`
 points at): `tests/conftest.py` derives the test URL from `DATABASE_URL` by appending `_test`
 (or use `TEST_DATABASE_URL`) and refuses to run against a name that doesn't end in `_test`.
-Create it once with `createdb axon_erp_migration_test` (owner = the app role); the tables are
+Create it once with `createdb simple_erp_migration_test` (owner = the app role); the tables are
 created by the suite itself. 604 of the tests are the
 original Flask app's own suite, ported and run unchanged through `tests/flaskcompat.py`
 (regenerate with `scripts/port_original_tests.py`); the rest cover the new pieces (RabbitMQ

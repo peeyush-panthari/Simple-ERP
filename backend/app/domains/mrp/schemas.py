@@ -5,7 +5,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class MrpRunRequest(BaseModel):
@@ -15,6 +15,8 @@ class MrpRunRequest(BaseModel):
 
 
 class MrpPlannedOrderOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: uuid.UUID
     mrpRunId: uuid.UUID
     productId: uuid.UUID
@@ -38,11 +40,10 @@ class MrpPlannedOrderOut(BaseModel):
     releasedBy: str | None = None
     createdAt: datetime
 
-    class Config:
-        from_attributes = True
-
 
 class MrpRunOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: uuid.UUID
     number: str
     horizonDays: int
@@ -55,9 +56,6 @@ class MrpRunOut(BaseModel):
     createdBy: str | None = None
     createdAt: datetime
     plannedOrders: list[MrpPlannedOrderOut] = []
-
-    class Config:
-        from_attributes = True
 
 
 class ReleaseOrdersRequest(BaseModel):

@@ -15,7 +15,7 @@ def get_base_css():
         size: A4;
         margin: 16mm 14mm 16mm 14mm;
         @top-left {
-            content: "AXON ERP | ENTERPRISE SPECIFICATION";
+            content: "SIMPLE ERP | ENTERPRISE SPECIFICATION";
             font-size: 7.5pt;
             font-weight: 700;
             color: #64748b;

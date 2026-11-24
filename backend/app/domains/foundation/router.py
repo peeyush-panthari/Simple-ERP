@@ -599,3 +599,69 @@ def delete_sticker_size(id: uuid_mod.UUID, actor: Actor = Depends(require_permis
     session.delete(row)
     session.commit()
     return Response(status_code=204)
+
+
+# ============================================================================
+# tenant module customization & setup configuration
+# ============================================================================
+
+from pydantic import BaseModel
+from app.core.modules import ALL_MODULE_DEFINITIONS, INDUSTRY_PRESETS
+
+
+class TenantModulesUpdateBody(BaseModel):
+    enabledModules: list[str]
+    preset: str | None = None
+
+
+@router.get("/tenant/modules")
+def get_tenant_modules(actor: Actor = Depends(require_any_permission("user:read", "org:read", "product:read"))):
+    tenant_id = actor["tenant_id"]
+    tenant = session.get(Tenant, tenant_id)
+    if not tenant:
+        raise not_found("Tenant")
+
+    enabled = tenant.settings.get("enabled_modules", ["*"]) if tenant.settings else ["*"]
+    current_preset = tenant.settings.get("industry_preset", "custom" if "*" not in enabled else "full") if tenant.settings else "full"
+
+    return {
+        "tenantId": str(tenant.id),
+        "tenantName": tenant.name,
+        "tenantSlug": tenant.slug,
+        "enabledModules": enabled,
+        "currentPreset": current_preset,
+        "modules": ALL_MODULE_DEFINITIONS,
+        "presets": INDUSTRY_PRESETS,
+    }
+
+
+@router.put("/tenant/modules")
+def update_tenant_modules(body: TenantModulesUpdateBody, actor: Actor = Depends(require_any_permission("user:write", "org:write"))):
+    tenant_id = actor["tenant_id"]
+    tenant = session.get(Tenant, tenant_id)
+    if not tenant:
+        raise not_found("Tenant")
+
+    current_settings = dict(tenant.settings or {})
+    current_settings["enabled_modules"] = body.enabledModules
+    if body.preset:
+        current_settings["industry_preset"] = body.preset
+    tenant.settings = current_settings
+
+    audit(
+        tenant_id=tenant_id,
+        actor_id=actor["user_id"],
+        actor_email=actor["email"],
+        action="tenant.modules_updated",
+        entity_type="tenant",
+        entity_id=str(tenant.id),
+        meta={"enabledModules": body.enabledModules, "preset": body.preset},
+    )
+    session.commit()
+
+    return {
+        "tenantId": str(tenant.id),
+        "enabledModules": tenant.settings.get("enabled_modules", ["*"]),
+        "currentPreset": tenant.settings.get("industry_preset", "custom"),
+        "message": "Module configuration updated successfully.",
+    }

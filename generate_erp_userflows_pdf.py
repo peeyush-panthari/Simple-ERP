@@ -15,7 +15,7 @@ def get_userflow_css():
         size: A4;
         margin: 16mm 14mm 16mm 14mm;
         @top-left {
-            content: "AXON ERP | OPERATOR USER FLOW GUIDE";
+            content: "SIMPLE ERP | OPERATOR USER FLOW GUIDE";
             font-size: 7.5pt;
             font-weight: 700;
             color: #64748b;

@@ -22,7 +22,7 @@ from app.core.config import settings
 from app.core.db import session
 from app.models.notification_template import NotificationTemplate
 
-logger = logging.getLogger("axon.notification.templates")
+logger = logging.getLogger("simple.notification.templates")
 
 _DEFAULT_FOOTER = "This is an automated message from Simple ERP. Please do not reply to this address."
 

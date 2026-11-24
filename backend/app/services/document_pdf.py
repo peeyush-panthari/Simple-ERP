@@ -21,7 +21,7 @@ import urllib.request
 
 from app.core.config import settings
 
-logger = logging.getLogger("axon.document.pdf")
+logger = logging.getLogger("simple.document.pdf")
 
 _weasyprint_checked = False
 _weasyprint_available = False

@@ -1,6 +1,7 @@
 /** Configuration: the controlled lists the rest of the app draws on - product categories, party types, sticker sizes. */
 import { useQueryClient } from "@tanstack/react-query";
-import { useState, type FormEvent } from "react";
+import { useState, useMemo, useEffect, type FormEvent } from "react";
+import { Check, CheckCircle2, Sparkles, SlidersHorizontal } from "lucide-react";
 import { Shell } from "@/components/erp/shell";
 import { Tabs } from "@/components/erp/tabs";
 import { GuidedFieldWalkthrough } from "@/components/erp/guided-field-walkthrough";
@@ -11,6 +12,7 @@ import { useApiQuery, useAsyncAction, type ListResponse } from "@/lib/hooks";
 import { STICKER_PAGE_SIZES, stickerFitIssue, stickerTotal, type StickerLayout } from "@/lib/sticker";
 import { cn, errMsg } from "@/lib/utils";
 import { PRODUCT_TYPES } from "@/lib/reference";
+import { ALL_ERP_MODULES, INDUSTRY_PRESETS, type ErpModuleDefinition } from "@/lib/modules";
 
 interface Category { id: string; code: string; productCategory: string; productTypes?: string[]; productCount?: number; status: string }
 interface PartyTypeRow { code: string; label: string; baseType: string; status: string }
@@ -369,15 +371,242 @@ function StickerSizesTab({ canWrite }: { canWrite: boolean }) {
   );
 }
 
+interface TenantModulesData {
+  tenantId: string;
+  tenantName: string;
+  tenantSlug: string;
+  enabledModules: string[];
+  currentPreset?: string;
+}
+
+function ModulesCustomizerTab({ canWrite }: { canWrite: boolean }) {
+  const { api, reloadUser, user } = useAuth();
+  const { run, busy, error } = useAsyncAction();
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  const query = useApiQuery<TenantModulesData>("/api/v1/tenant/modules");
+  const [selectedPreset, setSelectedPreset] = useState<string>("full");
+  const [enabledList, setEnabledList] = useState<string[]>(["*"]);
+
+  useEffect(() => {
+    if (query.data) {
+      const active = query.data.enabledModules || ["*"];
+      setEnabledList(active);
+      setSelectedPreset(query.data.currentPreset || (active.includes("*") ? "full" : "custom"));
+    }
+  }, [query.data]);
+
+  const allModuleIds = useMemo(() => ALL_ERP_MODULES.map((m) => m.id), []);
+
+  const isModuleActive = (id: string) => {
+    return enabledList.includes("*") || enabledList.includes(id);
+  };
+
+  const handleApplyPreset = (presetKey: string) => {
+    setSelectedPreset(presetKey);
+    const preset = INDUSTRY_PRESETS[presetKey];
+    if (preset) {
+      setEnabledList(preset.modules);
+    }
+  };
+
+  const handleToggleModule = (id: string) => {
+    setSelectedPreset("custom");
+    if (enabledList.includes("*")) {
+      const withoutOne = allModuleIds.filter((m) => m !== id);
+      setEnabledList(withoutOne);
+    } else if (enabledList.includes(id)) {
+      setEnabledList(enabledList.filter((m) => m !== id));
+    } else {
+      const next = [...enabledList, id];
+      if (next.length === allModuleIds.length) {
+        setEnabledList(["*"]);
+      } else {
+        setEnabledList(next);
+      }
+    }
+  };
+
+  const handleSave = async () => {
+    setSuccessMessage(null);
+    await run(async () => {
+      await api("PUT", "/api/v1/tenant/modules", {
+        json: {
+          enabledModules: enabledList,
+          preset: selectedPreset,
+        },
+      });
+      await reloadUser();
+      setSuccessMessage("Module configuration saved! Your navigation and workflows are now customized for your business.");
+      setTimeout(() => setSuccessMessage(null), 6000);
+    });
+  };
+
+  const groupedModules = useMemo(() => {
+    const groups: Record<string, ErpModuleDefinition[]> = {};
+    ALL_ERP_MODULES.forEach((m) => {
+      if (!groups[m.group]) groups[m.group] = [];
+      groups[m.group].push(m);
+    });
+    return groups;
+  }, []);
+
+  const activeCount = enabledList.includes("*") ? allModuleIds.length : enabledList.length;
+
+  return (
+    <div className="flex w-full flex-col items-start gap-5">
+      <div className="flex w-full flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--border)] pb-4">
+        <div>
+          <h3 className="text-base font-semibold text-[var(--foreground)]">Enterprise Module Customizer</h3>
+          <p className="text-sm text-[var(--muted-foreground)]">
+            Configure active workflows for <strong>{user?.tenantName || "this company"}</strong>. Workflows and sidebar items will only appear for selected modules.
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <Pill tone="info">
+            {activeCount} of {allModuleIds.length} Modules Active
+          </Pill>
+          {canWrite && (
+            <ActionButton onClick={handleSave} loading={busy}>
+              Save Active Modules
+            </ActionButton>
+          )}
+        </div>
+      </div>
+
+      <InlineError message={error || query.error?.message} />
+      {successMessage && (
+        <div className="w-full rounded-md bg-[var(--success)]/10 border border-[var(--success)]/30 p-3 text-sm text-[var(--success)] flex items-center gap-2">
+          <CheckCircle2 size={16} />
+          <span>{successMessage}</span>
+        </div>
+      )}
+
+      {/* Preset Profiles */}
+      <div className="w-full flex flex-col gap-2">
+        <label className="text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)] flex items-center gap-1.5">
+          <Sparkles size={14} /> Quick-Pick Industry Profile
+        </label>
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-3">
+          {Object.entries(INDUSTRY_PRESETS).map(([key, preset]) => {
+            const isSelected = selectedPreset === key;
+            return (
+              <button
+                key={key}
+                type="button"
+                onClick={() => canWrite && handleApplyPreset(key)}
+                disabled={!canWrite}
+                className={cn(
+                  "flex flex-col text-left p-3.5 rounded-lg border transition-all",
+                  isSelected
+                    ? "border-[var(--primary)] bg-[var(--primary)]/5 ring-1 ring-[var(--primary)]"
+                    : "border-[var(--border)] bg-[var(--card)] hover:border-[var(--muted-foreground)]/50",
+                  !canWrite && "opacity-75 cursor-default",
+                )}
+              >
+                <div className="flex items-center justify-between w-full mb-1">
+                  <span className="text-xs font-bold text-[var(--foreground)] line-clamp-1">{preset.label.split("(")[0]}</span>
+                  {isSelected && <Check size={14} className="text-[var(--primary)] shrink-0" />}
+                </div>
+                <p className="text-[11px] text-[var(--muted-foreground)] line-clamp-2 leading-relaxed">{preset.description}</p>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Grouped Module Checkboxes */}
+      <div className="w-full flex flex-col gap-4 mt-2">
+        <div className="flex items-center justify-between">
+          <label className="text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)] flex items-center gap-1.5">
+            <SlidersHorizontal size={14} /> Modular Capabilities Checklist
+          </label>
+          {canWrite && (
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedPreset("full");
+                  setEnabledList(["*"]);
+                }}
+                className="text-xs text-[var(--primary)] hover:underline"
+              >
+                Enable All
+              </button>
+              <span className="text-[var(--muted-foreground)]">•</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedPreset("custom");
+                  setEnabledList([]);
+                }}
+                className="text-xs text-[var(--muted-foreground)] hover:underline"
+              >
+                Deselect All
+              </button>
+            </div>
+          )}
+        </div>
+
+        <div className="flex flex-col gap-5">
+          {Object.entries(groupedModules).map(([groupName, modules]) => (
+            <div key={groupName} className="rounded-lg border border-[var(--border)] bg-[var(--card)] overflow-hidden shadow-sm">
+              <div className="bg-[var(--muted)]/50 px-4 py-2.5 border-b border-[var(--border)] flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-wider text-[var(--foreground)]">{groupName}</span>
+                <span className="text-[11px] text-[var(--muted-foreground)]">
+                  {modules.filter((m) => isModuleActive(m.id)).length} of {modules.length} active
+                </span>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-[var(--border)]">
+                {modules.map((mod) => {
+                  const active = isModuleActive(mod.id);
+                  return (
+                    <div
+                      key={mod.id}
+                      onClick={() => canWrite && handleToggleModule(mod.id)}
+                      className={cn(
+                        "flex items-start gap-3 p-3.5 transition-colors cursor-pointer select-none",
+                        active ? "bg-[var(--card)]" : "bg-[var(--muted)]/20 opacity-70",
+                        canWrite ? "hover:bg-[var(--muted)]/40" : "cursor-default",
+                      )}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={active}
+                        onChange={() => {}}
+                        disabled={!canWrite}
+                        className="mt-0.5 h-4 w-4 rounded border-[var(--border)] text-[var(--primary)] focus:ring-[var(--primary)]"
+                      />
+                      <div className="flex flex-col min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className={cn("text-xs font-medium", active ? "text-[var(--foreground)]" : "text-[var(--muted-foreground)]")}>
+                            {mod.name}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-[var(--muted-foreground)] leading-relaxed mt-0.5">{mod.description}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ConfigurationPage() {
   const { can } = useAuth();
   return (
     <Shell>
-      {can("product:read") || can("party:read") || can("sticker_size:read") ? (
+      {can("product:read") || can("party:read") || can("sticker_size:read") || can("org:read") || can("user:read") ? (
         <div className="flex w-full flex-col items-start gap-4">
-          <PageHeader eyebrow="Foundation" title="Configuration" description="The controlled lists the rest of the app draws on." />
+          <PageHeader eyebrow="Foundation" title="Configuration" description="System controlled lists, sticker layouts, and active ERP module settings." />
           <Tabs
             tabs={[
+              { value: "modules", label: "Active Modules & Setup", content: <ModulesCustomizerTab canWrite={can("org:write") || can("user:write")} /> },
               { value: "categories", label: "Product Categories", content: <CategoriesTab canWrite={can("product:write")} /> },
               { value: "partyTypes", label: "Party Types", content: <PartyTypesTab canWrite={can("party:write")} /> },
               { value: "stickerSizes", label: "Sticker Size", content: <StickerSizesTab canWrite={can("sticker_size:write")} /> },

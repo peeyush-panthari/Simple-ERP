@@ -190,7 +190,7 @@ function UsersTab({ roles, warehouses, factories }: { roles: RoleRow[]; warehous
   };
 
   const autofillDemoOperator = () => {
-    setInviteEmail("rahul.s@axon-industries.com");
+    setInviteEmail("rahul.s@simple-industries.com");
     setInviteDisplayName("Rahul Sharma");
     setInviteBusinessUnit("Warehouse & Inbound Logistics");
     setInvitePassword("Operator@123");
@@ -212,11 +212,11 @@ function UsersTab({ roles, warehouses, factories }: { roles: RoleRow[]; warehous
       label: "Work Email (Required)",
       shortLabel: "Email",
       useCase: "Primary corporate identity used for authentication, MFA verification, and notifications.",
-      guideline: "Must be a corporate work email (@axon-industries.com).",
+      guideline: "Must be a corporate work email (@simple-industries.com).",
       restriction: "Must be unique per tenant; duplicate emails are rejected.",
-      sampleValueText: "rahul.s@axon-industries.com",
+      sampleValueText: "rahul.s@simple-industries.com",
       isFilled: Boolean(inviteEmail),
-      onFill: () => setInviteEmail("rahul.s@axon-industries.com"),
+      onFill: () => setInviteEmail("rahul.s@simple-industries.com"),
     },
     {
       id: "displayName",

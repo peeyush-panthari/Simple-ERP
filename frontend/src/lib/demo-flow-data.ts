@@ -318,12 +318,12 @@ export const ERP_JOURNEYS: ERPJourney[] = [
         actionPrompt: "Click '+ Invite user' to onboard a new operator and scope their access to the Pune facility.",
         sampleAction: {
           label: "Onboard Rahul Sharma (Warehouse Receiver)",
-          description: "Invites rahul.s@axon-industries.com with 'Warehouse Receiver' role and restricts access strictly to Warehouse WH-PUNE-01.",
+          description: "Invites rahul.s@simple-industries.com with 'Warehouse Receiver' role and restricts access strictly to Warehouse WH-PUNE-01.",
           buttonText: "Simulate User Invitation & Facility Scoping",
           successMessage: "User invited with Argon2id token; scoped to WH-PUNE-01 and FACT-PUNE-01. Cross-site tampering locked out.",
           sampleData: {
             name: "Rahul Sharma",
-            email: "rahul.s@axon-industries.com",
+            email: "rahul.s@simple-industries.com",
             role: "Warehouse Receiver",
             facilityScope: ["WH-PUNE-01", "FACT-PUNE-01"],
           },
@@ -1246,7 +1246,7 @@ export const DEMO_FLOW_STEPS: DemoFlowStep[] = [
         stepByStepInstructions: [
           "Navigate to 'Users & roles' (/users).",
           "Click '+ Invite User' in the header toolbar.",
-          "Enter user full name (e.g. 'Rahul Sharma') and corporate email ('rahul.s@axon-industries.com').",
+          "Enter user full name (e.g. 'Rahul Sharma') and corporate email ('rahul.s@simple-industries.com').",
           "Select Role: 'Warehouse Receiver' (grants `warehouse:read`, `warehouse:receive`, `grn:write`).",
           "Click 'Send Invitation Email' to dispatch onboarding link.",
         ],
@@ -1266,7 +1266,7 @@ export const DEMO_FLOW_STEPS: DemoFlowStep[] = [
           successState: "User Invited & Role Assigned",
           executionLog: [
             "Generating secure invitation token ✓",
-            "Creating user record rahul.s@axon-industries.com in Postgres ✓",
+            "Creating user record rahul.s@simple-industries.com in Postgres ✓",
             "Assigning role 'Warehouse Receiver' with 4 permissions ✓",
             "Queueing invite email via SMTP worker ✓",
           ],
@@ -1376,7 +1376,7 @@ export const DEMO_FLOW_STEPS: DemoFlowStep[] = [
           "Navigate to 'Factory & Warehouse' (/factory-warehouse).",
           "Under the 'Factories' tab, click '+ New Factory'.",
           "Provide Factory Code (e.g. 'FACT-PUNE-01') and Name ('Pune Assembly Plant 1').",
-          "Link to owning Legal Entity ('Axon Industries Pvt Ltd').",
+          "Link to owning Legal Entity ('Simple Industries Pvt Ltd').",
           "Specify operating address, timezone, and production line count (e.g. 3 lines).",
           "Click 'Save Factory'.",
         ],
@@ -1636,7 +1636,7 @@ export const DEMO_FLOW_STEPS: DemoFlowStep[] = [
         stepByStepInstructions: [
           "Navigate to 'PO & Invoice Master' (/po-invoice) via the Finance menu.",
           "Click the '+ New Business Entity' button in the top action bar.",
-          "Enter Entity Legal Name (e.g. 'Axon Industries Private Limited') and Company Type (Private Limited).",
+          "Enter Entity Legal Name (e.g. 'Simple Industries Private Limited') and Company Type (Private Limited).",
           "Provide Corporate Permanent Account Number (PAN) in 10-character alphanumeric format.",
           "Click 'Save Entity Record' to persist in database.",
         ],
@@ -1647,14 +1647,14 @@ export const DEMO_FLOW_STEPS: DemoFlowStep[] = [
         tablesAndLedgersMutated: ["business_entities table (insert row with active=true)"],
         outputDocument: "Registered Business Entity Master (ENT-001)",
         simulation: {
-          scenarioDescription: "Registering new enterprise entity 'Axon Industries Pvt Ltd' with statutory PAN.",
+          scenarioDescription: "Registering new enterprise entity 'Simple Industries Pvt Ltd' with statutory PAN.",
           initialState: "Unregistered (No corporate identity configured)",
           buttonLabel: "Simulate Entity Registration",
           successState: "Entity ENT-001 Registered & Active",
           executionLog: [
             "Validating PAN checksum: AAAAA9999A ✓",
             "Checking corporate registry uniqueness ✓",
-            "Creating business entity row 'Axon Industries Pvt Ltd' in Postgres ✓",
+            "Creating business entity row 'Simple Industries Pvt Ltd' in Postgres ✓",
             "Entity status marked 'Active' for PO and Invoice generation ✓",
           ],
           databaseEffect: "business_entities record ENT-001 committed with SHA-256 validation stamp.",
@@ -3870,7 +3870,7 @@ export const DEMO_CASE_STUDY = {
     {
       step: 1,
       module: "Business Entities (/po-invoice)",
-      action: "Company registers entity 'Axon Industries Pvt Ltd' with GSTIN 27AAAAA9999A1Z5 and bank details.",
+      action: "Company registers entity 'Simple Industries Pvt Ltd' with GSTIN 27AAAAA9999A1Z5 and bank details.",
     },
     {
       step: 2,

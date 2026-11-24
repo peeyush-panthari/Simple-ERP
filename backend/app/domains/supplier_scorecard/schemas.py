@@ -4,10 +4,12 @@ import uuid
 from datetime import datetime
 from decimal import Decimal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class VendorScorecardOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: uuid.UUID | None = None
     vendorId: uuid.UUID
     vendorName: str
@@ -26,9 +28,6 @@ class VendorScorecardOut(BaseModel):
     avgLeadTimeDays: Decimal
     notes: str | None = None
     calculatedAt: datetime
-
-    class Config:
-        from_attributes = True
 
 
 class VendorScorecardSummary(BaseModel):
