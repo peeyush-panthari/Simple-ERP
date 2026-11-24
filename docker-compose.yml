@@ -24,6 +24,7 @@ x-backend-env: &backend-env
   # The frontend's nginx is one trusted hop in front of the API. (Port 8000 is
   # also published for development; reaching it directly bypasses that hop.)
   TRUSTED_PROXY_HOPS: ${TRUSTED_PROXY_HOPS:-1}
+  WEB_CONCURRENCY: ${WEB_CONCURRENCY:-2}
   BOOTSTRAP_ADMIN_EMAIL: ${BOOTSTRAP_ADMIN_EMAIL:-admin@simple-erp.local}
   BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-}
   # Redis-backed rate limiting + dashboard cache; notifications delivered by the worker.
