@@ -17,6 +17,7 @@ import logging
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from slowapi.errors import RateLimitExceeded
 
 from app.core.config import settings
@@ -53,6 +54,7 @@ def create_app() -> FastAPI:
     app = FastAPI(title="Simple ERP API", version="0.1.0")
 
     app.add_middleware(SessionCleanupMiddleware)
+    app.add_middleware(GZipMiddleware, minimum_size=1000)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins_list,
